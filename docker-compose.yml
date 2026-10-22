@@ -1,8 +1,14 @@
 name: bseat
 
+# Local development stack. `docker compose up` installs deps, migrates + seeds
+# the DB, and runs web (http://localhost:3000) and api (http://localhost:3001)
+# with hot reload. Works without a .env file (dev defaults below); copy
+# .env.example to .env to override.
+#
 # The repo is mounted at the same absolute path as on the host (${PWD}), so
 # paths in tool output, git hooks and caches are identical inside and outside
 # containers. Always run compose from the repo root (bin/* scripts do this).
+
 x-node: &node
   image: bseat-tools:dev
   build: { context: docker, dockerfile: tools.Dockerfile }
@@ -11,13 +17,117 @@ x-node: &node
     - .:${PWD}
     - pnpm-store:/home/node/.local/share/pnpm/store
     - corepack-cache:/home/node/.cache/node/corepack
+  env_file:
+    - path: .env
+      required: false
+  environment:
+    NODE_ENV: development
+    DATABASE_URL: postgres://${POSTGRES_USER:-bseat}:${POSTGRES_PASSWORD:-bseat}@postgres:5432/${POSTGRES_DB:-bseat}
+    DATABASE_URL_TEST: postgres://${POSTGRES_USER:-bseat}:${POSTGRES_PASSWORD:-bseat}@postgres:5432/${POSTGRES_DB:-bseat}_test
+    REDIS_URL: redis://redis:6379
+    SMTP_HOST: mailpit
+    SMTP_PORT: '1025'
+    API_INTERNAL_URL: http://api:3001
+    LOG_LEVEL: ${LOG_LEVEL:-debug}
+    BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-dev-only-insecure-secret-change-me-0000000000}
+    BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
+    TRUSTED_ORIGINS: ${TRUSTED_ORIGINS:-http://localhost:3000}
+    OTEL_SDK_DISABLED: ${OTEL_SDK_DISABLED:-true}
+    OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://jaeger:4318}
+
+x-healthy: &healthy
+  condition: service_healthy
 
 services:
+  # ---- infra ---------------------------------------------------------------
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-bseat}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bseat}
+      POSTGRES_DB: ${POSTGRES_DB:-bseat}
+      POSTGRES_READONLY_PASSWORD: ${POSTGRES_READONLY_PASSWORD:-bseat_readonly}
+    ports: ['${POSTGRES_PORT:-5433}:5432']
+    volumes:
+      - pgdata:/var/lib/postgresql
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-bseat} -d ${POSTGRES_DB:-bseat}']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  redis:
+    image: redis:8.10-alpine
+    command: ['redis-server', '--appendonly', 'yes']
+    ports: ['${REDIS_PORT:-6380}:6379']
+    volumes: [redisdata:/data]
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  mailpit:
+    image: axllent/mailpit:v1.31.6
+    ports:
+      - '${MAILPIT_UI_PORT:-8025}:8025'
+      - '${MAILPIT_SMTP_PORT:-1025}:1025'
+    healthcheck:
+      test: ['CMD', '/mailpit', 'readyz']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  # Tracing UI at http://localhost:16686 — `docker compose --profile observability up`
+  jaeger:
+    image: jaegertracing/jaeger:2.22.0
+    profiles: [observability]
+    ports: ['16686:16686', '4318:4318']
+
+  # ---- app (dev mode, hot reload) ------------------------------------------
+  install:
+    <<: *node
+    command: ['pnpm', 'install', '--frozen-lockfile']
+
+  migrate:
+    <<: *node
+    command: ['bash', '-c', 'pnpm db:migrate && pnpm db:seed']
+    depends_on:
+      install: { condition: service_completed_successfully }
+      postgres: *healthy
+
+  api:
+    <<: *node
+    command: ['pnpm', '--filter', '@bseat/api', 'dev']
+    ports: ['${API_PORT:-3001}:3001']
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: *healthy
+      mailpit: *healthy
+    healthcheck:
+      test: ['CMD', 'curl', '-fsS', 'http://localhost:3001/health/live']
+      interval: 5s
+      timeout: 3s
+      retries: 60
+      start_period: 20s
+
+  web:
+    <<: *node
+    command: ['pnpm', '--filter', '@bseat/web', 'dev']
+    ports: ['${WEB_PORT:-3000}:3000']
+    depends_on:
+      install: { condition: service_completed_successfully }
+      api: *healthy
+
+  # ---- one-off toolbox: bin/tools <cmd>, bin/pnpm <args> --------------------
   tools:
     <<: *node
     profiles: [tools]
     command: ['bash']
 
 volumes:
+  pgdata:
+  redisdata:
   pnpm-store:
   corepack-cache:

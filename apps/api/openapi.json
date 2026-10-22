@@ -1,0 +1,22 @@
+{
+  "openapi": "3.0.0",
+  "paths": {},
+  "info": {
+    "title": "BSeat API",
+    "description": "Seat and desk booking API. Errors use RFC 9457 problem details.",
+    "version": "0.1.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "securitySchemes": {
+      "cookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "bseat.session_token"
+      }
+    },
+    "schemas": {}
+  }
+}

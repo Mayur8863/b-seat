@@ -1,5 +1,13 @@
 packages:
   - apps/*
   - packages/*
+
+# pnpm blocks dependency install scripts by default; allow only what needs a
+# native binary. Review every new entry in PRs.
 allowBuilds:
   lefthook: true
+  '@swc/core': true
+  esbuild: true
+  msgpackr-extract: true
+  '@scarf/scarf': false # install-time telemetry ping
+  protobufjs: false # postinstall is only a version check
