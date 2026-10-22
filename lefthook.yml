@@ -1,0 +1,31 @@
+# Git hooks (https://lefthook.dev). Hooks run on the host; every job executes
+# inside Docker through bin/* wrappers, so the host only needs Docker.
+# Bypass only in emergencies with LEFTHOOK=0 git commit ... and say so in the PR.
+
+pre-commit:
+  parallel: true
+  jobs:
+    - name: secrets
+      run: bin/gitleaks git --pre-commit --staged --redact --no-banner
+
+    - name: format
+      glob: '*.{js,mjs,cjs,ts,tsx,json,md,yml,yaml,css}'
+      run: bin/pnpm exec prettier --write --ignore-unknown {staged_files}
+      stage_fixed: true
+
+    - name: lint-typecheck-affected
+      glob: '*.{js,mjs,cjs,ts,tsx}'
+      # skipped on the very first commit (no HEAD to diff against)
+      run: >-
+        git rev-parse -q --verify HEAD >/dev/null || exit 0;
+        bin/pnpm exec turbo run lint typecheck --filter='...[HEAD]' --output-logs=errors-only
+
+commit-msg:
+  jobs:
+    - name: commitlint
+      run: bin/pnpm exec commitlint --edit {1}
+
+pre-push:
+  jobs:
+    - name: test-affected
+      run: bin/pnpm exec turbo run test --affected --output-logs=errors-only

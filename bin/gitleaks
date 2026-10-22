@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# gitleaks secret scanner via Docker. Usage: bin/gitleaks <args...>
+# e.g. bin/gitleaks git --pre-commit --staged   |   bin/gitleaks dir .
+set -euo pipefail
+cd "$(dirname "$0")/.."
+exec docker run --rm -v "$PWD:/repo" -w /repo \
+  -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/repo \
+  ghcr.io/gitleaks/gitleaks:v8.30.1 "$@"

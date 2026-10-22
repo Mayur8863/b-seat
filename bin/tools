@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Run any command inside the dev tools container (Node 22 + pnpm + git).
+# The host only needs Docker. Usage: bin/tools <cmd> [args...]
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+tty_flag=()
+if [ ! -t 0 ] || [ ! -t 1 ]; then tty_flag=(-T); fi
+
+exec docker compose run --rm "${tty_flag[@]}" tools "$@"

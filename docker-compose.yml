@@ -1,0 +1,23 @@
+name: bseat
+
+# The repo is mounted at the same absolute path as on the host (${PWD}), so
+# paths in tool output, git hooks and caches are identical inside and outside
+# containers. Always run compose from the repo root (bin/* scripts do this).
+x-node: &node
+  image: bseat-tools:dev
+  build: { context: docker, dockerfile: tools.Dockerfile }
+  working_dir: ${PWD}
+  volumes:
+    - .:${PWD}
+    - pnpm-store:/home/node/.local/share/pnpm/store
+    - corepack-cache:/home/node/.cache/node/corepack
+
+services:
+  tools:
+    <<: *node
+    profiles: [tools]
+    command: ['bash']
+
+volumes:
+  pnpm-store:
+  corepack-cache:

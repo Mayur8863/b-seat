@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# pnpm, executed inside the tools container. Usage: bin/pnpm <args...>
+exec "$(dirname "$0")/tools" pnpm "$@"
