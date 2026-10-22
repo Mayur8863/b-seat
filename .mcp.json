@@ -1,0 +1,59 @@
+{
+  "mcpServers": {
+    "playwright": {
+      "type": "stdio",
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "--init",
+        "--network=host",
+        "mcr.microsoft.com/playwright/mcp:v0.0.83",
+        "--headless",
+        "--isolated"
+      ]
+    },
+    "github": {
+      "type": "stdio",
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-e",
+        "GITHUB_PERSONAL_ACCESS_TOKEN",
+        "-e",
+        "GITHUB_TOOLSETS=repos,issues,pull_requests,actions",
+        "ghcr.io/github/github-mcp-server:v2.0.3"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN:-}"
+      }
+    },
+    "context7": {
+      "type": "http",
+      "url": "https://mcp.context7.com/mcp",
+      "headers": {
+        "CONTEXT7_API_KEY": "${CONTEXT7_API_KEY:-}"
+      }
+    },
+    "postgres": {
+      "type": "stdio",
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "--network=host",
+        "-e",
+        "DATABASE_URI",
+        "crystaldba/postgres-mcp:0.3.0",
+        "--access-mode=restricted"
+      ],
+      "env": {
+        "DATABASE_URI": "postgresql://bseat_readonly:${POSTGRES_READONLY_PASSWORD:-bseat_readonly}@localhost:${POSTGRES_PORT:-5433}/bseat"
+      }
+    }
+  }
+}
