@@ -1,9 +1,13 @@
-import '@testing-library/jest-dom/vitest';
-
+import * as matchers from '@testing-library/jest-dom/matchers';
 import { cleanup } from '@testing-library/react';
-import { afterAll, afterEach, beforeAll } from 'vitest';
+import { afterAll, afterEach, beforeAll, expect } from 'vitest';
 
 import { server } from './msw';
+
+// Register jest-dom matchers on *this* package's vitest (types in ./vitest.d.ts).
+// Not '@testing-library/jest-dom/vitest': under pnpm peer isolation it can augment a
+// different vitest instance than the one the tests import.
+expect.extend(matchers);
 
 beforeAll(() => {
   server.listen({ onUnhandledFrame: 'error' });

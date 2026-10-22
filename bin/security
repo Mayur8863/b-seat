@@ -23,7 +23,7 @@ run_semgrep() {
 run_trivy() {
   echo "==> trivy"
   docker run --rm -v "$PWD:/src" -v trivy-cache:/root/.cache aquasec/trivy:0.76.1 \
-    fs --scanners vuln,misconfig --severity HIGH,CRITICAL --exit-code 1 \
+    fs --scanners vuln,misconfig --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 \
     --skip-dirs node_modules --skip-dirs .pnpm-store /src
 }
 

@@ -21,6 +21,10 @@ RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
     pnpm --filter=@bseat/api deploy --prod /out
 
 FROM node:22-bookworm-slim AS runtime
+# The runtime never runs a package manager: removing the bundled npm/corepack/yarn
+# drops their transitive CVEs and attack surface.
+RUN rm -rf /usr/local/lib/node_modules /usr/local/bin/npm /usr/local/bin/npx \
+    /usr/local/bin/corepack /usr/local/bin/yarn /usr/local/bin/yarnpkg /opt/yarn-*
 ENV NODE_ENV=production API_PORT=3001
 WORKDIR /app
 COPY --from=build --chown=node:node /out ./
