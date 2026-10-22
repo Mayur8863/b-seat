@@ -30,8 +30,10 @@ export default defineConfig({
         'src/**/*.spec.ts',
         'src/main.ts',
         'src/instrumentation.ts',
+        // thin CLI entrypoints (exercised by compose/CI, not unit-testable)
         'src/scripts/**',
         'src/db/seed.ts',
+        'src/db/migrate.ts',
       ],
       reporter: ['text-summary', 'lcov', 'json-summary'],
       // Floor for the whole package; CI also enforces 80% on changed lines (diff-cover).

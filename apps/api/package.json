@@ -9,7 +9,7 @@
     "drizzle"
   ],
   "scripts": {
-    "dev": "nest start --watch",
+    "dev": "nest start --watch --path tsconfig.dev.json",
     "build": "nest build",
     "start": "node dist/main.js",
     "lint": "eslint . --max-warnings=0",

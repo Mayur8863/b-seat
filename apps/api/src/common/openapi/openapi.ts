@@ -14,10 +14,30 @@ export function createOpenApiDocument(app: INestApplication): OpenAPIObject {
     .addCookieAuth('bseat.session_token')
     .build();
 
-  return SwaggerModule.createDocument(app, config, {
+  const document = SwaggerModule.createDocument(app, config, {
     operationIdFactory: (controllerKey, methodKey) =>
       `${controllerKey.replace(/Controller$/, '')}_${methodKey}`,
   });
+  return withProblemContentType(document);
+}
+
+/**
+ * Every error body is RFC 9457 (ProblemFilter), so declare 4xx/5xx responses as
+ * application/problem+json instead of swagger's default application/json.
+ */
+export function withProblemContentType(document: OpenAPIObject): OpenAPIObject {
+  for (const pathItem of Object.values(document.paths)) {
+    for (const operation of Object.values(pathItem) as { responses?: Record<string, unknown> }[]) {
+      for (const [status, response] of Object.entries(operation.responses ?? {})) {
+        const content = (response as { content?: Record<string, unknown> }).content;
+        if (Number(status) >= 400 && content?.['application/json']) {
+          content['application/problem+json'] = content['application/json'];
+          delete content['application/json'];
+        }
+      }
+    }
+  }
+  return document;
 }
 
 /** Serves Swagger UI at /docs and the raw spec at /openapi.json (non-production only). */

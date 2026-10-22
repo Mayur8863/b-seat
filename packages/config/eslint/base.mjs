@@ -12,6 +12,7 @@ export default function base({ tsconfigRootDir }) {
   return defineConfig(
     globalIgnores([
       '**/dist/**',
+      '**/dist-dev/**',
       '**/.next/**',
       '**/coverage/**',
       '**/generated/**',
