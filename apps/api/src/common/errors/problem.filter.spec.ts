@@ -1,7 +1,13 @@
-import { type ArgumentsHost, ForbiddenException } from '@nestjs/common';
+import {
+  type ArgumentsHost,
+  ForbiddenException,
+  HttpException,
+  NotFoundException,
+} from '@nestjs/common';
 import type { PinoLogger } from 'nestjs-pino';
 import { describe, expect, it, vi } from 'vitest';
 
+import { ProblemException } from './problem.exception.js';
 import { ProblemFilter } from './problem.filter.js';
 import { RequestValidationException, validationPipe } from './validation.js';
 
@@ -39,6 +45,48 @@ describe('ProblemFilter', () => {
     expect(body).toMatchObject({ status: 403, title: 'forbidden', detail: 'nope' });
   });
 
+  it('uses the type, title and detail of a ProblemException', () => {
+    const { body, res, logger } = run(
+      new ProblemException(
+        409,
+        'urn:bseat:problem:booking:seat-unavailable',
+        'Seat unavailable',
+        'This seat is no longer available for that time.',
+      ),
+    );
+    expect(res.status).toHaveBeenCalledWith(409);
+    expect(res.type).toHaveBeenCalledWith('application/problem+json');
+    expect(body).toEqual({
+      type: 'urn:bseat:problem:booking:seat-unavailable',
+      title: 'Seat unavailable',
+      status: 409,
+      detail: 'This seat is no longer available for that time.',
+      instance: '/x',
+      requestId: 'req-1',
+    });
+    expect(logger.error).not.toHaveBeenCalled();
+  });
+
+  it('keeps the generic mapping for built-in Nest exceptions (regression)', () => {
+    const { body } = run(new NotFoundException('Seat not found'));
+    expect(body).toEqual({
+      type: 'urn:bseat:problem:http-404',
+      title: 'not found',
+      status: 404,
+      detail: 'Seat not found',
+      instance: '/x',
+      requestId: 'req-1',
+    });
+  });
+
+  it('logs a 5xx ProblemException like any server error', () => {
+    const { body, logger } = run(
+      new ProblemException(503, 'urn:bseat:problem:test-unavailable', 'Unavailable', 'Try later.'),
+    );
+    expect(body).toMatchObject({ status: 503, type: 'urn:bseat:problem:test-unavailable' });
+    expect(logger.error).toHaveBeenCalled();
+  });
+
   it('hides internals of unexpected errors and logs them', () => {
     const { body, logger } = run(new Error('db password is hunter2'), 42);
     expect(body).toEqual({
@@ -48,6 +96,25 @@ describe('ProblemFilter', () => {
       instance: '/x',
     });
     expect(logger.error).toHaveBeenCalled();
+  });
+});
+
+describe('ProblemException', () => {
+  it('is an HttpException with the status, and the detail as its message', () => {
+    const err = new ProblemException(
+      422,
+      'urn:bseat:problem:booking-rule:too-long',
+      'Invalid booking window',
+      'Too long.',
+    );
+    expect(err).toBeInstanceOf(HttpException);
+    expect(err.getStatus()).toBe(422);
+    expect(err.message).toBe('Too long.');
+    expect(err).toMatchObject({
+      type: 'urn:bseat:problem:booking-rule:too-long',
+      title: 'Invalid booking window',
+      detail: 'Too long.',
+    });
   });
 });
 

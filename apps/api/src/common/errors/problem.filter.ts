@@ -9,6 +9,7 @@ import type { Request, Response } from 'express';
 import { PinoLogger } from 'nestjs-pino';
 
 import type { Problem } from './problem.js';
+import { ProblemException } from './problem.exception.js';
 import { RequestValidationException } from './validation.js';
 
 /** Maps every thrown error to an RFC 9457 `application/problem+json` response. */
@@ -42,6 +43,16 @@ export class ProblemFilter implements ExceptionFilter {
         title: 'Request validation failed',
         status: HttpStatus.BAD_REQUEST,
         errors: exception.errors,
+      };
+    }
+
+    if (exception instanceof ProblemException) {
+      return {
+        ...base,
+        type: exception.type,
+        title: exception.title,
+        status: exception.getStatus(),
+        detail: exception.detail,
       };
     }
 
