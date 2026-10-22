@@ -10,14 +10,19 @@ in [plan.md → Open questions](./plan.md#open-questions).
 the tools, api and web images use). A small pure module, `apps/api/src/common/time/zoned-time.ts`,
 provides:
 
-- `toInstant(date: 'YYYY-MM-DD', time: 'HH:mm', timeZone): Date`. It converts the space's local
-  wall-clock time to a UTC instant. Approach: take the wall-clock as if it were UTC, read the
-  zone's offset at that instant with `Intl.DateTimeFormat(..., { timeZone, hourCycle: 'h23' }).formatToParts`,
-  subtract the offset, then read the offset again at the result and adjust once. It then round-trips
-  the result back to the local wall-clock. If the round-trip does not match, the local time does not
-  exist (DST gap) and the function throws `InvalidLocalTimeError`. When the offsets on either side
-  differ, the local time is ambiguous (DST overlap); the function picks the earlier offset and
-  reports `ambiguous: true` so the rules can refuse it.
+- `toInstant(date: 'YYYY-MM-DD', time: 'HH:mm', timeZone)`. It converts the space's local
+  wall-clock time to a UTC instant, using the algorithm fixed in ADR-0008 section 1:
+  1. `W` is the wall-clock read as if it were UTC.
+  2. Read the zone's offset at `W − 24 h` and at `W + 24 h` with
+     `Intl.DateTimeFormat(..., { timeZone, hourCycle: 'h23' }).formatToParts`.
+  3. For each distinct offset `o`, the candidate is `W − o`. Keep the candidates whose `toLocal` round-trip
+     equals the requested wall-clock.
+  4. Exactly 1 candidate is the instant. 0 means the local time does not exist (DST gap). 2 means it is
+     ambiguous (DST overlap).
+
+  The function returns a discriminated result, `{ kind: 'ok', instant } | { kind: 'nonexistent' } | { kind: 'ambiguous' }`.
+  It never silently picks an offset. Both failure kinds become `invalid-local-time`.
+
 - `toLocal(instant: Date, timeZone): { date, time }` for responses and email copy.
 - `isValidTimeZone(tz)`, implemented as `new Intl.DateTimeFormat('en', { timeZone: tz })` inside try/catch.
   Do **not** use `Intl.supportedValuesOf('timeZone')`, because it returns CLDR canonical ids and
@@ -65,21 +70,26 @@ Unix epoch numbers (unreadable in the contract and logs).
 
 | Rule (FR-007 / FR-005 / FR-006) | Service (`booking-rules.ts`)     | Database                                                       |
 | ------------------------------- | -------------------------------- | -------------------------------------------------------------- |
-| end after start                 | `end-before-start`               | CHECK `ends_at > starts_at`                                    |
+| end after start (wall-clock)    | `end-before-start`               | CHECK `ends_at > starts_at`                                    |
 | 15-minute boundaries            | `not-on-quarter-hour`            | CHECK `extract(epoch …) % 900 = 0` on both columns             |
+| local time exists (DST)         | `invalid-local-time`             | none                                                           |
 | at least 15 min / at most 10 h  | `too-short` / `too-long`         | CHECK duration between `15 min` and `10 h`                     |
 | within 07:00–20:00 local        | `outside-working-hours`          | none (depends on `space.time_zone`, another table)             |
-| local time exists (DST)         | `invalid-local-time`             | none                                                           |
 | not in the past                 | `starts-in-past`                 | none (depends on `now()`)                                      |
 | at most 30 days ahead           | `too-far-ahead`                  | none (depends on `now()`)                                      |
 | no seat overlap                 | none (DB is the source of truth) | EXCLUDE gist `(seat_id =, tstzrange &&) WHERE status='active'` |
 | no user overlap                 | none (DB is the source of truth) | EXCLUDE gist `(user_id =, tstzrange &&) WHERE status='active'` |
 
+**Order amended by the architect (T001):** `invalid-local-time` runs third, right after the wall-clock format
+rules, so that (a) the DST unit tests (London 01:30 on a change day) reach it rather than
+`outside-working-hours`, and (b) the duration rules can use real instants, as the database CHECK does.
+Working hours are checked on the wall-clock.
+
 The rules are checked in the order of the table, and the first failure is returned with its own
 problem `type` (see [contracts/README.md](./contracts/README.md)). The function signature is
 `evaluateBookingRules({ date, startTime, endTime }, timeZone, now): RuleViolation | null`.
 "Starts in the past" means `startsAt <= now`. "Too far ahead" means `startsAt > now + 30 × 24 h`
-(see open question 1).
+(product owner decision, plan.md open question 1).
 
 **Rationale**: Constitution IV requires invariants in the DB. The time-free invariants are CHECKs.
 The time-dependent ones cannot be. PostgreSQL CHECKs must be deterministic, and using `now()` in
@@ -98,7 +108,15 @@ The service performs a plain `INSERT` inside a transaction and maps errors:
 
 - `23P01` with `constraint = 'booking_seat_no_overlap'` → 409 `urn:bseat:problem:booking:seat-unavailable`
 - `23P01` with `constraint = 'booking_user_no_overlap'` → 409 `urn:bseat:problem:booking:user-overlap`
-- `23503` (FK) on `seat_id` → 404 (seat deleted between lookup and insert; unlikely, since seats are seeded)
+- `40P01` (deadlock) → retry the INSERT, at most 3 attempts in total, then rethrow. PostgreSQL checks an exclusion
+  constraint _after_ inserting the index entry. Two simultaneous conflicting inserts can wait on each other,
+  and the deadlock detector then aborts one with `40P01` instead of `23P01` (see the `execIndexing.c` header
+  comment). The retry then fails with `23P01` or succeeds. Without it, the SC-002 test would sometimes see a 500.
+- `23503` (FK) on `booking_seat_id_seat_id_fk` → 404 (seat deleted between lookup and insert; unlikely, since seats are seeded)
+- anything else, including `23514` (CHECK) → rethrow, giving a 500. A CHECK failure after the rules passed is a bug.
+
+Drizzle 0.45 wraps driver errors in `DrizzleQueryError`. Read `code` and `constraint` from `err.cause` (the
+`pg` `DatabaseError`). Never match on message text.
 
 If both constraints would fail, PostgreSQL reports whichever it checks first. Either message is
 correct for the user. Tests set up only one conflict per case.
@@ -114,9 +132,12 @@ migration runs `CREATE EXTENSION IF NOT EXISTS btree_gist` (a no-op locally, whe
 already created it).
 
 **Drizzle note**: drizzle-kit 0.31 cannot express `EXCLUDE` constraints. Generate the tables
-normally, then create a second, hand-written migration with
-`bin/pnpm --filter @bseat/api db:generate --custom --name booking_exclusions`. The drizzle snapshot
-will not know about these constraints, which is fine because drizzle-kit diffs snapshots and will not drop them.
+normally **first**, then create a second, hand-written migration with
+`bin/pnpm --filter @bseat/api db:generate --custom --name booking_exclusions`. `--custom` writes an empty SQL
+file, a snapshot of the _current_ schema, and a journal entry. If it ran first, the tables would be in its
+snapshot and would never be generated. The drizzle snapshot will not know about these constraints. That is
+fine, because drizzle-kit diffs snapshots and will not drop them, and the CI check (`drizzle-kit generate`
+produces nothing) stays green. Never run `drizzle-kit push` or `pull` against a shared database.
 
 **Alternatives considered**: `SELECT … FOR UPDATE` on the seat row before insert (serializes
 correctly for the seat, but not for the user rule across seats, and adds code). `SERIALIZABLE`
@@ -125,11 +146,14 @@ invariant, so it violates Constitution IV).
 
 ## R-5. Confirmation email and failure isolation
 
-**Decision**: After the booking transaction commits, `BookingsService` calls
-`MailService.send({ to, subject, text }, { jobId: 'booking-confirmed:<bookingId>' })`. The
-existing `MailService` gains an optional `jobId` option (BullMQ deduplicates on `jobId`, so a
-retried request cannot send twice). The call is wrapped in try/catch. On failure the service logs
-`warn { bookingId, err }` (no address, no body) and still returns 201. SMTP failures retry inside
+**Decision** (amended by ADR-0008 section 5): After the booking INSERT commits, `BookingsService` calls
+`MailService.send({ to, subject, text }, { jobId: 'booking-confirmed-<bookingId>' })`. The
+existing `MailService` gains an optional `jobId` option, and BullMQ deduplicates on `jobId`. A hyphen is
+used, not `:`, because BullMQ 6 throws `Custom Id cannot contain :` for an id with exactly one colon.
+The call is awaited for **at most 2 s**. The shared ioredis client has `maxRetriesPerRequest: null`, so
+without a bound, `queue.add` would hang the HTTP request for as long as Redis is down. On rejection or
+timeout, the service logs at `error` level `booking.confirmation_not_queued { bookingId }` (no address, no
+body, no error message that could contain them) and still returns 201. SMTP failures retry inside
 the worker (5 attempts, exponential backoff, already configured). Email content is specified in
 [contracts/booking-email.md](./contracts/booking-email.md).
 
@@ -138,7 +162,7 @@ existing infrastructure. Under normal operation Redis is up, and the job reaches
 within seconds (SC-004).
 
 **Alternatives considered**: a transactional outbox table polled into BullMQ (guarantees eventual
-delivery even if Redis is down at commit time). Deferred (YAGNI for this slice; open question 4).
+delivery even if Redis is down at commit time). Deferred (YAGNI for this slice). ADR-0008 section 5 records the accepted risk and the revisit trigger.
 Sending SMTP inline was rejected because it blocks the request and couples booking success to SMTP.
 
 ## R-6. Authorization and information exposure
@@ -181,7 +205,10 @@ inserts such as an already-started booking, which the API can never create.
 **Decision**: One query per request. Select the space's seats ordered by `label`, with
 `EXISTS (SELECT 1 FROM booking b WHERE b.seat_id = seat.id AND b.status = 'active' AND tstzrange(b.starts_at, b.ends_at, '[)') && tstzrange($from, $to, '[)'))`.
 The overlap predicate repeats the exclusion constraint's expression, so the planner can use its
-GiST index. 200 seats is one indexed probe per seat, well under 1 s. QA verifies with an
+GiST index. The index is partial, so write `status = 'active'` and `'[)'` as **SQL literals** in the
+`sql` template, not as bound parameters (for example ``sql`${booking.status} = 'active'` ``). Otherwise the
+planner may not prove that the index predicate and expression match.
+200 seats is one indexed probe per seat, well under 1 s. QA verifies with an
 integration timing test (200 seats, 200 bookings, 50 requests, p95 < 1 s) and `EXPLAIN` in
 review. No caching.
 

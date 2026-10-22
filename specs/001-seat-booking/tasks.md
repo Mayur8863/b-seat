@@ -26,13 +26,13 @@ task-manager changes owners. Developers set `review`. Only qa-engineer sets `don
 
 | ID   | Title                                                      | Owner          | Depends on       | Size | Status | Branch                                |
 | ---- | ---------------------------------------------------------- | -------------- | ---------------- | ---- | ------ | ------------------------------------- |
-| T001 | ADR-0008 and contract approval                             | architect      | none             | S    | todo   | `docs/001-booking-adr`                |
+| T001 | ADR-0008 and contract approval                             | architect      | none             | S    | done   | `docs/001-booking-adr`                |
 | T002 | Space/seat/booking schema, migrations, DB constraint tests | backend-dev    | T001             | M    | todo   | `feat/001-booking-schema`             |
 | T003 | Zoned time, clock and booking rules (TDD)                  | backend-dev    | T001             | M    | todo   | `feat/001-booking-rules`              |
 | T004 | ProblemException with typed problem details                | backend-dev    | T001             | S    | todo   | `feat/001-problem-types`              |
 | T005 | Seed demo spaces and seats                                 | backend-dev    | T002, T003       | S    | todo   | `feat/001-seed-spaces`                |
 | T006 | UI spec `ui.md` for booking screens                        | ui-ux-designer | T001             | M    | todo   | `docs/001-booking-ui-spec`            |
-| T007 | Spaces list and availability API                           | backend-dev    | T002, T003       | M    | todo   | `feat/001-spaces-availability-api`    |
+| T007 | Spaces list and availability API                           | backend-dev    | T002, T003, T004 | M    | todo   | `feat/001-spaces-availability-api`    |
 | T008 | `/book` page: spaces, window form, seat availability       | frontend-dev   | T006, T007       | M    | todo   | `feat/001-book-page-availability`     |
 | T009 | Create booking API with rules and conflict mapping         | backend-dev    | T003, T004, T007 | M    | todo   | `feat/001-create-booking-api`         |
 | T010 | Booking confirmation email                                 | backend-dev    | T009             | S    | todo   | `feat/001-booking-confirmation-email` |
@@ -49,49 +49,52 @@ task-manager changes owners. Developers set `review`. Only qa-engineer sets `don
 
 ### Phase 1: Design approval
 
-- [ ] T001 Write `docs/adr/0008-booking-time-and-conflict-model.md` and record the plan verdict at the top of `specs/001-seat-booking/plan.md`
-  - **Owner**: architect · **Branch**: `docs/001-booking-adr` · **Size**: S · **Depends on**: none · **Status**: todo
+- [x] T001 Write `docs/adr/0008-booking-time-and-conflict-model.md` and record the plan verdict at the top of `specs/001-seat-booking/plan.md`
+  - **Owner**: architect · **Branch**: `docs/001-booking-adr` · **Size**: S · **Depends on**: none · **Status**: done
   - **Scope**: Review plan.md, research.md (R-2, R-4, R-5, R-7), data-model.md and contracts/. Record the ADR (MADR, status Accepted) for: the local wall-clock request contract, exclusion constraints with `23P01` mapping by constraint name, per-rule problem `type` URNs, and the email failure policy. Answer plan open questions 2, 4 and 5 in the ADR. Open questions 1 and 3 go to a human.
   - **Acceptance criteria**:
     - Given plan.md, research.md, data-model.md and contracts/, When the architect finishes the review, Then plan.md's verdict line reads `Approved by architect (<date>)`, or `Changes required` with a numbered list (Constitution I).
     - Given ADR-0008, When it is read, Then it states the decision, rationale and alternatives for R-2, R-4, R-5 and R-7, and the resolution of open questions 2, 4 and 5 (Constitution III, IV).
     - Given the contract changes, When reviewed, Then every request schema id ends in `Input`, every response id is a noun, and no schema is shared between request and response (AGENTS.md API conventions).
+  - **Result (2026-10-22)**: ADR-0008 is Accepted. plan.md reads "Approved by architect (2026-10-22)", and its eight amendments are already applied in this folder (plan.md, research.md, data-model.md, contracts/, quickstart.md and the T002, T003, T007, T009, T010, T012 and T016 entries below). Q1 and Q3 were answered by the product owner.
 
 ### Phase 2: Foundational (after T001; T002, T003, T004 and T006 run in parallel)
 
-- [ ] T002 [P] Add `space`, `seat` and `booking` tables in `apps/api/src/db/schema/space.ts` and `apps/api/src/db/schema/booking.ts`, migrations `apps/api/drizzle/0001_*.sql` and `0002_booking_exclusions.sql`, helpers `apps/api/test/fixtures.ts`, and tests `apps/api/test/booking-constraints.int-spec.ts`
+- [ ] T002 [P] Add `space`, `seat` and `booking` tables in `apps/api/src/db/schema/space.ts` and `apps/api/src/db/schema/booking.ts`, migrations `apps/api/drizzle/0001_spaces_bookings.sql` and `0002_booking_exclusions.sql`, helpers `apps/api/test/fixtures.ts`, and tests `apps/api/test/booking-constraints.int-spec.ts`
   - **Owner**: backend-dev · **Branch**: `feat/001-booking-schema` · **Size**: M · **Depends on**: T001 · **Status**: todo
   - **Scope**: Implement data-model.md exactly. Constraints, verbatim:
     - `booking_ends_after_starts CHECK (ends_at > starts_at)`
     - `booking_duration_bounds CHECK (ends_at - starts_at BETWEEN interval '15 minutes' AND interval '10 hours')`
-    - `booking_quarter_hour CHECK (extract(epoch FROM starts_at)::bigint % 900 = 0 AND extract(epoch FROM ends_at)::bigint % 900 = 0)`
+    - `booking_quarter_hour CHECK (extract(epoch FROM starts_at) % 900 = 0 AND extract(epoch FROM ends_at) % 900 = 0)` (no `::bigint`: the cast rounds)
     - `booking_cancel_consistency CHECK ((status = 'cancelled') = (cancelled_at IS NOT NULL))`
     - `booking_seat_no_overlap EXCLUDE USING gist (seat_id WITH =, tstzrange(starts_at, ends_at, '[)') WITH &&) WHERE (status = 'active')`
     - `booking_user_no_overlap EXCLUDE USING gist (user_id WITH =, tstzrange(starts_at, ends_at, '[)') WITH &&) WHERE (status = 'active')`
     - `UNIQUE (space_id, label)`, `UNIQUE (space.name)`
     - FKs `seat.space_id → space.id ON DELETE RESTRICT`, `booking.seat_id → seat.id ON DELETE RESTRICT`, `booking.user_id → user.id ON DELETE CASCADE`
-    - `booking_user_upcoming_idx (user_id, starts_at) WHERE status = 'active'`
+    - `booking_user_id_starts_at_idx (user_id, starts_at)` (btree, **not** partial, so it also serves the `user` FK cascade)
     - `space.name` CHECK `length(btrim(name)) between 1 and 100`, `space.location` CHECK `length(location) <= 200`, `seat.label` CHECK `length(btrim(label)) between 1 and 20`
     - `seat.features text[] NOT NULL DEFAULT '{}'`
     - `booking.status` enum `booking_status ('active','cancelled') DEFAULT 'active'`. IDs are `uuid DEFAULT gen_random_uuid()`. Times are `timestamptz`.
 
-    The second migration is hand-written (`db:generate --custom --name booking_exclusions`) and starts with `CREATE EXTENSION IF NOT EXISTS btree_gist`. Write the constraint tests first. `test/fixtures.ts` exports `createSpace`, `createSeats`, `insertBooking` (direct inserts) and `signUp(app, email)` for extra users.
+    Generate `0001` first (`db:generate --name spaces_bookings`). **Then** create the second, hand-written migration (`db:generate --custom --name booking_exclusions`). `--custom` snapshots the current schema, so running it first would swallow the tables. It starts with `CREATE EXTENSION IF NOT EXISTS btree_gist`, and its statements are separated by `--> statement-breakpoint` (data-model.md, Migrations). Write the constraint tests first. `test/fixtures.ts` exports `createSpace`, `createSeats` and `insertBooking` (direct inserts). Extra users come from the existing `signedInAgent` in `test/helpers.ts` (no second sign-up helper).
 
   - **Acceptance criteria**:
     - Given an active booking for seat S from 09:00 to 12:00, When another active booking for S from 10:00 to 11:00 is inserted, Then the insert fails with SQLSTATE `23P01` on `booking_seat_no_overlap` (FR-005, AC 2.3).
     - Given an active booking for user U on seat S1 from 09:00 to 12:00, When an active booking for U on seat S2 from 11:00 to 13:00 is inserted, Then it fails with `23P01` on `booking_user_no_overlap` (FR-006, AC 2.5).
     - Given an active booking for S and U ending at 12:00, When a booking for the same S and U starting at 12:00 is inserted, Then it succeeds (AC 1.3, edge "touching windows").
     - Given a cancelled booking for S from 09:00 to 12:00, When an active overlapping booking for S is inserted, Then it succeeds (FR-010, edge "cancelled no longer blocks").
-    - Given each CHECK above, When a violating row is inserted (end ≤ start, 5 min, 10 h 15 min, start at :10, `cancelled` without `cancelled_at`), Then it fails with `23514` (FR-007 defence in depth).
+    - Given each CHECK above, When a violating row is inserted (end ≤ start, 5 min, 10 h 15 min, start at :10, start at `09:00:00.400`, `cancelled` without `cancelled_at`), Then it fails with `23514` (FR-007 defence in depth).
+    - Given the migrated test DB, When `pg_constraint` is queried, Then `booking_seat_no_overlap` and `booking_user_no_overlap` exist with `contype = 'x'` (the custom migration ran).
     - Given two seats with the same label in one space, When the second is inserted, Then it fails with `23505`.
     - Given the migrations, When `bin/pnpm --filter @bseat/api db:generate` runs again, Then no new migration is produced (the schema and snapshot agree).
 
 - [ ] T003 [P] Implement `apps/api/src/common/time/zoned-time.ts`, `apps/api/src/common/time/clock.ts` and `apps/api/src/bookings/booking-rules.ts`, with unit tests written first in `zoned-time.spec.ts` and `booking-rules.spec.ts`
   - **Owner**: backend-dev · **Branch**: `feat/001-booking-rules` · **Size**: M · **Depends on**: T001 · **Status**: todo
-  - **Scope**: Pure functions per research R-1 and R-3: `toInstant`, `toLocal`, `isValidTimeZone`, `evaluateBookingRules({ date, startTime, endTime }, timeZone, now)` returning the first violation in the order `end-before-start, not-on-quarter-hour, too-short, too-long, outside-working-hours, invalid-local-time, starts-in-past, too-far-ahead`, or `null`. `Clock` is an injectable (`now(): Date`) provider. No new dependencies (use `Intl` only).
+  - **Scope**: Pure functions per research R-1 and R-3: `toInstant`, `toLocal`, `isValidTimeZone`, `evaluateBookingRules({ date, startTime, endTime }, timeZone, now)` returning the first violation in the order `end-before-start, not-on-quarter-hour, invalid-local-time, too-short, too-long, outside-working-hours, starts-in-past, too-far-ahead`, or `null` (order amended by ADR-0008: duration uses the converted instants). `toInstant` returns `{ kind: 'ok', instant } | { kind: 'nonexistent' } | { kind: 'ambiguous' }`, using the ±24 h candidate-offset algorithm in ADR-0008 section 1. It never silently shifts a time. `Clock` is an injectable (`now(): Date`) provider. No new dependencies (use `Intl` only).
   - **Acceptance criteria**:
     - Given `Europe/London`, When `toInstant('2026-10-23','09:00')`, Then it returns `2026-10-23T08:00:00Z`. Given `2026-11-02 09:00`, it returns `09:00:00Z`. Given `Asia/Kolkata` `2026-10-23 09:00`, it returns `03:30:00Z` (edge "spaces in different time zones").
-    - Given `Europe/London` `2026-03-29 01:30` (DST gap) or `2026-10-25 01:30` (DST overlap), When evaluated, Then the result is `invalid-local-time` (edge "daylight-saving transitions").
+    - Given `Europe/London` `2026-03-29 01:30` (DST gap), When `toInstant` runs, Then it returns `nonexistent`. Given `2026-10-25 01:30` (DST overlap), Then it returns `ambiguous`. Given either as a window start in `evaluateBookingRules`, Then the result is `invalid-local-time` (edge "daylight-saving transitions").
+    - Given `Europe/London` on a change day, When `toInstant('2026-03-29','09:00')` and `toInstant('2026-10-25','09:00')` run, Then they return `08:00:00Z` and `09:00:00Z`.
     - Given `now = 2026-10-22T12:00:00Z`, When a window breaks exactly one rule, Then the matching code is returned, with one test per code: `08:00–07:45` end-before-start, `09:10–10:00` not-on-quarter-hour, `09:00–09:00` too-short, `08:00–18:15` too-long, `06:45–08:00` and `19:00–20:15` outside-working-hours, yesterday starts-in-past, 31 days ahead too-far-ahead (FR-007, AC 2.6).
     - Given boundary windows, When evaluated, Then `07:00–17:00` (exactly 10 h), `19:45–20:00` (exactly 15 min) and a start exactly `now + 30 × 24 h` all pass, and a start equal to `now` fails `starts-in-past` (FR-007).
     - Given a window breaking several rules, When evaluated, Then only the first in the documented order is returned.
@@ -132,8 +135,8 @@ task-manager changes owners. Developers set `review`. Only qa-engineer sets `don
 **Independent test**: Seed a space with 6 seats and one booking from 09:00 to 12:00 tomorrow. Availability for 10:00–11:00 shows exactly one taken; 12:00–13:00 shows all free.
 
 - [ ] T007 [US1] Build the spaces module `apps/api/src/spaces/` (schemas, service, controller, module, `spaces.service.spec.ts`), register it in `apps/api/src/app.module.ts`, add `apps/api/test/spaces.int-spec.ts`, and regenerate `apps/api/openapi.json`
-  - **Owner**: backend-dev · **Branch**: `feat/001-spaces-availability-api` · **Size**: M · **Depends on**: T002, T003 · **Status**: todo
-  - **Scope**: `GET /api/spaces` and `GET /api/spaces/{spaceId}/availability` exactly as in `contracts/spaces.md` (schemas `Space`, `SpaceList`, `AvailabilityQueryInput`, `SpaceAvailability`, `SeatAvailability`). One availability query using the `tstzrange … &&` predicate (research R-9). Integration tests first.
+  - **Owner**: backend-dev · **Branch**: `feat/001-spaces-availability-api` · **Size**: M · **Depends on**: T002, T003, T004 · **Status**: todo
+  - **Scope**: `GET /api/spaces` and `GET /api/spaces/{spaceId}/availability` exactly as in `contracts/spaces.md` (schemas `Space`, `SpaceList`, `AvailabilityQueryInput`, `SpaceAvailability`, `SeatAvailability`). One availability query using the `tstzrange … &&` predicate, with `status = 'active'` and `'[)'` written as SQL literals so the partial GiST index applies (research R-9, data-model.md). Integration tests first.
   - **Acceptance criteria**:
     - Given I am signed in and two spaces exist, When I `GET /api/spaces`, Then I get 200 `{ items }` ordered by name, each with `name`, `location`, `timeZone` and `seatCount` (AC 1.1, FR-002).
     - Given a space with 6 seats and one active booking from 09:00 to 12:00 tomorrow (local), When I request availability for tomorrow 10:00–11:00, Then 5 seats are `free` and the booked seat is `taken` (AC 1.2, FR-003).
@@ -143,6 +146,7 @@ task-manager changes owners. Developers set `review`. Only qa-engineer sets `don
     - Given a window in the past, When I request availability, Then I get 200 (edge "rule-breaking windows are viewable").
     - Given no session cookie, When I call either route, Then I get 401 `application/problem+json` (AC 1.4, FR-001).
     - Given an unknown `spaceId`, Then 404. Given `endTime <= startTime` or a malformed id, Then 400 `validation` (edge "not found").
+    - Given London HQ and `2026-03-29` `00:30–01:30` (the end is in the DST gap), When I request availability, Then 422 `urn:bseat:problem:booking-rule:invalid-local-time` (edge DST).
     - Given the response, When inspected, Then it contains no user ids or names (FR-011).
     - Given `bin/pnpm gen:api`, When run, Then `openapi.json` contains exactly the schemas above and is committed (Constitution III).
 
@@ -167,7 +171,7 @@ task-manager changes owners. Developers set `review`. Only qa-engineer sets `don
 
 - [ ] T009 [US2] Build the bookings module `apps/api/src/bookings/` (`bookings.schemas.ts`, `bookings.service.ts`, `bookings.service.spec.ts`, `bookings.controller.ts`, `bookings.module.ts`) with `POST /api/bookings`, add `apps/api/test/bookings.int-spec.ts`, and regenerate `apps/api/openapi.json`
   - **Owner**: backend-dev · **Branch**: `feat/001-create-booking-api` · **Size**: M · **Depends on**: T003, T004, T007 · **Status**: todo
-  - **Scope**: As in `contracts/bookings.md` (`CreateBookingInput`, `Booking`). Load the seat and space, run `evaluateBookingRules`, insert, and map `23P01` by constraint name. Use the injected `Clock`. Log `booking.created` with ids only. Unit tests of the error mapping come first. The email is T010.
+  - **Scope**: As in `contracts/bookings.md` (`CreateBookingInput`, `Booking`). Load the seat and space, run `evaluateBookingRules`, insert, and map driver errors from `DrizzleQueryError.cause` exactly as in contracts/bookings.md (`23P01` by constraint name, `40P01` retried at most 3 attempts in total, seat FK `23503` → 404, anything else rethrown). Use the injected `Clock`. Log `booking.created` with ids only. Unit tests of the error mapping come first. The email is T010.
   - **Acceptance criteria**:
     - Given a free seat and a valid window tomorrow, When I `POST /api/bookings`, Then I get 201 `Booking` with local `date`, `startTime`, `endTime`, `timeZone`, UTC `startsAt` and `endsAt`, `status: "active"`, and availability for that window shows the seat `taken` (AC 2.1, FR-004).
     - Given another user holds the seat for an overlapping window, When I book it, Then I get 409 `urn:bseat:problem:booking:seat-unavailable` and no row is created (AC 2.3, FR-005).
@@ -175,16 +179,17 @@ task-manager changes owners. Developers set `review`. Only qa-engineer sets `don
     - Given I hold 09:00–12:00, When I book any other seat for 11:00–13:00 the same day, Then I get 409 `urn:bseat:problem:booking:user-overlap` (AC 2.5, FR-006).
     - Given a window that breaks a rule (one case per `booking-rule:*` type in contracts/README.md), When I book, Then I get 422 with that `type` and a `detail` naming the rule, and no row is created (AC 2.6, FR-007).
     - Given I hold 09:00–12:00 on seat S, When I book S from 12:00 to 13:00, Then I get 201 (edge "touching windows").
+    - Given the insert rejects with a `DrizzleQueryError` whose `cause.code` is `40P01` once and then `23P01` on `booking_seat_no_overlap` (unit test), When I book, Then the INSERT runs twice and the result is 409 `seat-unavailable`. Given `40P01` on all 3 attempts, Then the error is rethrown (500) (ADR-0008 section 2, SC-002).
     - Given an unknown `seatId`, Then 404. Given a malformed body, Then 400 `validation`. Given no session, Then 401 (edge "not found", FR-001).
     - Given the 201 body, When inspected, Then it contains no `userId` (FR-011).
     - Given `bin/pnpm gen:api`, When run, Then `openapi.json` includes `CreateBookingInput` and `Booking` and is committed.
 
 - [ ] T010 [P] [US2] Send the booking confirmation email: `apps/api/src/bookings/booking-confirmation.mail.ts` (+ `.spec.ts`), add an optional `jobId` to `apps/api/src/mail/mail.service.ts`, and extend `apps/api/test/bookings.int-spec.ts`
   - **Owner**: backend-dev · **Branch**: `feat/001-booking-confirmation-email` · **Size**: S · **Depends on**: T009 · **Status**: todo
-  - **Scope**: Content per `contracts/booking-email.md`. Enqueue after commit with `jobId: booking-confirmed:<bookingId>`. Catch and log enqueue errors (research R-5). The integration test polls Mailpit's HTTP API (`http://$SMTP_HOST:8025/api/v1/search?query=to:<unique address>`) through a small helper in `apps/api/test/fixtures.ts`.
+  - **Scope**: Content per `contracts/booking-email.md`. Enqueue after commit with `jobId: booking-confirmed-<bookingId>` (no `:`, which BullMQ 6 rejects), awaited for at most 2 s. Catch enqueue errors and timeouts, and log them at `error` level as `booking.confirmation_not_queued` (research R-5, ADR-0008 section 5). The integration test polls Mailpit's HTTP API (`http://$SMTP_HOST:8025/api/v1/search?query=to:<unique address>`) through a small helper in `apps/api/test/fixtures.ts`.
   - **Acceptance criteria**:
     - Given a successful booking for a unique address, When at most 60 s pass, Then Mailpit holds one message to that address with subject `Seat {label} booked at {space} on {date}`, and the body contains the space name, seat label, local date, local start–end and the IANA time zone (AC 2.2, SC-004).
-    - Given `MailService.send` rejects (unit test with a mocked `MailService`), When a booking is created, Then the service still returns the booking, the row persists, and a `warn` log has `bookingId` and no address or body (FR-008).
+    - Given `MailService.send` rejects, or never settles (fake timers, Redis down), in a unit test with a mocked `MailService`, When a booking is created, Then the service returns the booking within the 2 s bound, the row persists, and an `error` log `booking.confirmation_not_queued` has `bookingId` and no address or body (FR-008).
     - Given the same booking id is enqueued twice, When the queue is inspected, Then only one job exists (jobId dedupe).
     - Given `buildBookingConfirmation`, When unit-tested with a `Europe/London` booking in winter and in summer, Then the local times in the text match the space's wall-clock times (edge "time zones").
 
@@ -215,7 +220,7 @@ task-manager changes owners. Developers set `review`. Only qa-engineer sets `don
     - Given A has a booking that has not started, When A cancels it, Then the response is 200 with `status: "cancelled"` and `cancelledAt` set, it is gone from A's list, availability shows the seat `free` for that window, and A can book an overlapping window again (AC 3.3, FR-010).
     - Given A's booking id, When B cancels it, Then B gets a 404 whose `type`, `title`, `status` and `detail` are identical to cancelling a random UUID, and A's booking is still active (AC 3.4, FR-011).
     - Given a booking that has started (inserted with a past start through `insertBooking`), When its owner cancels it, Then the response is 409 `urn:bseat:problem:booking:already-started` and it stays active (AC 3.5).
-    - Given an already-cancelled own booking, When cancelled again, Then the response is 200 with the same booking (idempotent, per the ADR-0008 decision).
+    - Given an already-cancelled own booking, When cancelled again, Then the response is 200 with the same booking and an unchanged `cancelledAt` (idempotent, ADR-0008 section 4).
     - Given no session, Then both routes return 401 (FR-001). Given `bin/pnpm gen:api`, Then `BookingList` and the cancel operation are in the committed `openapi.json`.
 
 - [ ] T013 [US3] Build the `/bookings` page `apps/web/src/app/(app)/bookings/page.tsx` with `components/my-bookings.tsx` (+ `.test.tsx`), and replace the dashboard placeholder in `apps/web/src/app/(app)/dashboard/page.tsx` with links
@@ -256,7 +261,7 @@ task-manager changes owners. Developers set `review`. Only qa-engineer sets `don
   - **Owner**: docs-writer · **Branch**: `docs/001-seat-booking-docs` · **Size**: S · **Depends on**: T015 · **Status**: todo
   - **Acceptance criteria**:
     - Given a new contributor, When they follow `specs/001-seat-booking/quickstart.md` and the README, Then every step produces the documented result (FR-012 seed, the API walk-through).
-    - Given the runbook, When an operator deploys to RDS, Then it states that the `0002_booking_exclusions` migration needs `CREATE EXTENSION btree_gist` rights, and explains how to diagnose missing confirmation emails (FR-008).
+    - Given the runbook, When an operator deploys to RDS, Then it states that the `0002_booking_exclusions` migration creates `btree_gist` (a trusted extension, so the database owner can create it; correct the existing "master user" wording in `docs/runbooks/database-migrations.md`), and explains how to diagnose missing confirmation emails (FR-008).
     - Given the release, When `bin/pnpm changeset status` runs, Then user-visible changesets exist for `@bseat/api` and `@bseat/web`.
 
 ---
@@ -308,7 +313,7 @@ task-manager changes owners. Developers set `review`. Only qa-engineer sets `don
 ```text
 Level 0: T001
 Level 1: T002, T003, T004, T006                (each needs T001)
-Level 2: T005 (T002, T003)   T007 (T002, T003)
+Level 2: T005 (T002, T003)   T007 (T002, T003, T004)
 Level 3: T008 (T006, T007)   T009 (T003, T004, T007)
 Level 4: T010 (T009)   T011 (T008, T009)   T012 (T009)
 Level 5: T013 (T006, T008, T012)   T014 (T005, T010, T011)
@@ -324,7 +329,7 @@ Level 7: T016 (T015)
 ### Parallel opportunities
 
 - After T001: **T002, T003, T004, T006** run in parallel (separate files and owners).
-- After T009: **T010, T012** and (once T008 is done) **T011** run in parallel. They touch different files, except `bookings.int-spec.ts` (T010) vs `my-bookings.int-spec.ts` (T012), which are separate.
+- After T009: **T010, T012** and (once T008 is done) **T011** run in parallel. T010 and T012 both edit `bookings.service.ts` and `bookings.service.spec.ts` (different methods). Whichever merges second rebases. Their integration tests are in separate files (`bookings.int-spec.ts` and `my-bookings.int-spec.ts`).
 - T005 (seed) can land any time after T002 and T003. Only QA e2e (T014) needs it.
 
 ## Implementation strategy

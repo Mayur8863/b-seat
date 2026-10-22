@@ -8,7 +8,7 @@ and does not repeat them. The host needs only Docker (AGENTS.md).
 
 ```bash
 docker compose up -d                 # web :3000, api :3001, postgres, redis, mailpit :8025
-bin/pnpm db:migrate                  # applies 0001_* and 0002_booking_exclusions
+bin/pnpm db:migrate                  # applies 0001_spaces_bookings and 0002_booking_exclusions
 bin/pnpm db:seed                     # London HQ (12 seats, Europe/London), Pune Hub (8 seats, Asia/Kolkata)
 ```
 

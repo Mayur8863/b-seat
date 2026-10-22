@@ -4,6 +4,10 @@ Module `apps/api/src/bookings/`. Controller `BookingsController` (`@ApiTags('boo
 `@Controller('bookings')`, `@UseGuards(AuthGuard)`). Every query is scoped to
 `session.user.id` (FR-011).
 
+**Authorization per route**: `POST /api/bookings` requires a signed-in user and always books for the caller.
+`GET /api/bookings` and `POST /api/bookings/{bookingId}/cancel` require a signed-in **owner**. Ownership is
+part of the SQL `WHERE`, and a non-owner gets the same 404 as for a missing id.
+
 ## Shared response schema
 
 ```ts
@@ -52,8 +56,15 @@ The booking is always for the caller. There is no `userId` input.
 - **Processing**:
   1. Load the seat and its space. If it is missing, return 404 "Seat not found".
   2. `evaluateBookingRules(window, space.timeZone, clock.now())`. On a violation, return 422 with the per-rule `type`.
-  3. Insert `booking(status='active')`. Map SQLSTATE `23P01` by constraint name to 409 `seat-unavailable` or 409 `user-overlap`.
-  4. After commit, enqueue the confirmation email (jobId `booking-confirmed:<id>`). Enqueue errors are logged and swallowed (FR-008).
+  3. Insert `booking(status='active')` as one autocommit statement. Read `code` and `constraint` from the
+     `DrizzleQueryError`'s `cause`, and map them as in ADR-0008 section 2:
+     - `23P01` + `booking_seat_no_overlap` → 409 `seat-unavailable`
+     - `23P01` + `booking_user_no_overlap` → 409 `user-overlap`
+     - `40P01` → retry the INSERT (at most 3 attempts in total)
+     - `23503` + `booking_seat_id_seat_id_fk` → 404
+     - anything else → rethrow (500)
+  4. After commit, enqueue the confirmation email (jobId `booking-confirmed-<id>`, awaited for at most 2 s).
+     Enqueue errors and timeouts are logged at `error` level and swallowed (FR-008).
   5. Log `booking.created { bookingId, seatId }` (no email address).
 - **201** `Booking` (`@ApiCreatedResponse({ standardSchema: BookingSchema })`)
 - **400** validation · **401** · **404** seat not found · **409** `booking:seat-unavailable` | `booking:user-overlap` · **422** `booking-rule:*`
@@ -77,7 +88,7 @@ Cancel one of the caller's bookings that has not started (FR-010, AC 3.3 to 3.5)
 - **Processing** (`$now` = `clock.now()`, passed as a parameter so tests control time): run one `UPDATE booking SET status='cancelled', cancelled_at=$now WHERE id=$1 AND user_id=$caller AND status='active' AND starts_at > $now RETURNING *`.
   If no row is updated, re-read with `id AND user_id = caller` to choose the response:
   - no row: **404** "Booking not found" (same response for a missing booking and someone else's, FR-011, AC 3.4)
-  - already `cancelled`: **200** with the booking (idempotent; open question 2)
+  - already `cancelled`: **200** with the unchanged booking (idempotent; `cancelledAt` keeps its first value; ADR-0008 section 4)
   - `starts_at <= now`: **409** `booking:already-started` (AC 3.5)
 - **200** `Booking` (status `cancelled`, `cancelledAt` set)
 - **400** validation (malformed id) · **401** · **404** · **409** `booking:already-started`

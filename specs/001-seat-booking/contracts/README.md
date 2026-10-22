@@ -36,9 +36,15 @@ fixes one of them.
 | `Uuid`      | `z.uuid()`                                                | `"0b6c…"`                    |
 | `TimeZone`  | `z.string()` (IANA id)                                    | `"Europe/London"`            |
 
+These are unnamed primitive helpers (no `.meta({ id })`), so they never become shared OpenAPI components.
+Every **named** object schema belongs to one direction only. Requests: `CreateBookingInput` and
+`AvailabilityQueryInput` (path ids are inline `z.uuid()`). Responses: `Space`, `SpaceList`,
+`SeatAvailability`, `SpaceAvailability`, `Booking` and `BookingList`.
+
 ## Problem types introduced by this feature
 
-All of them use the new `ProblemException` (research R-7). `detail` is a human-readable sentence
+All of them use the new `ProblemException` (research R-7, ADR-0008 section 3). The API exports the `type`
+strings as constants, so services never use string literals. `detail` is a human-readable sentence
 that names the broken rule (FR-007). The web app maps `type` to its own copy (ui.md) and falls
 back to `detail`.
 
@@ -50,16 +56,17 @@ back to `detail`.
 | 409    | `urn:bseat:problem:booking:already-started`            | Booking already started | cancel when `starts_at <= now`                                   | AC 3.5                    |
 | 422    | `urn:bseat:problem:booking-rule:end-before-start`      | Invalid booking window  | `endTime < startTime` (equal times fail `too-short`)             | FR-007, AC 2.6            |
 | 422    | `urn:bseat:problem:booking-rule:not-on-quarter-hour`   | Invalid booking window  | minutes not in {00,15,30,45}                                     | FR-007, AC 2.6            |
+| 422    | `urn:bseat:problem:booking-rule:invalid-local-time`    | Invalid booking window  | local start or end does not exist or is ambiguous (DST)          | edge case DST             |
 | 422    | `urn:bseat:problem:booking-rule:too-short`             | Invalid booking window  | duration < 15 min                                                | FR-007                    |
 | 422    | `urn:bseat:problem:booking-rule:too-long`              | Invalid booking window  | duration > 10 h                                                  | FR-007, AC 2.6            |
 | 422    | `urn:bseat:problem:booking-rule:outside-working-hours` | Invalid booking window  | start < 07:00 or end > 20:00 local                               | FR-007, AC 2.6            |
-| 422    | `urn:bseat:problem:booking-rule:invalid-local-time`    | Invalid booking window  | local time missing or ambiguous because of DST                   | edge case DST             |
 | 422    | `urn:bseat:problem:booking-rule:starts-in-past`        | Invalid booking window  | `startsAt <= now`                                                | FR-007, AC 2.6            |
 | 422    | `urn:bseat:problem:booking-rule:too-far-ahead`         | Invalid booking window  | `startsAt > now + 30 × 24 h`                                     | FR-007, AC 2.6            |
 
-The rules are evaluated in the order above (research R-3), and the first failure is returned.
-`invalid-local-time` can also come from the availability endpoint, if a window falls into a DST
-gap.
+The rules are evaluated in the order above (research R-3, ADR-0008 section 1), and the first failure
+is returned. The duration rules use real instants, and the working-hours rule uses the local wall-clock.
+`invalid-local-time` can also come from the availability endpoint, if the window's start or end falls
+into a DST gap or overlap.
 
 Suggested `detail` strings (backend). The UI copy in ui.md may differ:
 

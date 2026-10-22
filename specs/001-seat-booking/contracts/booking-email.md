@@ -3,12 +3,12 @@
 The email is built by `apps/api/src/bookings/booking-confirmation.mail.ts` as a pure function,
 `buildBookingConfirmation(booking, user): MailJob`, and sent through `MailService.send(job, { jobId })`.
 
-| Field        | Value                                                                          |
-| ------------ | ------------------------------------------------------------------------------ |
-| Queue job id | `booking-confirmed:<bookingId>` (BullMQ dedupes, so a retry cannot send twice) |
-| To           | the caller's account email (`session.user.email`)                              |
-| Subject      | `Seat {seatLabel} booked at {spaceName} on {date}`                             |
-| Text body    | see below (plain text required; HTML optional, same content)                   |
+| Field        | Value                                                                            |
+| ------------ | -------------------------------------------------------------------------------- |
+| Queue job id | `booking-confirmed-<bookingId>` (BullMQ dedupes; no `:`, which BullMQ 6 rejects) |
+| To           | the caller's account email (`session.user.email`)                                |
+| Subject      | `Seat {seatLabel} booked at {spaceName} on {date}`                               |
+| Text body    | see below (plain text required; HTML optional, same content)                     |
 
 Text body template:
 
@@ -31,6 +31,8 @@ BSeat
 - `{appUrl}` comes from the existing env `NEXT_PUBLIC_APP_URL`.
 - User-supplied text (`userName`) must be escaped if an HTML part is added.
 - Never log the address or the body (AGENTS.md security rules). Log only `{ bookingId, jobId }`.
+- Enqueue after the INSERT commits, awaited for at most 2 s. On rejection or timeout, log at `error` level
+  `booking.confirmation_not_queued { bookingId }` and still return 201 (FR-008, ADR-0008 section 5).
 
 The test (T010) asserts that the message reaching Mailpit for a unique recipient has the subject
 above and a body containing the space name, seat label, local date, local start and end times,

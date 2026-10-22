@@ -11,3 +11,4 @@ New ADR: copy `template.md` to `NNNN-short-title.md` (next number) and add it be
 | [0005](0005-openapi-generated-client-orval.md)       | Generated, contract-first API client (orval)       | Accepted |
 | [0006](0006-quality-gates-and-tooling.md)            | Quality gates and code-quality tooling             | Accepted |
 | [0007](0007-aws-deployment-target.md)                | AWS deployment target                              | Proposed |
+| [0008](0008-booking-time-and-conflict-model.md)      | Booking time model, conflicts, API conventions     | Accepted |

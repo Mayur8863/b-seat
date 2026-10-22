@@ -4,7 +4,29 @@
 
 **Input**: Feature specification from `specs/001-seat-booking/spec.md`
 
-**Architect verdict**: _Pending review_ (the architect replaces this line with `Approved by architect (<date>)` or `Changes required`).
+**Architect verdict**: Approved by architect (2026-10-22)
+
+The approval covers the amendments the architect made directly in this folder during T001 (no
+re-plan needed). Decisions are recorded in [ADR-0008](../../docs/adr/0008-booking-time-and-conflict-model.md).
+
+1. **Deadlock retry (SC-002).** Concurrent conflicting inserts can fail with `40P01` instead of `23P01`.
+   The service retries the INSERT (at most 3 attempts), and T009 tests it (research R-4, contracts/bookings.md).
+2. **Driver errors.** Drizzle 0.45 wraps `pg` errors in `DrizzleQueryError`, so SQLSTATE and constraint are read from `err.cause`.
+3. **Email job id.** BullMQ 6 rejects `booking-confirmed:<id>` (one `:`), so the id is now `booking-confirmed-<id>`.
+   The enqueue is awaited for at most 2 s, because the shared ioredis client (`maxRetriesPerRequest: null`)
+   otherwise hangs the request while Redis is down. The failure log is at `error` level.
+4. **Rule order.** `invalid-local-time` moves to third place (right after the format rules). Otherwise the DST
+   tests in T003 (London 01:30) would return `outside-working-hours`, and duration could not use real instants.
+5. **CHECK fix.** `booking_quarter_hour` drops the `::bigint` cast. Casting `numeric` to `bigint` rounds, so
+   `09:00:00.4` would pass.
+6. **Index fix.** `booking_user_upcoming_idx` (partial) becomes `booking_user_id_starts_at_idx (user_id, starts_at)`,
+   not partial. A partial index cannot serve the `ON DELETE CASCADE` lookup from `user`. Queries that should use
+   the partial GiST index must spell `status = 'active'` and `'[)'` as SQL literals.
+7. **Migration order.** Generate the table migration first, then `--custom`. A custom migration's snapshot
+   is the current schema. Separate the statements with `--> statement-breakpoint`. File names corrected to
+   `0001_spaces_bookings.sql` and `0002_booking_exclusions.sql`.
+8. **Dependencies.** T007 now depends on T004 (availability can return a 422 `ProblemException`).
+   T002 reuses the existing `test/helpers.ts` (`signedInAgent`) instead of a second sign-up helper.
 
 ## Summary
 
@@ -106,10 +128,10 @@ apps/api/
 │   │   ├── bookings.controller.ts  bookings.module.ts
 │   └── app.module.ts                        # EDIT: import SpacesModule, BookingsModule
 ├── drizzle/
-│   ├── 0001_<generated>_spaces_bookings.sql # generated tables, checks, FKs, indexes (T002)
-│   └── 0002_booking_exclusions.sql          # custom: btree_gist + 2 exclusion constraints (T002)
+│   ├── 0001_spaces_bookings.sql             # generated first: tables, checks, FKs, indexes (T002)
+│   └── 0002_booking_exclusions.sql          # custom, generated second: btree_gist + 2 exclusion constraints (T002)
 ├── test/
-│   ├── fixtures.ts                          # NEW: createSpace/createSeats/insertBooking/signUp helpers (T002; Mailpit helper T010)
+│   ├── fixtures.ts                          # NEW: createSpace/createSeats/insertBooking (T002; Mailpit helper T010); sign-up reuses helpers.ts signedInAgent
 │   ├── booking-constraints.int-spec.ts      # T002
 │   ├── spaces.int-spec.ts                   # T007
 │   ├── bookings.int-spec.ts                 # T009, T010
@@ -147,15 +169,16 @@ because a seat belongs to its space's aggregate. Bookings get their own file.
    Responses carry the UTC instants and the local fields, so the web app never does time-zone
    arithmetic.
 2. **Rules** ([R-3](./research.md)). `evaluateBookingRules(window, timeZone, now)` is pure and
-   returns the first broken rule in a fixed order. Each rule has its own problem `type`
+   returns the first broken rule in a fixed order (ADR-0008 section 1). Each rule has its own problem `type`
    (FR-007, "state which rule failed").
-3. **Conflicts** ([R-4](./research.md)). Insert the row, then catch SQLSTATE `23P01`. The
-   constraint name tells the two cases apart: `booking_seat_no_overlap` maps to 409 `seat-unavailable`
-   and `booking_user_no_overlap` maps to 409 `user-overlap`. There is no read-then-write
-   pre-check, so there is no race window.
+3. **Conflicts** ([R-4](./research.md)). Insert the row, then catch the driver error (`err.cause` of
+   Drizzle's `DrizzleQueryError`). For SQLSTATE `23P01`, the constraint name tells the two cases apart:
+   `booking_seat_no_overlap` maps to 409 `seat-unavailable` and `booking_user_no_overlap` maps to 409
+   `user-overlap`. A `40P01` deadlock between concurrent conflicting inserts is retried (at most 3 attempts).
+   There is no read-then-write pre-check, so there is no race window.
 4. **Email** ([R-5](./research.md)). After the insert commits, `MailService.send(...)` is called
-   with a deterministic `jobId`. Errors are caught and logged without the address or body, and
-   the 201 still goes out (FR-008).
+   with `jobId: booking-confirmed-<bookingId>` and awaited for at most 2 s. Errors and timeouts are
+   caught and logged at `error` level without the address or body, and the 201 still goes out (FR-008).
 5. **Authorization** ([R-6](./research.md)). Every booking query filters on `user_id = session.user.id`.
    Cancelling someone else's booking, or one that does not exist, returns the same 404.
 6. **Web**. `/book`: space list → window form → seat grid with a Book button per free seat
@@ -163,23 +186,30 @@ because a seat belongs to its space's aggregate. Bookings get their own file.
    is met). `/bookings`: upcoming list with Cancel. Every view has loading, empty, error and
    success states. Problem `type` values map to copy in `lib/booking-problems.ts`.
 
-## Open questions
+## Open questions (resolved)
 
-These do not block the plan, but the architect or a human should confirm each one. The plan uses the default shown.
+| #   | Question                                  | Resolution                                                                                                                                                | By                            |
+| --- | ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| 1   | "30 days ahead"                           | `startsAt ≤ now + 30 × 24 h`, as planned                                                                                                                  | product owner                 |
+| 2   | Re-cancelling a cancelled own booking     | 200 with the unchanged booking (idempotent)                                                                                                               | architect, ADR-0008 section 4 |
+| 3   | Own booking in availability               | Shown as `taken` in this slice. A "yours" marker is a follow-up (below)                                                                                   | product owner                 |
+| 4   | Email lost if Redis is down at enqueue    | Accepted for this slice (no outbox). The enqueue is awaited for at most 2 s, and failures are logged at `error`. There is a revisit trigger for an outbox | architect, ADR-0008 section 5 |
+| 5   | Local wall-clock requests, per-rule types | Confirmed, plus `ProblemException`, constants for the type URNs, and unnamed shared field formats                                                         | architect, ADR-0008 section 3 |
+| 6   | Docs per story                            | One docs task (T016). Developers add a changeset in each PR                                                                                               | architect, ADR-0008 section 6 |
 
-1. **"30 days ahead"**: the plan treats it as `startsAt ≤ now + 30 × 24 h` (literal "measured from now").
-   The alternative is the end of the 30th local calendar day. Confirm with product.
-2. **Re-cancelling** an already-cancelled own booking: the plan returns 200 with the cancelled
-   booking (idempotent, safe for retries). The alternative is a 409. Architect to confirm in ADR-0008.
-3. **Own bookings in availability**: the spec only says "free or taken". The plan shows the user's
-   own booking as "taken", with no "yours" marker, so it does not invent behaviour. Product may want a marker later.
-4. **Email lost when Redis is down at enqueue time**: FR-008 is met (the booking stands), and
-   SC-004 is scoped to "normal operation". A transactional outbox is deferred (research R-5).
-   Architect to accept or require the outbox.
-5. **Local wall-clock request contract and per-rule problem `type` URNs**: these are new API
-   conventions. The architect confirms or changes them in ADR-0008 (T001) before T007 starts.
-6. **Docs per story**: the checklist asks for docs per story. This slice uses one docs task
-   (T016) for all three stories because the docs surface is small. Split it if the architect prefers.
+No blocking questions remain.
+
+## Follow-ups (out of scope for this slice)
+
+- **"Yours" marker in availability** (product owner, Q3): an optional field on `SeatAvailability`
+  (an additive contract change) and a UI badge. This needs a new spec or a spec amendment.
+- **Transactional outbox for booking email**: see the revisit trigger in ADR-0008 section 5.
+- **Index on `booking.seat_id`**: add a btree index when seats can be deleted (admin management). Today the
+  `ON DELETE RESTRICT` check would scan `booking`, but seats are seed-only.
+- **Pagination for `GET /api/bookings`**: the `{ items }` wrapper already allows it. It is needed only if
+  the rules (no overlap, at most 30 days ahead) are relaxed.
+- **Runbook correction** (T016): `btree_gist` is a trusted extension, so the database owner can create it on RDS.
+  The master user is not required (`docs/runbooks/database-migrations.md`).
 
 ## Complexity Tracking
 

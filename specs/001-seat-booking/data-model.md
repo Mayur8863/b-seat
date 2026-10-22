@@ -52,12 +52,15 @@ Relationships: belongs to one seat (and through it, one space) and to one user.
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
 | `booking_ends_after_starts`  | `CHECK (ends_at > starts_at)`                                                                                | FR-007 end after start                                                                                                             |
 | `booking_duration_bounds`    | `CHECK (ends_at - starts_at BETWEEN interval '15 minutes' AND interval '10 hours')`                          | FR-007 min/max duration                                                                                                            |
-| `booking_quarter_hour`       | `CHECK (extract(epoch FROM starts_at)::bigint % 900 = 0 AND extract(epoch FROM ends_at)::bigint % 900 = 0)`  | FR-007 15-minute boundaries (UTC alignment equals local alignment because every zone offset is a multiple of 15 min; research R-2) |
+| `booking_quarter_hour`       | `CHECK (extract(epoch FROM starts_at) % 900 = 0 AND extract(epoch FROM ends_at) % 900 = 0)`                  | FR-007 15-minute boundaries (UTC alignment equals local alignment because every zone offset is a multiple of 15 min; research R-2) |
 | `booking_cancel_consistency` | `CHECK ((status = 'cancelled') = (cancelled_at IS NOT NULL))`                                                | soft-cancel state is coherent                                                                                                      |
 | `booking_seat_no_overlap`    | `EXCLUDE USING gist (seat_id WITH =, tstzrange(starts_at, ends_at, '[)') WITH &&) WHERE (status = 'active')` | FR-005, AC 2.3, AC 2.4, SC-002                                                                                                     |
 | `booking_user_no_overlap`    | `EXCLUDE USING gist (user_id WITH =, tstzrange(starts_at, ends_at, '[)') WITH &&) WHERE (status = 'active')` | FR-006, AC 2.5                                                                                                                     |
 | `seat_space_id_label_unique` | `UNIQUE (space_id, label)`                                                                                   | seat label unique within its space                                                                                                 |
 | `space_name_unique`          | `UNIQUE (name)`                                                                                              | idempotent seed                                                                                                                    |
+
+`booking_quarter_hour` compares the exact `numeric` epoch (PG 14+). Do **not** cast it to `bigint`: the cast
+rounds, so `09:00:00.4` would pass.
 
 The ranges are half-open (`'[)'`), so a booking ending at 12:00 and one starting at 12:00 do not
 overlap (AC 1.3, edge case "touching windows"). The partial predicate means a cancelled booking
@@ -69,14 +72,19 @@ the past, at most 30 days ahead.
 
 ## Indexes and query paths
 
-| Query                                                  | Used by                          | Index                                                                                                                                           |
-| ------------------------------------------------------ | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| Spaces with seat count, ordered by name                | `GET /api/spaces`                | `space_name_unique` + `seat_space_id_label_unique` (aggregate over a tiny table)                                                                |
-| Seats of a space, ordered by label                     | availability                     | `seat_space_id_label_unique` (btree on `space_id, label`)                                                                                       |
-| Active bookings of a seat overlapping a window         | availability, conflict detection | GiST index backing `booking_seat_no_overlap` (expression matches the query, research R-9)                                                       |
-| A user's active bookings that have not ended, by start | `GET /api/bookings`              | `booking_user_upcoming_idx` btree `(user_id, starts_at) WHERE status = 'active'`                                                                |
-| Booking by id and owner                                | cancel                           | PK (`id`), then filter on `user_id`                                                                                                             |
-| FK lookups                                             | deletes                          | `booking_seat_id_idx` is covered by the GiST index's leading `seat_id`. `user_id` is covered by `booking_user_upcoming_idx` and the GiST index. |
+| Query                                                  | Used by                          | Index                                                                                                                                                                                                                                                                                  |
+| ------------------------------------------------------ | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Spaces with seat count, ordered by name                | `GET /api/spaces`                | `space_name_unique` + `seat_space_id_label_unique` (aggregate over a tiny table)                                                                                                                                                                                                       |
+| Seats of a space, ordered by label                     | availability                     | `seat_space_id_label_unique` (btree on `space_id, label`)                                                                                                                                                                                                                              |
+| Active bookings of a seat overlapping a window         | availability, conflict detection | GiST index backing `booking_seat_no_overlap` (expression matches the query, research R-9)                                                                                                                                                                                              |
+| A user's active bookings that have not ended, by start | `GET /api/bookings`              | `booking_user_id_starts_at_idx` btree `(user_id, starts_at)` (not partial; `status` and `ends_at` are residual filters on a handful of rows)                                                                                                                                           |
+| Booking by id and owner                                | cancel                           | PK (`id`), then filter on `user_id`                                                                                                                                                                                                                                                    |
+| FK lookups                                             | deletes                          | `user` delete (`ON DELETE CASCADE`): `booking_user_id_starts_at_idx`. `seat` delete (`RESTRICT`): no full index. The GiST indexes are partial (active rows only), so they cannot serve FK checks. Seats are seed-only, so a `booking_seat_id_idx` is a follow-up for admin management. |
+
+Query rules for using the partial GiST indexes (availability, and any future overlap query): spell the
+predicate exactly as the constraint does, with SQL literals, not bound parameters:
+`b.status = 'active' AND tstzrange(b.starts_at, b.ends_at, '[)') && tstzrange($from, $to, '[)')`.
+T014 records `EXPLAIN` showing a `booking_seat_no_overlap` index scan.
 
 ## State transitions (booking)
 
@@ -90,7 +98,7 @@ the past, at most 30 days ahead.
 
 - `active → cancelled`: only by the owner, only while `starts_at > now()` (AC 3.3). Otherwise
   409 `booking:already-started` (AC 3.5).
-- `cancelled → cancelled`: idempotent no-op returning the booking (open question 2).
+- `cancelled → cancelled`: idempotent no-op, 200, returning the unchanged booking (`cancelled_at` keeps its first value; ADR-0008 section 4).
 - There is no stored "ended" state. A booking has ended when `ends_at <= now()`, which is derived
   at read time. It drops out of "My bookings" (FR-009).
 
@@ -110,20 +118,29 @@ Both migrations are additive (new types and tables only), so they are safe to ap
 code and need no expand/contract steps.
 
 1. `0001_<generated>.sql`: produced by `bin/pnpm --filter @bseat/api db:generate --name spaces_bookings`.
-   It contains the `booking_status` enum, the `space`, `seat` and `booking` tables, FKs, uniques,
-   CHECKs and `booking_user_upcoming_idx`. Review the generated SQL for the CHECK expressions.
-2. `0002_booking_exclusions.sql`: hand-written, created with `db:generate --custom --name booking_exclusions`:
+   The file is `drizzle/0001_spaces_bookings.sql`. It contains the `booking_status` enum, the `space`, `seat` and
+   `booking` tables, FKs, uniques, CHECKs (drizzle `check()`) and `booking_user_id_starts_at_idx`. Review the
+   generated SQL for the CHECK expressions.
+2. `0002_booking_exclusions.sql`: hand-written, created with `db:generate --custom --name booking_exclusions`
+   **after** step 1 (`--custom` snapshots the current schema, so the tables must already be in a migration).
+   Separate statements with drizzle's breakpoint marker:
    ```sql
    CREATE EXTENSION IF NOT EXISTS btree_gist;
+   --> statement-breakpoint
    ALTER TABLE "booking" ADD CONSTRAINT "booking_seat_no_overlap"
      EXCLUDE USING gist ("seat_id" WITH =, tstzrange("starts_at", "ends_at", '[)') WITH &&)
      WHERE ("status" = 'active');
+   --> statement-breakpoint
    ALTER TABLE "booking" ADD CONSTRAINT "booking_user_no_overlap"
      EXCLUDE USING gist ("user_id" WITH =, tstzrange("starts_at", "ends_at", '[)') WITH &&)
      WHERE ("status" = 'active');
    ```
    Drizzle-kit cannot model `EXCLUDE`, so these constraints exist only in SQL. Later
-   `db:generate` runs will not drop them, because drizzle-kit diffs its own snapshots.
+   `db:generate` runs will not drop them, because drizzle-kit diffs its own snapshots. The `0002`
+   snapshot equals `0001`, so the CI step `drizzle-kit generate --name ci-check` produces nothing.
+   `btree_gist` is a trusted extension (PG 13+), so the database owner can create it on RDS.
+   The drizzle migrator applies pending migrations in one transaction, and `CREATE EXTENSION` is
+   allowed inside it.
 
 The tables are new and empty, so there are no locking concerns. Rollback means dropping the three
 tables and the enum (no data loss outside this feature).
