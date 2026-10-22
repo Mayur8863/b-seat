@@ -24,6 +24,8 @@ export async function createApp(): Promise<NestExpressApplication> {
   app.useLogger(app.get(Logger));
   app.enableShutdownHooks();
   app.use(helmet());
+  // Domain routes live under /api (same prefix the web app proxies); probes stay at /health.
+  app.setGlobalPrefix('api', { exclude: ['health/live', 'health/ready'] });
 
   const auth = app.get<Auth>(AUTH);
   app.getHttpAdapter().getInstance().all(`${AUTH_BASE_PATH}/*splat`, toNodeHandler(auth));

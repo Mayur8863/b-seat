@@ -21,8 +21,8 @@ describe('health + errors', () => {
     expect(res.body.info).toMatchObject({ postgres: { status: 'up' }, redis: { status: 'up' } });
   });
 
-  it('returns RFC 9457 problem details for unknown routes', async () => {
-    const res = await request(app.getHttpServer()).get('/does-not-exist').expect(404);
+  it('returns RFC 9457 problem details for unknown API routes', async () => {
+    const res = await request(app.getHttpServer()).get('/api/does-not-exist').expect(404);
     expect(res.headers['content-type']).toContain('application/problem+json');
     expect(res.body).toMatchObject({ status: 404, type: 'urn:bseat:problem:http-404' });
     expect(res.body.requestId).toBeTypeOf('string');

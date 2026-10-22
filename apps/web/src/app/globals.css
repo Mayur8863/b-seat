@@ -1,0 +1,4 @@
+@import '@bseat/ui/globals.css';
+
+/* Scan this app's sources too. */
+@source '../**/*.{ts,tsx}';

@@ -1,0 +1,5 @@
+{
+  "extends": "@bseat/config/tsconfig/react-library.json",
+  "compilerOptions": { "noEmit": true, "types": [] },
+  "include": ["src"]
+}

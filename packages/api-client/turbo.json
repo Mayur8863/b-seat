@@ -1,0 +1,12 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      "inputs": ["../../apps/api/openapi.json", "orval.config.ts", "src/fetcher.ts", "scripts/**"],
+      "outputs": ["src/generated/**"]
+    },
+    "typecheck": { "dependsOn": ["build"] },
+    "lint": { "dependsOn": ["build"] }
+  }
+}

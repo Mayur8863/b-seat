@@ -15,6 +15,7 @@ import { type Env, loadEnv } from './config/env.js';
 import { DbModule } from './db/db.module.js';
 import { HealthController } from './health/health.controller.js';
 import { MailModule } from './mail/mail.module.js';
+import { MeController } from './me/me.controller.js';
 import { REDIS, RedisModule } from './redis/redis.module.js';
 
 @Module({
@@ -52,7 +53,7 @@ import { REDIS, RedisModule } from './redis/redis.module.js';
     MailModule,
     AuthModule,
   ],
-  controllers: [HealthController],
+  controllers: [HealthController, MeController],
   providers: [
     { provide: APP_PIPE, useValue: validationPipe },
     { provide: APP_FILTER, useClass: ProblemFilter },

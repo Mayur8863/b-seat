@@ -1,0 +1,29 @@
+{
+  "name": "@bseat/api-client",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Typed API client (TanStack Query hooks, Zod schemas, MSW mocks) generated from apps/api/openapi.json.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./zod": "./src/generated/zod/index.zod.ts",
+    "./mocks": "./src/mocks.ts"
+  },
+  "scripts": {
+    "build": "orval && node scripts/write-mocks-index.mjs",
+    "lint": "eslint . --max-warnings=0",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@faker-js/faker": "^10.6.0",
+    "@tanstack/react-query": "^5.104.5",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@bseat/config": "workspace:*",
+    "eslint": "^9.39.5",
+    "msw": "^3.0.3",
+    "orval": "^8.43.0",
+    "typescript": "~6.0.3"
+  }
+}

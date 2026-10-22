@@ -1,35 +1,43 @@
 {
   "$schema": "https://turborepo.com/schema.json",
   "ui": "stream",
-  "globalDependencies": [".env.example", "tsconfig.json"],
+  "globalDependencies": [".env.example"],
   "globalEnv": ["NODE_ENV", "CI"],
+  "globalPassThroughEnv": [
+    "DATABASE_URL",
+    "DATABASE_URL_TEST",
+    "REDIS_URL",
+    "SMTP_HOST",
+    "SMTP_PORT",
+    "MAIL_FROM",
+    "BETTER_AUTH_SECRET",
+    "BETTER_AUTH_URL",
+    "TRUSTED_ORIGINS",
+    "API_INTERNAL_URL",
+    "LOG_LEVEL",
+    "OTEL_*",
+    "E2E_BASE_URL"
+  ],
   "tasks": {
-    "gen:api": {
-      "dependsOn": ["^build"],
-      "inputs": ["$TURBO_DEFAULT$", "../../apps/api/openapi.json"],
-      "outputs": ["src/generated/**"]
-    },
     "build": {
-      "dependsOn": ["^build", "gen:api"],
-      "outputs": ["dist/**", ".next/**", "!.next/cache/**"],
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**", "src/generated/**"],
       "env": ["NEXT_PUBLIC_*"]
     },
     "typecheck": {
-      "dependsOn": ["^build", "gen:api"]
+      "dependsOn": ["^build"]
     },
     "lint": {
-      "dependsOn": ["^build", "gen:api"]
+      "dependsOn": ["^build"]
     },
     "test": {
-      "dependsOn": ["^build", "gen:api"],
-      "outputs": []
+      "dependsOn": ["^build"]
     },
     "test:coverage": {
-      "dependsOn": ["^build", "gen:api"],
+      "dependsOn": ["^build"],
       "outputs": ["coverage/**"]
     },
     "test:e2e": {
-      "dependsOn": ["^build"],
       "cache": false
     },
     "dev": {

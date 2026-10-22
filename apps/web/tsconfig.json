@@ -1,0 +1,9 @@
+{
+  "extends": "@bseat/config/tsconfig/nextjs.json",
+  "compilerOptions": {
+    "types": ["node", "vitest/globals", "@testing-library/jest-dom"],
+    "paths": { "@/*": ["./src/*"] }
+  },
+  "include": ["next-env.d.ts", "src", "e2e", "*.config.ts", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
+}

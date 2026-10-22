@@ -20,8 +20,7 @@ x-node: &node
   env_file:
     - path: .env
       required: false
-  environment:
-    NODE_ENV: development
+  environment: &node-env
     DATABASE_URL: postgres://${POSTGRES_USER:-bseat}:${POSTGRES_PASSWORD:-bseat}@postgres:5432/${POSTGRES_DB:-bseat}
     DATABASE_URL_TEST: postgres://${POSTGRES_USER:-bseat}:${POSTGRES_PASSWORD:-bseat}@postgres:5432/${POSTGRES_DB:-bseat}_test
     REDIS_URL: redis://redis:6379
@@ -92,6 +91,9 @@ services:
 
   migrate:
     <<: *node
+    environment:
+      <<: *node-env
+      NODE_ENV: development
     command: ['bash', '-c', 'pnpm db:migrate && pnpm db:seed']
     depends_on:
       install: { condition: service_completed_successfully }
@@ -99,7 +101,10 @@ services:
 
   api:
     <<: *node
-    command: ['pnpm', '--filter', '@bseat/api', 'dev']
+    environment:
+      <<: *node-env
+      NODE_ENV: development
+    command: ['pnpm', 'exec', 'turbo', 'run', 'dev', '--filter=@bseat/api']
     ports: ['${API_PORT:-3001}:3001']
     depends_on:
       migrate: { condition: service_completed_successfully }
@@ -114,11 +119,38 @@ services:
 
   web:
     <<: *node
-    command: ['pnpm', '--filter', '@bseat/web', 'dev']
+    environment:
+      <<: *node-env
+      NODE_ENV: development
+    # turbo builds upstream packages first (generates the API client)
+    command: ['pnpm', 'exec', 'turbo', 'run', 'dev', '--filter=@bseat/web']
     ports: ['${WEB_PORT:-3000}:3000']
     depends_on:
       install: { condition: service_completed_successfully }
       api: *healthy
+    healthcheck:
+      test: ['CMD', 'curl', '-fsS', '-o', '/dev/null', 'http://localhost:3000/']
+      interval: 5s
+      timeout: 10s
+      retries: 60
+      start_period: 30s
+
+  # ---- browser tests: docker compose --profile e2e run --rm e2e -------------
+  # Shares web's network namespace, so the browser sees http://localhost:3000.
+  e2e:
+    image: mcr.microsoft.com/playwright:v1.64.1-noble
+    profiles: [e2e]
+    network_mode: service:web
+    user: '1000:1000'
+    working_dir: ${PWD}/apps/web
+    volumes: ['.:${PWD}']
+    environment:
+      CI: ${CI:-}
+      HOME: /tmp
+      E2E_BASE_URL: http://localhost:3000
+    command: ['npx', 'playwright', 'test']
+    depends_on:
+      web: *healthy
 
   # ---- one-off toolbox: bin/tools <cmd>, bin/pnpm <args> --------------------
   tools:
