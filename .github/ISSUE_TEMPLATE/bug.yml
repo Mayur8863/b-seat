@@ -1,0 +1,23 @@
+name: Bug report
+description: Something is broken.
+labels: [bug]
+body:
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: "1. Go to …\n2. Click …"
+    validations: { required: true }
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected vs actual
+    validations: { required: true }
+  - type: input
+    id: request-id
+    attributes:
+      label: Request id (from the x-request-id header or error response), if any
+  - type: textarea
+    id: env
+    attributes:
+      label: Environment (browser, OS, commit)

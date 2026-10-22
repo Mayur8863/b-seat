@@ -11,3 +11,10 @@ allowBuilds:
   msgpackr-extract: true
   '@scarf/scarf': false # install-time telemetry ping
   protobufjs: false # postinstall is only a version check
+
+# Keep apps' peer graphs separate. Otherwise better-auth's optional peers
+# (next, react) get linked into the API and its production image ships Next.js
+# (+600MB). Both settings are needed. Declare peers explicitly instead;
+# `pnpm peers check` must stay clean.
+autoInstallPeers: false
+dedupePeerDependents: false

@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# Local security scan (same tools as CI), all via Docker:
+#   - gitleaks: secrets in the working tree
+#   - Semgrep:  SAST (TypeScript, Node, Docker, secrets rulesets)
+#   - Trivy:    dependency CVEs (lockfile) + misconfiguration (Dockerfiles, compose)
+# Usage: bin/security [gitleaks|semgrep|trivy]   (default: all)
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+run_gitleaks() {
+  echo "==> gitleaks"
+  bin/gitleaks dir . --redact --no-banner
+}
+
+run_semgrep() {
+  echo "==> semgrep"
+  docker run --rm -v "$PWD:/src" -w /src semgrep/semgrep:1.182.0 \
+    semgrep scan --error --metrics=off \
+    --config p/typescript --config p/nodejs --config p/secrets --config p/dockerfile \
+    --exclude node_modules --exclude '**/generated/**' --exclude '**/dist/**' --exclude '**/.next/**'
+}
+
+run_trivy() {
+  echo "==> trivy"
+  docker run --rm -v "$PWD:/src" -v trivy-cache:/root/.cache aquasec/trivy:0.76.1 \
+    fs --scanners vuln,misconfig --severity HIGH,CRITICAL --exit-code 1 \
+    --skip-dirs node_modules --skip-dirs .pnpm-store /src
+}
+
+case "${1:-all}" in
+  gitleaks) run_gitleaks ;;
+  semgrep) run_semgrep ;;
+  trivy) run_trivy ;;
+  all) run_gitleaks && run_semgrep && run_trivy ;;
+  *) echo "usage: bin/security [gitleaks|semgrep|trivy]" >&2; exit 2 ;;
+esac
