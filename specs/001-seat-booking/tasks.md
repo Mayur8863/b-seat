@@ -30,9 +30,9 @@ task-manager changes owners. Developers set `review`. Only qa-engineer sets `don
 | T002 | Space/seat/booking schema, migrations, DB constraint tests | backend-dev    | T001             | M    | review | `feat/001-booking-schema`             |
 | T003 | Zoned time, clock and booking rules (TDD)                  | backend-dev    | T001             | M    | review | `feat/001-booking-rules`              |
 | T004 | ProblemException with typed problem details                | backend-dev    | T001             | S    | review | `feat/001-problem-types`              |
-| T005 | Seed demo spaces and seats                                 | backend-dev    | T002, T003       | S    | todo   | `feat/001-seed-spaces`                |
+| T005 | Seed demo spaces and seats                                 | backend-dev    | T002, T003       | S    | review | `feat/001-seed-spaces`                |
 | T006 | UI spec `ui.md` for booking screens                        | ui-ux-designer | T001             | M    | review | `docs/001-booking-ui-spec`            |
-| T007 | Spaces list and availability API                           | backend-dev    | T002, T003, T004 | M    | todo   | `feat/001-spaces-availability-api`    |
+| T007 | Spaces list and availability API                           | backend-dev    | T002, T003, T004 | M    | review | `feat/001-spaces-availability-api`    |
 | T008 | `/book` page: spaces, window form, seat availability       | frontend-dev   | T006, T007       | M    | todo   | `feat/001-book-page-availability`     |
 | T009 | Create booking API with rules and conflict mapping         | backend-dev    | T003, T004, T007 | M    | todo   | `feat/001-create-booking-api`         |
 | T010 | Booking confirmation email                                 | backend-dev    | T009             | S    | todo   | `feat/001-booking-confirmation-email` |
@@ -109,7 +109,7 @@ task-manager changes owners. Developers set `review`. Only qa-engineer sets `don
     - Given `bin/pnpm gen:api`, When run on this branch, Then `apps/api/openapi.json` is unchanged (`ProblemSchema` untouched, Constitution III).
 
 - [ ] T005 Seed demo data in `apps/api/src/db/seed.ts`
-  - **Owner**: backend-dev · **Branch**: `feat/001-seed-spaces` · **Size**: S · **Depends on**: T002, T003 · **Status**: todo
+  - **Owner**: backend-dev · **Branch**: `feat/001-seed-spaces` · **Size**: S · **Depends on**: T002, T003 · **Status**: review
   - **Scope**: Idempotent upserts by natural key (`onConflictDoNothing`). Seed "London HQ" (`Europe/London`, location "London, United Kingdom", seats `A-01`…`A-12`) and "Pune Hub" (`Asia/Kolkata`, location "Pune, India", seats `P-01`…`P-08`). Some seats get `standing desk` or `dual monitor`. Validate each zone with `isValidTimeZone` and throw on failure.
   - **Acceptance criteria**:
     - Given a migrated, empty dev DB, When `bin/pnpm db:seed` runs twice, Then exactly 2 spaces and 20 seats exist (12 + 8) with the zones above (FR-012).
@@ -135,7 +135,7 @@ task-manager changes owners. Developers set `review`. Only qa-engineer sets `don
 **Independent test**: Seed a space with 6 seats and one booking from 09:00 to 12:00 tomorrow. Availability for 10:00–11:00 shows exactly one taken; 12:00–13:00 shows all free.
 
 - [ ] T007 [US1] Build the spaces module `apps/api/src/spaces/` (schemas, service, controller, module, `spaces.service.spec.ts`), register it in `apps/api/src/app.module.ts`, add `apps/api/test/spaces.int-spec.ts`, and regenerate `apps/api/openapi.json`
-  - **Owner**: backend-dev · **Branch**: `feat/001-spaces-availability-api` · **Size**: M · **Depends on**: T002, T003, T004 · **Status**: todo
+  - **Owner**: backend-dev · **Branch**: `feat/001-spaces-availability-api` · **Size**: M · **Depends on**: T002, T003, T004 · **Status**: review
   - **Scope**: `GET /api/spaces` and `GET /api/spaces/{spaceId}/availability` exactly as in `contracts/spaces.md` (schemas `Space`, `SpaceList`, `AvailabilityQueryInput`, `SpaceAvailability`, `SeatAvailability`). One availability query using the `tstzrange … &&` predicate, with `status = 'active'` and `'[)'` written as SQL literals so the partial GiST index applies (research R-9, data-model.md). Integration tests first.
   - **Acceptance criteria**:
     - Given I am signed in and two spaces exist, When I `GET /api/spaces`, Then I get 200 `{ items }` ordered by name, each with `name`, `location`, `timeZone` and `seatCount` (AC 1.1, FR-002).

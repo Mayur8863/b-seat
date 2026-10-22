@@ -17,6 +17,7 @@ import { HealthController } from './health/health.controller.js';
 import { MailModule } from './mail/mail.module.js';
 import { MeController } from './me/me.controller.js';
 import { REDIS, RedisModule } from './redis/redis.module.js';
+import { SpacesModule } from './spaces/spaces.module.js';
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { REDIS, RedisModule } from './redis/redis.module.js';
     DbModule,
     MailModule,
     AuthModule,
+    SpacesModule,
   ],
   controllers: [HealthController, MeController],
   providers: [

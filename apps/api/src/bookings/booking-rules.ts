@@ -75,7 +75,8 @@ function detailFor(rule: BookingRule, timeZone: string): string {
   }
 }
 
-function violation(rule: BookingRule, timeZone: string): RuleViolation {
+/** The problem details for one broken rule (also used by availability for DST windows). */
+export function ruleViolation(rule: BookingRule, timeZone: string): RuleViolation {
   return {
     rule,
     type: BOOKING_RULE_PROBLEM_TYPE[rule],
@@ -98,23 +99,24 @@ export function evaluateBookingRules(
 ): RuleViolation | null {
   const { date, startTime, endTime } = window;
 
-  if (endTime < startTime) return violation('end-before-start', timeZone);
+  if (endTime < startTime) return ruleViolation('end-before-start', timeZone);
   if (!onQuarterHour(startTime) || !onQuarterHour(endTime)) {
-    return violation('not-on-quarter-hour', timeZone);
+    return ruleViolation('not-on-quarter-hour', timeZone);
   }
 
   const start = toInstant(date, startTime, timeZone);
   const end = toInstant(date, endTime, timeZone);
-  if (start.kind !== 'ok' || end.kind !== 'ok') return violation('invalid-local-time', timeZone);
+  if (start.kind !== 'ok' || end.kind !== 'ok')
+    return ruleViolation('invalid-local-time', timeZone);
   const startsAt = start.instant.getTime();
   const duration = end.instant.getTime() - startsAt;
 
-  if (duration < MIN_DURATION_MS) return violation('too-short', timeZone);
-  if (duration > MAX_DURATION_MS) return violation('too-long', timeZone);
+  if (duration < MIN_DURATION_MS) return ruleViolation('too-short', timeZone);
+  if (duration > MAX_DURATION_MS) return ruleViolation('too-long', timeZone);
   if (startTime < OPENS_AT || endTime > CLOSES_AT) {
-    return violation('outside-working-hours', timeZone);
+    return ruleViolation('outside-working-hours', timeZone);
   }
-  if (startsAt <= now.getTime()) return violation('starts-in-past', timeZone);
-  if (startsAt > now.getTime() + MAX_LEAD_MS) return violation('too-far-ahead', timeZone);
+  if (startsAt <= now.getTime()) return ruleViolation('starts-in-past', timeZone);
+  if (startsAt > now.getTime() + MAX_LEAD_MS) return ruleViolation('too-far-ahead', timeZone);
   return null;
 }
