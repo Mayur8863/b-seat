@@ -27,11 +27,11 @@ task-manager changes owners. Developers set `review`. Only qa-engineer sets `don
 | ID   | Title                                                      | Owner          | Depends on       | Size | Status | Branch                                |
 | ---- | ---------------------------------------------------------- | -------------- | ---------------- | ---- | ------ | ------------------------------------- |
 | T001 | ADR-0008 and contract approval                             | architect      | none             | S    | done   | `docs/001-booking-adr`                |
-| T002 | Space/seat/booking schema, migrations, DB constraint tests | backend-dev    | T001             | M    | todo   | `feat/001-booking-schema`             |
-| T003 | Zoned time, clock and booking rules (TDD)                  | backend-dev    | T001             | M    | todo   | `feat/001-booking-rules`              |
-| T004 | ProblemException with typed problem details                | backend-dev    | T001             | S    | todo   | `feat/001-problem-types`              |
+| T002 | Space/seat/booking schema, migrations, DB constraint tests | backend-dev    | T001             | M    | review | `feat/001-booking-schema`             |
+| T003 | Zoned time, clock and booking rules (TDD)                  | backend-dev    | T001             | M    | review | `feat/001-booking-rules`              |
+| T004 | ProblemException with typed problem details                | backend-dev    | T001             | S    | review | `feat/001-problem-types`              |
 | T005 | Seed demo spaces and seats                                 | backend-dev    | T002, T003       | S    | todo   | `feat/001-seed-spaces`                |
-| T006 | UI spec `ui.md` for booking screens                        | ui-ux-designer | T001             | M    | todo   | `docs/001-booking-ui-spec`            |
+| T006 | UI spec `ui.md` for booking screens                        | ui-ux-designer | T001             | M    | review | `docs/001-booking-ui-spec`            |
 | T007 | Spaces list and availability API                           | backend-dev    | T002, T003, T004 | M    | todo   | `feat/001-spaces-availability-api`    |
 | T008 | `/book` page: spaces, window form, seat availability       | frontend-dev   | T006, T007       | M    | todo   | `feat/001-book-page-availability`     |
 | T009 | Create booking API with rules and conflict mapping         | backend-dev    | T003, T004, T007 | M    | todo   | `feat/001-create-booking-api`         |
@@ -61,7 +61,7 @@ task-manager changes owners. Developers set `review`. Only qa-engineer sets `don
 ### Phase 2: Foundational (after T001; T002, T003, T004 and T006 run in parallel)
 
 - [ ] T002 [P] Add `space`, `seat` and `booking` tables in `apps/api/src/db/schema/space.ts` and `apps/api/src/db/schema/booking.ts`, migrations `apps/api/drizzle/0001_spaces_bookings.sql` and `0002_booking_exclusions.sql`, helpers `apps/api/test/fixtures.ts`, and tests `apps/api/test/booking-constraints.int-spec.ts`
-  - **Owner**: backend-dev · **Branch**: `feat/001-booking-schema` · **Size**: M · **Depends on**: T001 · **Status**: todo
+  - **Owner**: backend-dev · **Branch**: `feat/001-booking-schema` · **Size**: M · **Depends on**: T001 · **Status**: review
   - **Scope**: Implement data-model.md exactly. Constraints, verbatim:
     - `booking_ends_after_starts CHECK (ends_at > starts_at)`
     - `booking_duration_bounds CHECK (ends_at - starts_at BETWEEN interval '15 minutes' AND interval '10 hours')`
@@ -89,7 +89,7 @@ task-manager changes owners. Developers set `review`. Only qa-engineer sets `don
     - Given the migrations, When `bin/pnpm --filter @bseat/api db:generate` runs again, Then no new migration is produced (the schema and snapshot agree).
 
 - [ ] T003 [P] Implement `apps/api/src/common/time/zoned-time.ts`, `apps/api/src/common/time/clock.ts` and `apps/api/src/bookings/booking-rules.ts`, with unit tests written first in `zoned-time.spec.ts` and `booking-rules.spec.ts`
-  - **Owner**: backend-dev · **Branch**: `feat/001-booking-rules` · **Size**: M · **Depends on**: T001 · **Status**: todo
+  - **Owner**: backend-dev · **Branch**: `feat/001-booking-rules` · **Size**: M · **Depends on**: T001 · **Status**: review
   - **Scope**: Pure functions per research R-1 and R-3: `toInstant`, `toLocal`, `isValidTimeZone`, `evaluateBookingRules({ date, startTime, endTime }, timeZone, now)` returning the first violation in the order `end-before-start, not-on-quarter-hour, invalid-local-time, too-short, too-long, outside-working-hours, starts-in-past, too-far-ahead`, or `null` (order amended by ADR-0008: duration uses the converted instants). `toInstant` returns `{ kind: 'ok', instant } | { kind: 'nonexistent' } | { kind: 'ambiguous' }`, using the ±24 h candidate-offset algorithm in ADR-0008 section 1. It never silently shifts a time. `Clock` is an injectable (`now(): Date`) provider. No new dependencies (use `Intl` only).
   - **Acceptance criteria**:
     - Given `Europe/London`, When `toInstant('2026-10-23','09:00')`, Then it returns `2026-10-23T08:00:00Z`. Given `2026-11-02 09:00`, it returns `09:00:00Z`. Given `Asia/Kolkata` `2026-10-23 09:00`, it returns `03:30:00Z` (edge "spaces in different time zones").
@@ -102,7 +102,7 @@ task-manager changes owners. Developers set `review`. Only qa-engineer sets `don
     - Given the PR, When reviewed, Then the failing tests were committed before the implementation, and changed-line coverage is ≥ 80% (Constitution II).
 
 - [ ] T004 [P] Add `apps/api/src/common/errors/problem.exception.ts` and make `apps/api/src/common/errors/problem.filter.ts` honour its `type` and `title`, with tests in `problem.filter.spec.ts`
-  - **Owner**: backend-dev · **Branch**: `feat/001-problem-types` · **Size**: S · **Depends on**: T001 · **Status**: todo
+  - **Owner**: backend-dev · **Branch**: `feat/001-problem-types` · **Size**: S · **Depends on**: T001 · **Status**: review
   - **Acceptance criteria**:
     - Given `new ProblemException(409, 'urn:bseat:problem:booking:seat-unavailable', 'Seat unavailable', 'This seat is no longer available for that time.')`, When `ProblemFilter` handles it, Then the response is 409 `application/problem+json` with exactly that `type`, `title` and `detail`, plus `instance` and `requestId` (research R-7).
     - Given a plain `NotFoundException('Seat not found')`, When handled, Then the body is unchanged from today (`urn:bseat:problem:http-404`, `title: 'not found'`) (regression).
@@ -116,7 +116,7 @@ task-manager changes owners. Developers set `review`. Only qa-engineer sets `don
     - Given a seed entry with an invalid time zone, When the seed runs, Then it exits non-zero with a message naming the zone.
 
 - [ ] T006 [P] Write `specs/001-seat-booking/ui.md` for `/book`, `/bookings` and the dashboard entry points
-  - **Owner**: ui-ux-designer · **Branch**: `docs/001-booking-ui-spec` · **Size**: M · **Depends on**: T001 · **Status**: todo
+  - **Owner**: ui-ux-designer · **Branch**: `docs/001-booking-ui-spec` · **Size**: M · **Depends on**: T001 · **Status**: review
   - **Scope**: Components to cover: space list, booking window form (date plus 15-minute start and end inputs), seat availability grid, book action, booking list item, cancel action, empty states. Reuse `@bseat/ui` (alert, badge, button, card, input, label, skeleton, sonner). If needed, name any shadcn component to add (for example `alert-dialog`, `radio-group`); these use the existing `radix-ui` dependency.
   - **Acceptance criteria**:
     - Given each screen and component, When ui.md is read, Then default, hover, focus, disabled, loading, empty, error and success states are specified (FR-013).
