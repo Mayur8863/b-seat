@@ -68,6 +68,59 @@ describe('apiFetch error bodies', () => {
     );
     const error = await failure();
     expect(error.message).not.toContain('[object Object]');
-    expect(error.problem).toEqual({ type: 'x', title: 'x', status: 400, requestId: 'r1' });
+    expect(error.problem).toEqual({ type: 'x', status: 400, requestId: 'r1' });
+  });
+
+  it('rejects a successful response whose JSON body is truncated', async () => {
+    server.use(
+      http.get(
+        '*/api/x',
+        () =>
+          new HttpResponse('{"items":', {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          }),
+      ),
+    );
+    await expect(apiFetch('/api/x')).rejects.toBeInstanceOf(ApiError);
+  });
+
+  it('rejects a successful response with an empty JSON body', async () => {
+    server.use(
+      http.get(
+        '*/api/x',
+        () =>
+          new HttpResponse('', { status: 200, headers: { 'content-type': 'application/json' } }),
+      ),
+    );
+    await expect(apiFetch('/api/x')).rejects.toBeInstanceOf(ApiError);
+  });
+
+  it('still resolves an empty 204', async () => {
+    server.use(http.get('*/api/x', () => new HttpResponse(null, { status: 204 })));
+    await expect(apiFetch('/api/x')).resolves.toMatchObject({ status: 204 });
+  });
+
+  it('never uses the problem type URN as the error message', async () => {
+    server.use(
+      http.get('*/api/x', () =>
+        HttpResponse.json({ type: 'urn:bseat:problem:http-500' }, { status: 500 }),
+      ),
+    );
+    const error = await failure();
+    expect(error.message).toBe('Request failed with status 500');
+    expect(error.problem?.title).toBeUndefined();
+  });
+
+  it('keeps only well-formed validation errors', async () => {
+    server.use(
+      http.get('*/api/x', () =>
+        HttpResponse.json(
+          { type: 'x', errors: [{ path: 'a', message: 'm' }, { path: 1 }, null, 'z'] },
+          { status: 422 },
+        ),
+      ),
+    );
+    expect((await failure()).problem?.errors).toEqual([{ path: 'a', message: 'm' }]);
   });
 });

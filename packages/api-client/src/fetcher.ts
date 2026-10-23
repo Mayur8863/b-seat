@@ -8,7 +8,7 @@
 /** RFC 9457 problem details, as returned by the API on every error. */
 export interface ProblemDetails {
   type: string;
-  title: string;
+  title?: string;
   status: number;
   detail?: string;
   instance?: string;
@@ -47,28 +47,42 @@ function asProblem(data: unknown, status: number): ProblemDetails | undefined {
   if (typeof raw.type !== 'string') return undefined;
   const problem: ProblemDetails = {
     type: raw.type,
-    title: str(raw.title) ?? raw.type,
     status: typeof raw.status === 'number' ? raw.status : status,
   };
+  const title = str(raw.title);
   const detail = str(raw.detail);
   const instance = str(raw.instance);
   const requestId = str(raw.requestId);
+  if (title !== undefined) problem.title = title;
   if (detail !== undefined) problem.detail = detail;
   if (instance !== undefined) problem.instance = instance;
   if (requestId !== undefined) problem.requestId = requestId;
-  if (Array.isArray(raw.errors)) problem.errors = raw.errors as ProblemDetails['errors'];
+  if (Array.isArray(raw.errors)) {
+    problem.errors = raw.errors.filter(
+      (e): e is { path: string; message: string } =>
+        typeof e === 'object' &&
+        e !== null &&
+        typeof (e as Record<string, unknown>).path === 'string' &&
+        typeof (e as Record<string, unknown>).message === 'string',
+    );
+  }
   return problem;
 }
 
+/**
+ * Error bodies are parsed tolerantly (a gateway may send HTML or truncated JSON, and the status
+ * must survive). Successful bodies stay strict so a bad one becomes a query error, not bad data.
+ */
 async function parseBody(res: Response): Promise<unknown> {
   if (res.status === 204 || res.headers.get('content-length') === '0') return undefined;
   const text = await res.text();
-  if (!text) return undefined;
-  if (!(res.headers.get('content-type') ?? '').includes('json')) return text;
+  const isJson = (res.headers.get('content-type') ?? '').includes('json');
+  if (!isJson) return text || undefined;
   try {
     return JSON.parse(text);
   } catch {
-    return text;
+    if (res.ok) throw new ApiError(res.status, undefined);
+    return text || undefined;
   }
 }
 

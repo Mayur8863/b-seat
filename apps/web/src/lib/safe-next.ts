@@ -12,7 +12,10 @@ function hasUnsafeChar(value: string): boolean {
   return false;
 }
 
-/** Returns a same-site path (`pathname + search + hash`) from untrusted input, else `fallback`. */
+/**
+ * Returns a same-site path (`pathname + search + hash`) from untrusted input, else `fallback`.
+ * Inputs with a malformed escape (a bare `%`) fail closed to the fallback.
+ */
 export function safeNext(next: string | null | undefined, fallback = '/dashboard'): string {
   if (!next || next.length > MAX_LENGTH || !next.startsWith('/') || hasUnsafeChar(next))
     return fallback;

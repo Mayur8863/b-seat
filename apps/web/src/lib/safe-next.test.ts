@@ -42,30 +42,47 @@ describe('safeNext', () => {
     expect(safeNext(input)).toBe(expected);
   });
 
-  it('only ever returns the fallback or a single-slash path, and is idempotent', () => {
-    const inputs = [
-      '//x',
-      '/.//x',
-      '/a/..//x',
-      '/%2e//x',
-      '/%2E%2E//x',
-      '/./%2e//x',
-      '/book/..//x/y?z#w',
-      '/\\x',
-      '/%5Cx',
-      '/\t/x',
-      'https://x',
+  it.each([['/..//x'], ['/.%2e//x'], ['/a/%2e%2e//x'], ['/;/..//x'], ['/x/../..//y']])(
+    'falls back for dot-segment regression %s',
+    (input) => {
+      expect(safeNext(input)).toBe('/dashboard');
+    },
+  );
+
+  it('never leaves the origin and is idempotent for generated inputs', () => {
+    const tokens = [
       '',
-      '/book',
-      '/bookings?x=1#y',
-      '/book/a%20b',
-      '/a/../book',
-      '/./book',
+      '.',
+      '..',
+      '%2e',
+      '%2E%2e',
+      '.%2e',
+      'a',
+      ';',
+      '%2f',
+      '@x',
+      ':',
+      '?',
+      '#',
+      '\\',
+      '%5C',
     ];
-    for (const x of inputs) {
-      const out = safeNext(x);
-      expect(out === '/dashboard' || /^\/(?![/\\])/.test(out)).toBe(true);
-      expect(safeNext(out)).toBe(out);
+    const base = 'https://app.example';
+    const combos: string[][] = [[]];
+    for (let size = 1; size <= 3; size++) {
+      const prev = combos.filter((c) => c.length === size - 1);
+      for (const c of prev) for (const t of tokens) combos.push([...c, t]);
     }
+    let checked = 0;
+    for (const segments of combos) {
+      for (const suffix of ['/x', '//x']) {
+        const input = `/${segments.join('/')}${suffix}`;
+        const out = safeNext(input);
+        expect(new URL(out, base).origin, input).toBe(base);
+        expect(safeNext(out), input).toBe(out);
+        checked++;
+      }
+    }
+    expect(checked).toBeGreaterThan(7000);
   });
 });
