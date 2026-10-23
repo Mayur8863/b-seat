@@ -8,7 +8,13 @@ import { type ReactNode, type Ref, useId } from 'react';
 
 import { ProblemAlert } from '@/components/problem-alert';
 
-const legend = <h2 className="text-lg font-medium">Office space</h2>;
+function Legend({ id }: { id?: string }) {
+  return (
+    <legend id={id} className="mb-3">
+      <h2 className="text-lg font-medium">Office space</h2>
+    </legend>
+  );
+}
 
 interface ChoiceProps {
   spaces: Space[];
@@ -23,16 +29,21 @@ interface ChoiceProps {
 export function SpaceChoice({ spaces, value, onChange, onBlur, error, ref }: ChoiceProps) {
   const id = useId();
   const errorId = `${id}-error`;
+  const legendId = `${id}-legend`;
   return (
     <fieldset className="grid gap-3">
-      <legend className="mb-3">{legend}</legend>
+      <Legend id={legendId} />
+      {error && (
+        <p id={errorId} className="text-destructive text-sm">
+          {error}
+        </p>
+      )}
       <RadioGroup
         ref={ref}
-        tabIndex={-1}
         value={value}
         onValueChange={onChange}
         onBlur={onBlur}
-        aria-label="Office space"
+        aria-labelledby={legendId}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? errorId : undefined}
         className="grid-cols-1 gap-3 sm:grid-cols-2"
@@ -70,11 +81,6 @@ export function SpaceChoice({ spaces, value, onChange, onBlur, error, ref }: Cho
           );
         })}
       </RadioGroup>
-      {error && (
-        <p id={errorId} className="text-destructive text-sm">
-          {error}
-        </p>
-      )}
     </fieldset>
   );
 }
@@ -86,7 +92,7 @@ export function SpaceList({ children }: { children: (spaces: Space[]) => ReactNo
   if (isPending) {
     return (
       <fieldset aria-busy="true" className="grid gap-3">
-        <legend className="mb-3">{legend}</legend>
+        <Legend />
         <span className="sr-only" role="status">
           Loading office spaces…
         </span>
@@ -98,13 +104,14 @@ export function SpaceList({ children }: { children: (spaces: Space[]) => ReactNo
     );
   }
 
-  if (error) {
+  // A failed background refetch keeps the form (and what the user typed) on screen.
+  if (!data) {
     return (
       <section className="grid gap-3">
         <ProblemAlert
           error={error}
           action="availability"
-          title="We couldn't load office spaces"
+          context={{ fallbackTitle: "We couldn't load office spaces" }}
           onRetry={() => void refetch()}
         />
       </section>
@@ -115,7 +122,7 @@ export function SpaceList({ children }: { children: (spaces: Space[]) => ReactNo
   if (spaces.length === 0) {
     return (
       <section className="grid gap-3">
-        {legend}
+        <h2 className="text-lg font-medium">Office space</h2>
         <p className="text-muted-foreground">There are no office spaces to book yet.</p>
       </section>
     );

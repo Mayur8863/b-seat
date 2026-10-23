@@ -7,8 +7,10 @@ export interface ProblemContext {
   seat?: string;
   /** The space's IANA zone. */
   timeZone?: string;
-  /** Current path, for the sign-in link. */
+  /** Current path, for the sign-in link. Only a same-origin relative path is used. */
   path?: string;
+  /** Title for list loads ("We couldn't load seats"), used only for the generic outcomes. */
+  fallbackTitle?: string;
 }
 
 /** Text with optional inline links, so callers render real anchors. */
@@ -20,6 +22,11 @@ export interface ProblemCopy {
 }
 
 const PREFIX = 'urn:bseat:problem:';
+/** `//host` and `scheme:` would make the sign-in redirect leave the site. */
+function isRelativePath(path: string | undefined): path is string {
+  return typeof path === 'string' && path.startsWith('/') && !path.startsWith('//');
+}
+
 const GENERIC = "We couldn't complete that. Try again in a moment.";
 
 /** Maps an API error to user-facing copy (ui.md section 6). */
@@ -30,7 +37,7 @@ export function describeProblem(
 ): ProblemCopy {
   if (!(error instanceof ApiError)) {
     return {
-      title: "We couldn't reach BSeat",
+      title: context.fallbackTitle ?? "We couldn't reach BSeat",
       description: ['Check your connection and try again.'],
     };
   }
@@ -41,7 +48,7 @@ export function describeProblem(
   const zone = context.timeZone ?? 'the office time zone';
 
   if (error.status === 401) {
-    const next = context.path ? `?next=${encodeURIComponent(context.path)}` : '';
+    const next = isRelativePath(context.path) ? `?next=${encodeURIComponent(context.path)}` : '';
     return {
       title: 'Your session has ended',
       description: [{ text: 'Sign in', href: `/sign-in${next}` }, ' again to continue.'],
@@ -139,7 +146,7 @@ export function describeProblem(
 
   const detail = error.problem?.detail;
   if (error.status >= 400 && error.status < 500 && detail) {
-    return { title: 'Something went wrong', description: [detail] };
+    return { title: context.fallbackTitle ?? 'Something went wrong', description: [detail] };
   }
-  return { title: 'Something went wrong', description: [GENERIC] };
+  return { title: context.fallbackTitle ?? 'Something went wrong', description: [GENERIC] };
 }

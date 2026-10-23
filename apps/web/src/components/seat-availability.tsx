@@ -19,11 +19,24 @@ interface Props {
   error: unknown;
   /** The form no longer matches the seats shown. */
   stale: boolean;
+  /** Increments when a user-requested load succeeds; scrolls the seats into view. */
+  scrollSignal: number;
+  /** The requested space's zone: the response has none when the request failed. */
+  timeZone?: string;
   onRetry: () => void;
 }
 
 /** Seats for the chosen window as a keyboard-friendly radio grid. Shows loading, empty, error and success. */
-export function SeatAvailability({ requested, data, loading, error, stale, onRetry }: Props) {
+export function SeatAvailability({
+  requested,
+  data,
+  loading,
+  error,
+  stale,
+  scrollSignal,
+  timeZone,
+  onRetry,
+}: Props) {
   const id = useId();
   const headingId = `${id}-heading`;
   const statusId = `${id}-status`;
@@ -31,8 +44,8 @@ export function SeatAvailability({ requested, data, loading, error, stale, onRet
   const [selectedId, setSelectedId] = useState('');
 
   useEffect(() => {
-    if (data) headingRef.current?.scrollIntoView({ block: 'start' });
-  }, [data]);
+    if (scrollSignal > 0) headingRef.current?.scrollIntoView({ block: 'start' });
+  }, [scrollSignal]);
 
   const seats = data?.seats ?? [];
   const freeCount = seats.filter((seat) => seat.status === 'free').length;
@@ -80,12 +93,11 @@ export function SeatAvailability({ requested, data, loading, error, stale, onRet
         <ProblemAlert
           error={error}
           action="availability"
-          title="We couldn't load seats"
-          context={{ timeZone: data?.space.timeZone }}
+          context={{ timeZone, fallbackTitle: "We couldn't load seats" }}
           onRetry={onRetry}
         />
       )}
-      {requested && error == null && data && seats.length > 0 && (
+      {requested && data && seats.length > 0 && (
         <>
           <RadioGroup
             loop

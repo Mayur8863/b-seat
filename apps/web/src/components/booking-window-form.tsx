@@ -7,7 +7,7 @@ import { Label } from '@bseat/ui/components/label';
 import { NativeSelect, NativeSelectOption } from '@bseat/ui/components/native-select';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2Icon } from 'lucide-react';
-import { useEffect, useId, useMemo } from 'react';
+import { useEffect, useId } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 
@@ -43,15 +43,13 @@ interface Props {
 /** Space, date and time-range picker. Submitting asks for the seats in that window. */
 export function BookingWindowForm({ spaces, pending = false, onSubmit, onValuesChange }: Props) {
   const id = useId();
-  const defaultValues = useMemo<WindowValues>(
-    () => ({
-      spaceId: spaces.length === 1 ? (spaces[0]?.id ?? '') : '',
-      date: tomorrow(),
-      startTime: '09:00',
-      endTime: '17:00',
-    }),
-    [spaces],
-  );
+  // useForm reads these once, on mount.
+  const defaultValues: WindowValues = {
+    spaceId: spaces.length === 1 ? (spaces[0]?.id ?? '') : '',
+    date: tomorrow(),
+    startTime: '09:00',
+    endTime: '17:00',
+  };
   const {
     register,
     control,
@@ -87,16 +85,16 @@ export function BookingWindowForm({ spaces, pending = false, onSubmit, onValuesC
       'aria-describedby': message ? `${helpId} ${errorId}` : helpId,
     };
   };
-  const date_ = field('date');
-  const start_ = field('startTime');
-  const end_ = field('endTime');
+  const dateField = field('date');
+  const startField = field('startTime');
+  const endField = field('endTime');
 
   const error = (f: { errorId: string; message?: string }) =>
-    f.message && (
+    f.message ? (
       <p id={f.errorId} className="text-destructive text-sm">
         {f.message}
       </p>
-    );
+    ) : null;
 
   return (
     <form
@@ -128,23 +126,23 @@ export function BookingWindowForm({ spaces, pending = false, onSubmit, onValuesC
         </p>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-[1fr_1fr_1fr_auto] lg:items-end">
           <div className="col-span-2 grid content-start gap-2 sm:col-span-1">
-            <Label htmlFor={date_.id}>Date</Label>
+            <Label htmlFor={dateField.id}>Date</Label>
             <Input
-              id={date_.id}
+              id={dateField.id}
               type="date"
-              aria-invalid={date_['aria-invalid']}
-              aria-describedby={date_['aria-describedby']}
+              aria-invalid={dateField['aria-invalid']}
+              aria-describedby={dateField['aria-describedby']}
               {...register('date')}
             />
-            {error(date_)}
+            {error(dateField)}
           </div>
           <div className="grid content-start gap-2">
-            <Label htmlFor={start_.id}>Start time</Label>
+            <Label htmlFor={startField.id}>Start time</Label>
             <NativeSelect
-              id={start_.id}
+              id={startField.id}
               className="w-full"
-              aria-invalid={start_['aria-invalid']}
-              aria-describedby={start_['aria-describedby']}
+              aria-invalid={startField['aria-invalid']}
+              aria-describedby={startField['aria-describedby']}
               {...register('startTime')}
             >
               {START_TIMES.map((t) => (
@@ -153,15 +151,15 @@ export function BookingWindowForm({ spaces, pending = false, onSubmit, onValuesC
                 </NativeSelectOption>
               ))}
             </NativeSelect>
-            {error(start_)}
+            {error(startField)}
           </div>
           <div className="grid content-start gap-2">
-            <Label htmlFor={end_.id}>End time</Label>
+            <Label htmlFor={endField.id}>End time</Label>
             <NativeSelect
-              id={end_.id}
+              id={endField.id}
               className="w-full"
-              aria-invalid={end_['aria-invalid']}
-              aria-describedby={end_['aria-describedby']}
+              aria-invalid={endField['aria-invalid']}
+              aria-describedby={endField['aria-describedby']}
               {...register('endTime')}
             >
               {END_TIMES.map((t) => (
@@ -170,7 +168,7 @@ export function BookingWindowForm({ spaces, pending = false, onSubmit, onValuesC
                 </NativeSelectOption>
               ))}
             </NativeSelect>
-            {error(end_)}
+            {error(endField)}
           </div>
           <Button
             type="submit"

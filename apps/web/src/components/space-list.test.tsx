@@ -1,5 +1,6 @@
 import { getSpacesListMockHandler } from '@bseat/api-client/mocks';
-import { screen } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { http } from 'msw';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -38,7 +39,22 @@ describe('SpaceList', () => {
     expect(container).not.toHaveTextContent('form here');
 
     server.use(getSpacesListMockHandler(twoSpaces));
-    screen.getByRole('button', { name: 'Try again' }).click();
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Try again' }));
     expect(await screen.findByText('form here')).toBeInTheDocument();
+  });
+
+  it('keeps the form when a later refetch fails', async () => {
+    server.use(getSpacesListMockHandler(twoSpaces));
+    const { client } = renderWithQuery(<SpaceList>{() => <p>form here</p>}</SpaceList>);
+    await screen.findByText('form here');
+
+    server.use(http.get('*/api/spaces', () => problemResponse(500, 'http-500')));
+    await client.invalidateQueries();
+
+    await waitFor(() => {
+      expect(client.isFetching()).toBe(0);
+    });
+    expect(screen.getByText('form here')).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });

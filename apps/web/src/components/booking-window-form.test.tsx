@@ -44,7 +44,34 @@ describe('BookingWindowForm', () => {
     await user.click(screen.getByRole('button', { name: 'Show seats' }));
 
     expect(await screen.findByText('Choose an office space')).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'London HQ' })).toHaveFocus();
     expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('puts the space radios in the tab order, first in the form', async () => {
+    const user = userEvent.setup();
+    render(<BookingWindowForm spaces={twoSpaces.items} onSubmit={vi.fn()} />);
+
+    await user.tab();
+
+    expect(screen.getByRole('radio', { name: 'London HQ' })).toHaveFocus();
+  });
+
+  it('names the space group once, from its legend', () => {
+    render(<BookingWindowForm spaces={twoSpaces.items} onSubmit={vi.fn()} />);
+    expect(screen.getByRole('radiogroup')).toHaveAccessibleName('Office space');
+    expect(screen.getByRole('radiogroup')).not.toHaveAttribute('aria-label');
+  });
+
+  it('shows the space error under the legend, above the cards', async () => {
+    const user = userEvent.setup();
+    render(<BookingWindowForm spaces={twoSpaces.items} onSubmit={vi.fn()} />);
+    await user.click(screen.getByRole('button', { name: 'Show seats' }));
+
+    const message = await screen.findByText('Choose an office space');
+    const group = screen.getByRole('radiogroup');
+    expect(message.compareDocumentPosition(group) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(group).toHaveAccessibleDescription('Choose an office space');
   });
 
   it('rejects an end time that is not after the start, linked by aria-describedby', async () => {

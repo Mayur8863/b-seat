@@ -13,6 +13,7 @@ const base = {
   loading: false,
   error: null,
   stale: false,
+  scrollSignal: 0,
   onRetry: vi.fn(),
 };
 
@@ -105,9 +106,32 @@ describe('SeatAvailability', () => {
     render(<SeatAvailability {...base} error={error} onRetry={onRetry} />);
 
     const alert = screen.getByRole('alert');
-    expect(alert).toHaveTextContent("We couldn't load seats");
+    expect(alert).toHaveTextContent('Office space not found');
     expect(alert).toHaveTextContent('This space is no longer available.');
     await user.click(within(alert).getByRole('button', { name: 'Try again' }));
     expect(onRetry).toHaveBeenCalledOnce();
+  });
+
+  it('keeps the seats and shows a non-blocking alert when a refresh fails', () => {
+    const error = new ApiError(500, {
+      type: 'urn:bseat:problem:http-500',
+      title: 'Boom',
+      status: 500,
+    });
+    render(<SeatAvailability {...base} data={londonAvailability} error={error} />);
+    expect(screen.getByRole('alert')).toHaveTextContent("We couldn't load seats");
+    expect(screen.getAllByRole('radio', { name: /^A-0\d (Free|Taken)$/ })).toHaveLength(6);
+  });
+
+  it('scrolls the heading into view when the scroll signal changes, not when data does', () => {
+    const scroll = vi.mocked(Element.prototype.scrollIntoView);
+    scroll.mockClear();
+    const { rerender } = render(<SeatAvailability {...base} data={londonAvailability} />);
+    rerender(<SeatAvailability {...base} data={{ ...londonAvailability }} />);
+    expect(scroll).not.toHaveBeenCalled();
+
+    rerender(<SeatAvailability {...base} data={londonAvailability} scrollSignal={1} />);
+    expect(scroll).toHaveBeenCalledOnce();
+    expect(scroll).toHaveBeenCalledWith({ block: 'start' });
   });
 });

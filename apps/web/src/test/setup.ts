@@ -1,6 +1,6 @@
 import * as matchers from '@testing-library/jest-dom/matchers';
 import { cleanup } from '@testing-library/react';
-import { afterAll, afterEach, beforeAll, expect } from 'vitest';
+import { afterAll, afterEach, beforeAll, expect, vi } from 'vitest';
 
 import { server } from './msw';
 
@@ -10,13 +10,15 @@ import { server } from './msw';
 expect.extend(matchers);
 
 // jsdom has no ResizeObserver; Radix radios inside a form measure their hidden input with it.
-globalThis.ResizeObserver = class {
-  observe = () => undefined;
-  unobserve = () => undefined;
-  disconnect = () => undefined;
-};
-// jsdom does not implement scrolling.
-Element.prototype.scrollIntoView = () => undefined;
+if (!('ResizeObserver' in globalThis)) {
+  globalThis.ResizeObserver = class {
+    observe = () => undefined;
+    unobserve = () => undefined;
+    disconnect = () => undefined;
+  };
+}
+// jsdom does not implement scrolling; a spy lets tests assert it.
+Element.prototype.scrollIntoView = vi.fn();
 
 beforeAll(() => {
   server.listen({ onUnhandledFrame: 'error' });

@@ -82,4 +82,34 @@ describe('describeProblem', () => {
     });
     expect(copy.description[0]).toContain('(Europe/Paris)');
   });
+
+  it('applies fallbackTitle only to generic outcomes', () => {
+    const context = { fallbackTitle: "We couldn't load seats" };
+    expect(describeProblem(problem(500, 'http-500'), 'availability', context).title).toBe(
+      "We couldn't load seats",
+    );
+    expect(
+      describeProblem(problem(418, 'teapot', 'Short and stout'), 'availability', context).title,
+    ).toBe("We couldn't load seats");
+    expect(describeProblem(new TypeError('Failed to fetch'), 'availability', context).title).toBe(
+      "We couldn't load seats",
+    );
+    expect(describeProblem(problem(404, 'http-404'), 'availability', context).title).toBe(
+      'Office space not found',
+    );
+    expect(describeProblem(problem(401, 'http-401'), 'availability', context).title).toBe(
+      'Your session has ended',
+    );
+    expect(
+      describeProblem(problem(422, 'booking-rule:too-short'), 'availability', context).title,
+    ).toBe('Booking too short');
+  });
+
+  it('only puts a relative path in the sign-in next parameter', () => {
+    const href = (path: string) =>
+      describeProblem(problem(401, 'http-401'), 'book', { path }).description[0];
+    expect(href('/book?x=1')).toEqual({ text: 'Sign in', href: '/sign-in?next=%2Fbook%3Fx%3D1' });
+    expect(href('//evil.example')).toEqual({ text: 'Sign in', href: '/sign-in' });
+    expect(href('https://evil.example')).toEqual({ text: 'Sign in', href: '/sign-in' });
+  });
 });
