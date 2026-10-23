@@ -42,6 +42,8 @@ task-manager changes owners. Developers set `review`. Only qa-engineer sets `don
 | T014 | QA: find and book (US1+US2) e2e, axe, perf                 | qa-engineer    | T005, T010, T011 | M    | todo   | `test/001-booking-e2e`                |
 | T015 | QA: my bookings (US3) e2e, axe, traceability               | qa-engineer    | T013, T014       | S    | todo   | `test/001-my-bookings-e2e`            |
 | T016 | Docs: README, runbook, changesets                          | docs-writer    | T015             | S    | todo   | `docs/001-seat-booking-docs`          |
+| T017 | ui.md follow-ups from the T008 review (§3.2, §3.4)         | ui-ux-designer | T006             | S    | todo   | `docs/001-ui-spec-followups`          |
+| T018 | Gitleaks allowlist so `bin/security` runs every scanner    | devops         | none             | S    | todo   | `chore/001-gitleaks-allowlist`        |
 
 ---
 
@@ -124,6 +126,7 @@ task-manager changes owners. Developers set `review`. Only qa-engineer sets `don
     - Given the seat grid, When ui.md is read, Then free and taken status is conveyed by text or icon plus label, not colour alone, and all times are shown in the space's local time labelled with its time zone (AC 1.2, edge "time zones").
     - Given the booking flow, When counted from a chosen window, Then a booking takes at most 4 interactions (SC-001).
     - Given mobile, tablet and desktop breakpoints, When ui.md is read, Then layout, keyboard order, focus management after book or cancel, ARIA live regions and contrast notes (light and dark, semantic tokens only) are defined (SC-005).
+  - **Follow-up**: the T008 review found two places where ui.md and the built `/book` page differ (§3.2 and §3.4). They are tracked as T017, so this task's review is not reopened.
 
 **Checkpoint**: Schema, rules, problem types and UI spec are ready. Story work can start.
 
@@ -201,6 +204,16 @@ task-manager changes owners. Developers set `review`. Only qa-engineer sets `don
     - Given the API returns 409 `booking:seat-unavailable`, 409 `booking:user-overlap` or any 422 `booking-rule:*`, When I book, Then an alert (`role="alert"`) shows the ui.md copy for that type. An unknown type shows `detail` (AC 2.3, AC 2.5, AC 2.6, FR-007).
     - Given a booking request is pending, When I press Book again, Then nothing is sent (the button is disabled and `aria-busy`).
     - Given the window is already chosen, When the test counts user-event actions to reach the success message, Then there are ≤ 4 (SC-001).
+  - **Review follow-ups (from T008)**:
+    - Reset the seat selection when the user submits a new window. The reviewer recommends remounting with `key={submitCount}` on `SeatAvailability` instead of lifting selection state into the page.
+    - Decide explicitly whether a selection carries over to a new window, and record the decision in the PR description. If the answer changes ui.md §3.5, tell ui-ux-designer (T017). The recommended default is no carry-over, which matches the `key` reset.
+    - Fix the known gap from T008: a submit served entirely from a fresh cache does not scroll to the seat grid, because `scrollSignal` only increments when a request succeeds.
+    - Split the PR into commits: `packages/ui` primitives first, then `lib/` and its tests, then components. This keeps each commit near the 400-line guideline.
+  - **Acceptance criteria (review follow-ups)**:
+    - Given I selected a free seat for window W1, When I submit a different window W2, Then no seat is selected in W2's grid and the booking bar shows the "Select a free seat to book it." hint (ui.md §3.5, AC 2.1).
+    - Given the carry-over decision, When the PR is reviewed, Then the description states it, and a test in `seat-availability.test.tsx` or `book-view.test.tsx` proves it.
+    - Given the window W was already loaded and its availability is still fresh in the query cache, When I submit W again, Then the "Seats" heading is scrolled into view (`block: 'start'`) and focus stays on the submit button (ui.md §3.3).
+    - Given the branch history, When reviewed, Then the `packages/ui`, `lib/` + tests and component changes are in separate commits, each close to 400 changed lines or fewer.
 
 **Checkpoint**: US1 and US2 together form the MVP (find and book).
 
@@ -222,6 +235,23 @@ task-manager changes owners. Developers set `review`. Only qa-engineer sets `don
     - Given a booking that has started (inserted with a past start through `insertBooking`), When its owner cancels it, Then the response is 409 `urn:bseat:problem:booking:already-started` and it stays active (AC 3.5).
     - Given an already-cancelled own booking, When cancelled again, Then the response is 200 with the same booking and an unchanged `cancelledAt` (idempotent, ADR-0008 section 4).
     - Given no session, Then both routes return 401 (FR-001). Given `bin/pnpm gen:api`, Then `BookingList` and the cancel operation are in the committed `openapi.json`.
+  - **Review follow-ups (from T009 and T010; all minor or nit)**: land these as separate commits before the list and cancel work. If the PR grows past about 400 changed lines, tell the task-manager so the follow-ups can move to their own task.
+    - (a) Move `resolveWindow` out of `spaces/spaces.service.ts` into `common/time/zoned-time.ts` or `bookings/booking-rules.ts`, and type its input as `{ date; startTime; endTime }` instead of `AvailabilityQueryInput`. Its tests in `spaces.service.spec.ts` move with it. Ideally `evaluateBookingRules` returns the resolved instants, so the conversion happens once per request. (code review M1)
+    - (b) Add an integration test where `POST /api/bookings` sends `{ ...valid, userId: otherUserId }`. Optionally switch `CreateBookingInput` to `z.strictObject` (this changes the contract, so run `gen:api`). (security m3, OWASP A01)
+    - (c) Give the mail queue producer a fail-fast path for a Redis outage, so abandoned enqueues do not pile up in memory. Either check `redis.status !== 'ready'` before `add`, or give the producer its own connection with `enableOfflineQueue: false`, as BullMQ recommends for producers. The worker keeps its current connection. (security m2, OWASP A10)
+    - (d) Log a `warn` called `booking.insert_deadlock_retry` with `{ seatId, attempt }` on each `40P01` retry. A small jittered delay (5–25 ms) is optional. (code review N2, security n4)
+    - (e) In `test/bookings.int-spec.ts` (currently lines 359-360), relax the real-timer upper bound from `4_000` to `5_000` ms. (N4)
+    - (f) Extend the comment on the `invalid-local-time` 422 case in `test/bookings.int-spec.ts`. It should say the past date is deliberate and that the case relies on the specified rule order (`invalid-local-time` is checked before `starts-in-past`). (N1)
+    - (g) Fix the comment on BullMQ `jobId` dedupe in `mail/mail.service.ts`: dedupe only holds while the job is retained (`removeOnComplete: 1_000` is count-based). Consider age-based `removeOnComplete`. (n3)
+    - (h) In `test/fixtures.ts`, stop deriving the Mailpit URL from `SMTP_HOST`. Either read a dedicated `MAILPIT_URL` (document it in `.env.example`; set it in compose or CI with devops if needed), or restrict the host to `localhost` or `mailpit`. (n5)
+  - **Acceptance criteria (review follow-ups)**:
+    - (a) Given the bookings and spaces modules, When reviewed, Then `bookings.service.ts` no longer imports from `spaces/spaces.service.ts`, and `resolveWindow` (input typed `{ date: string; startTime: string; endTime: string }`) lives in `common/time/zoned-time.ts` or `bookings/booking-rules.ts` with its existing unit tests passing unchanged. Given `evaluateBookingRules` is changed to return the resolved instants, Then a create request converts the window to instants only once, and the `booking-rules.spec.ts` cases still pass. If it is not changed, the PR says why (code review M1, FR-007).
+    - (b) Given signed-in users A and B, When A sends `POST /api/bookings` with `{ ...validInput, userId: B.id }`, Then the created row's `user_id` is A's id and B has no bookings. If `z.strictObject` is adopted, the response is instead 400 `validation`, no row is created, and the committed `openapi.json` shows `additionalProperties: false` (FR-011, OWASP A01).
+    - (c) Given Redis is not ready, When a booking is created (unit test with the producer connection stubbed as not ready, or offline), Then the enqueue rejects at once instead of being buffered, the API still returns 201 well inside the 2 s bound, `booking.confirmation_not_queued` is logged, and the producer holds no pending command (FR-008, ADR-0008 section 5, OWASP A10).
+    - (d) Given the insert rejects with `40P01` once and then succeeds (unit test), When I book, Then exactly one `warn` log `booking.insert_deadlock_retry` is written with `{ seatId, attempt: 1 }` and no user data. Given jitter is added, Then it stays within 5–25 ms and the unit test controls it (fake timers or an injected delay), so the test is deterministic (ADR-0008 section 2, SC-002).
+    - (e) Given the real-timer enqueue-timeout integration test, When it runs, Then it asserts `elapsed >= 1_900` and `elapsed < 5_000` (FR-008).
+    - (f) and (g) Given the changed comments, When reviewed, Then (f) states that the past date is deliberate and depends on the rule order, and (g) states that dedupe only holds while the job is retained. Given age-based `removeOnComplete` is adopted, Then the `jobId` dedupe test from T010 still passes.
+    - (h) Given `test/fixtures.ts`, When the Mailpit helper builds its URL, Then the URL comes from `MAILPIT_URL` (with a default of `http://localhost:8025`), or from a host checked against an allowlist of `localhost` and `mailpit`. Any other host throws before a request is made (AC 2.2).
 
 - [ ] T013 [US3] Build the `/bookings` page `apps/web/src/app/(app)/bookings/page.tsx` with `components/my-bookings.tsx` (+ `.test.tsx`), and replace the dashboard placeholder in `apps/web/src/app/(app)/dashboard/page.tsx` with links
   - **Owner**: frontend-dev · **Branch**: `feat/001-my-bookings-ui` · **Size**: M · **Depends on**: T006, T008, T012 · **Status**: todo
@@ -232,6 +262,12 @@ task-manager changes owners. Developers set `review`. Only qa-engineer sets `don
     - Given an upcoming booking, When I cancel it (with the ui.md confirmation, if defined), Then a success message shows and the booking disappears after refetch (AC 3.3).
     - Given the API returns 409 `booking:already-started`, When I cancel, Then an alert shows the ui.md copy and the booking stays listed (AC 3.5). Given a 500, Then an error alert shows (FR-013).
     - Given the dashboard, When it renders, Then it has links "Book a seat" (`/book`) and "My bookings" (`/bookings`) instead of the placeholder text.
+  - **Review follow-ups (from T008)**:
+    - Add the "My bookings" outline button (`Button variant="outline" asChild`, linking to `/bookings`) to the `/book` page header, in a `flex flex-wrap justify-between` row with the h1 (ui.md §1). It was deferred from T008 because typedRoutes rejects a link to a route that does not exist yet.
+    - Once `/bookings` exists, type `ProblemPart.href` in `apps/web/src/lib/booking-problems.ts` as `Route`, and remove the `href as Route` cast in `apps/web/src/components/problem-alert.tsx`.
+  - **Acceptance criteria (review follow-ups)**:
+    - Given `/book` renders, When the header is inspected, Then it shows the h1 and an outline link "My bookings" to `/bookings` in one `flex flex-wrap justify-between` row, and the link comes right after the h1 in tab order (ui.md §1, §3.1).
+    - Given `booking-problems.ts` and `problem-alert.tsx`, When `bin/pnpm --filter @bseat/web typecheck` runs, Then it passes with `ProblemPart.href: Route` and no `as Route` cast remaining in `problem-alert.tsx`.
 
 **Checkpoint**: All three stories are functional.
 
@@ -264,6 +300,23 @@ task-manager changes owners. Developers set `review`. Only qa-engineer sets `don
     - Given the runbook, When an operator deploys to RDS, Then it states that the `0002_booking_exclusions` migration creates `btree_gist` (a trusted extension, so the database owner can create it; correct the existing "master user" wording in `docs/runbooks/database-migrations.md`), and explains how to diagnose missing confirmation emails (FR-008).
     - Given the release, When `bin/pnpm changeset status` runs, Then user-visible changesets exist for `@bseat/api` and `@bseat/web`.
 
+### Review follow-ups (from the T008–T010 reviews)
+
+- [ ] T017 [P] Bring `specs/001-seat-booking/ui.md` in line with the reviewed `/book` behaviour (T008 review follow-up)
+  - **Owner**: ui-ux-designer · **Branch**: `docs/001-ui-spec-followups` · **Size**: S · **Depends on**: T006 · **Status**: todo
+  - **Scope**: Spec-only edits to ui.md. §3.2: note that the "Office space" fieldset legend renders only in the loading state. §3.4: when a background refetch fails while data is shown, the seat alert appears above the grid, which stays visible. The designer confirms that this is the intended behaviour, or specifies the change for frontend-dev (raise it with the task-manager so it becomes a task).
+  - **Acceptance criteria**:
+    - Given ui.md §3.2, When read, Then it states that the space fieldset legend renders only in the loading state (FR-013).
+    - Given ui.md §3.4, When read, Then it specifies the "refetch failed while data is shown" state: the alert (`role="alert"`) shows above the still-visible grid, with its copy and its "Try again" action. The PR records that the designer confirms this behaviour, or lists the requested change (FR-013).
+
+- [ ] T018 [P] Make `bin/security` run all its scanners locally: add a gitleaks allowlist, or scan in git mode
+  - **Owner**: devops · **Branch**: `chore/001-gitleaks-allowlist` · **Size**: S · **Depends on**: none · **Status**: todo
+  - **Scope**: `bin/gitleaks dir .` currently reports 75 hits in untracked files. `bin/security` chains its steps with `&&`, so Semgrep and Trivy never run locally. Either add a `.gitleaks.toml` allowlist (extending the default rules) for `node_modules`, `.pnpm-store`, `.next` and `.turbo`, or switch the gitleaks step of `bin/security` to `git` mode. Keep CI's gitleaks behaviour at least as strict as it is today.
+  - **Acceptance criteria**:
+    - Given a working tree after `bin/pnpm install` and `bin/pnpm build`, When `bin/security gitleaks` runs, Then it reports no findings in `node_modules`, `.pnpm-store`, `.next` or `.turbo`, and exits 0 when no real secret exists.
+    - Given a known test secret in a source file under `apps/` (in dir mode, in the working tree; in git mode, in a throwaway commit on a scratch branch that is deleted afterwards), When `bin/security gitleaks` runs, Then it still reports the finding and exits non-zero. The change does not hide application sources.
+    - Given a clean tree, When `bin/security` runs with no argument, Then the gitleaks, Semgrep and Trivy steps all execute (all three `==>` headers are printed).
+
 ---
 
 ## Traceability (spec → tasks)
@@ -295,7 +348,7 @@ task-manager changes owners. Developers set `review`. Only qa-engineer sets `don
 | FR-010                              | T002, T007, T012                                           |
 | FR-011                              | T007 (no user data), T009, T012 (404 parity)               |
 | FR-012                              | T005                                                       |
-| FR-013                              | T006, T008, T011, T013, T014, T015                         |
+| FR-013                              | T006, T008, T011, T013, T014, T015, T017                   |
 | SC-001                              | T006, T011, T014                                           |
 | SC-002                              | T009                                                       |
 | SC-003                              | T014                                                       |
@@ -311,9 +364,9 @@ task-manager changes owners. Developers set `review`. Only qa-engineer sets `don
 ## Dependencies & execution order
 
 ```text
-Level 0: T001
+Level 0: T001   T018 (no dependencies; can start at any time)
 Level 1: T002, T003, T004, T006                (each needs T001)
-Level 2: T005 (T002, T003)   T007 (T002, T003, T004)
+Level 2: T005 (T002, T003)   T007 (T002, T003, T004)   T017 (T006)
 Level 3: T008 (T006, T007)   T009 (T003, T004, T007)
 Level 4: T010 (T009)   T011 (T008, T009)   T012 (T009)
 Level 5: T013 (T006, T008, T012)   T014 (T005, T010, T011)
@@ -331,6 +384,7 @@ Level 7: T016 (T015)
 - After T001: **T002, T003, T004, T006** run in parallel (separate files and owners).
 - After T009: **T010, T012** and (once T008 is done) **T011** run in parallel. T010 and T012 both edit `bookings.service.ts` and `bookings.service.spec.ts` (different methods). Whichever merges second rebases. Their integration tests are in separate files (`bookings.int-spec.ts` and `my-bookings.int-spec.ts`).
 - T005 (seed) can land any time after T002 and T003. Only QA e2e (T014) needs it.
+- **T017** (ui.md follow-ups) and **T018** (gitleaks) block nothing and can run alongside any story work. T017 edits only ui.md. If T011's carry-over decision changes §3.5, it goes into T017.
 
 ## Implementation strategy
 
@@ -346,3 +400,13 @@ Level 7: T016 (T015)
   `api`, `web`, `db` or `docs` scope. Add a changeset for user-visible tasks (T007–T013).
 - Write tests first for business logic (T002, T003, T009, T012). The PR shows the failing test commit.
 - No new runtime dependencies are planned. Any new dependency needs a justification in the PR and must be raised with the task-manager.
+- The T008–T010 reviews found only minors and nits, with no blockers or majors. Their follow-ups are recorded in T011, T012 and T013 ("Review follow-ups") and in the new T017 and T018. They do not reopen T008, T009 or T010.
+
+## Open questions (human decision needed)
+
+- **OQ-1: per-user throttling on booking writes (security m1, OWASP A06).** Should `POST /api/bookings`, and T012's
+  `POST /api/bookings/{bookingId}/cancel`, get per-user rate limiting (for example `@nestjs/throttler` at about 20 requests
+  per minute) before the cancel route ships? Each 201 queues a confirmation email, so a book/cancel loop could
+  queue unbounded mail. This adds a dependency and needs product and architect decisions (the limit, whether it is keyed
+  per user or per IP, the 429 problem `type`, and whether it needs an ADR). **Not assigned to any task yet.** If
+  approved, the task-manager will create a backend-dev task, and T012 may need to depend on it.
