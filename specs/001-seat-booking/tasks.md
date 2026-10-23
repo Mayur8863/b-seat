@@ -44,6 +44,7 @@ task-manager changes owners. Developers set `review`. Only qa-engineer sets `don
 | T016 | Docs: README, runbook, changesets                          | docs-writer    | T015             | S    | todo   | `docs/001-seat-booking-docs`          |
 | T017 | ui.md follow-ups from the T008 review (§3.2, §3.4)         | ui-ux-designer | T006             | S    | todo   | `docs/001-ui-spec-followups`          |
 | T018 | Gitleaks allowlist so `bin/security` runs every scanner    | devops         | none             | S    | todo   | `chore/001-gitleaks-allowlist`        |
+| T019 | Measure `@bseat/api-client` changed lines in coverage      | devops         | none             | S    | todo   | `chore/001-api-client-coverage`       |
 
 ---
 
@@ -207,12 +208,13 @@ task-manager changes owners. Developers set `review`. Only qa-engineer sets `don
   - **Review follow-ups (from T008)**:
     - Reset the seat selection when the user submits a new window. The reviewer recommends remounting with `key={submitCount}` on `SeatAvailability` instead of lifting selection state into the page.
     - Decide explicitly whether a selection carries over to a new window, and record the decision in the PR description. If the answer changes ui.md §3.5, tell ui-ux-designer (T017). The recommended default is no carry-over, which matches the `key` reset.
-    - Fix the known gap from T008: a submit served entirely from a fresh cache does not scroll to the seat grid, because `scrollSignal` only increments when a request succeeds.
+    - Fix the known gap from T008: a submit served entirely from a fresh cache does not scroll to the seat grid, because `scrollSignal` only increments when a request succeeds. Code review found a side effect (N1): after a cache-served submit, `askedAt` never settles, so the next background refetch shows the busy UI and scrolls the page. Suggested fix: in `apps/web/src/components/book-view.tsx`, replace the `askedAt`/`dataUpdatedAt` timestamp comparison with `queryClient.fetchQuery({ ...options, staleTime: 0 })` and an `asking` flag that is cleared in `finally`.
     - Split the PR into commits: `packages/ui` primitives first, then `lib/` and its tests, then components. This keeps each commit near the 400-line guideline.
   - **Acceptance criteria (review follow-ups)**:
     - Given I selected a free seat for window W1, When I submit a different window W2, Then no seat is selected in W2's grid and the booking bar shows the "Select a free seat to book it." hint (ui.md §3.5, AC 2.1).
     - Given the carry-over decision, When the PR is reviewed, Then the description states it, and a test in `seat-availability.test.tsx` or `book-view.test.tsx` proves it.
     - Given the window W was already loaded and its availability is still fresh in the query cache, When I submit W again, Then the "Seats" heading is scrolled into view (`block: 'start'`) and focus stays on the submit button (ui.md §3.3).
+    - Given a submit of W was served from the cache, When a later background refetch of W runs (for example on window focus or after invalidation), Then the submit button does not show the busy state, `aria-busy` is not set, and the page does not scroll. Only user-requested submits scroll (code review N1, ui.md §3.3).
     - Given the branch history, When reviewed, Then the `packages/ui`, `lib/` + tests and component changes are in separate commits, each close to 400 changed lines or fewer.
 
 **Checkpoint**: US1 and US2 together form the MVP (find and book).
@@ -278,12 +280,17 @@ task-manager changes owners. Developers set `review`. Only qa-engineer sets `don
 - [ ] T014 QA for US1 and US2: `apps/web/e2e/booking.spec.ts` (journey + axe) and `apps/api/test/availability-perf.int-spec.ts`. Set T007–T011 to `done` when green
   - **Owner**: qa-engineer · **Branch**: `test/001-booking-e2e` · **Size**: M · **Depends on**: T005, T010, T011 · **Status**: todo
   - **Scope**: e2e runs against the seeded stack. Pick a random date 2–28 days ahead and the first free seat, to avoid collisions with persisted dev data. Add reproduction steps for any failure to the owning task.
+  - **Review follow-ups (from T008 QA)**:
+    - Under parallel load there are intermittent flakes: a sign-up redirect timeout in `auth.spec.ts`, an axe "execution context destroyed" on `/` (mobile), and a failure in the sign-up step of the `/book` axe test. Fix them with a sturdier sign-up helper (create the user through the API, then wait for hydration before acting), or with a fixed worker count. Do not fix them with retries alone.
+    - Known coverage gap: the keyboard-only `/book` journey runs on Chromium only. Firefox and WebKit are not covered. Either extend it to those projects, or state the gap in the PR so a human can accept it.
   - **Acceptance criteria**:
     - Given a new user signs up, When they open `/book`, choose London HQ, a date and a window, and book the first free seat, Then the success message appears and the seat shows taken (AC 1.1, AC 1.2, AC 2.1). After choosing the window it takes ≤ 4 interactions and < 30 s (SC-001).
     - Given a signed-out visitor, When they open `/book`, Then they land on `/sign-in?next=%2Fbook` (AC 1.4).
     - Given `/book` in its initial, availability-loaded and conflict-error states, When axe runs with WCAG 2.1 AA tags, Then there are zero violations (SC-005, FR-013).
     - Given a space with 200 seats and 200 active bookings, When availability is requested 50 times, Then p95 latency is < 1000 ms, and `EXPLAIN` (recorded in the PR) shows the GiST index in use (SC-003).
     - Given the full suite (`bin/pnpm lint typecheck test build`, e2e), When run, Then it is green, and the PR lists the test that proves each AC for US1 and US2.
+    - Given the stack is running with the default e2e worker count (or the fixed count chosen above, recorded in `playwright.config.ts`), When `docker compose --profile e2e run --rm e2e` runs 5 times in a row, Then all 5 full runs are green. Tests in `auth.spec.ts`, the `/` axe test (mobile) and the `/book` axe test pass without retries (SC-005, FR-013).
+    - Given the keyboard-only `/book` journey, When the PR is reviewed, Then it either runs on Chromium, Firefox and WebKit, or the PR states that only Chromium is covered.
 
 - [ ] T015 QA for US3: `apps/web/e2e/my-bookings.spec.ts` (journey + axe) and the final traceability check. Set T012–T013 to `done` when green
   - **Owner**: qa-engineer · **Branch**: `test/001-my-bookings-e2e` · **Size**: S · **Depends on**: T013, T014 · **Status**: todo
@@ -316,6 +323,19 @@ task-manager changes owners. Developers set `review`. Only qa-engineer sets `don
     - Given a working tree after `bin/pnpm install` and `bin/pnpm build`, When `bin/security gitleaks` runs, Then it reports no findings in `node_modules`, `.pnpm-store`, `.next` or `.turbo`, and exits 0 when no real secret exists.
     - Given a known test secret in a source file under `apps/` (in dir mode, in the working tree; in git mode, in a throwaway commit on a scratch branch that is deleted afterwards), When `bin/security gitleaks` runs, Then it still reports the finding and exits non-zero. The change does not hide application sources.
     - Given a clean tree, When `bin/security` runs with no argument, Then the gitleaks, Semgrep and Trivy steps all execute (all three `==>` headers are printed).
+
+- [ ] T019 [P] Measure `packages/api-client` changed lines against the 80% diff-cover gate
+  - **Owner**: devops (the CI and coverage wiring). qa-engineer reviews the test placement. · **Branch**: `chore/001-api-client-coverage` · **Size**: S · **Depends on**: none · **Status**: todo
+  - **Scope**: Today the changed lines in `packages/api-client/src/fetcher.ts` are never measured: no package collects coverage for them, and CI's diff-cover step (`.github/workflows/ci.yml`, currently lines 72-77) only reads the `apps/api` and `apps/web` lcov files. Choose one option:
+    - Give `@bseat/api-client` its own vitest config (with a coverage floor) and `test` script. Its `lcov.info` is then path-fixed and passed to diff-cover.
+    - Or add `packages/api-client/src/fetcher.ts` to the web vitest coverage `include`, with repo-relative paths in the lcov.
+
+    Optionally move `apps/web/src/lib/api-fetcher.test.ts` into the package. Generated code (`src/generated`) stays excluded. No new dependencies are needed beyond vitest, which the workspace already has.
+
+  - **Acceptance criteria**:
+    - Given a PR that changes `packages/api-client/src/fetcher.ts`, When CI's "Coverage ≥ 80% on changed lines" step runs, Then diff-cover reports those lines, and fails the step if under 80% of them are covered (Definition of done: changed-line coverage).
+    - Given `bin/pnpm test:coverage`, When run, Then the lcov covering `fetcher.ts` is produced with paths diff-cover resolves (for example `SF:packages/api-client/src/fetcher.ts`), and `src/generated/**` is excluded.
+    - Given the fetcher tests (in the package or in `apps/web`), When `bin/pnpm test` runs, Then they run exactly once, not in both places.
 
 ---
 
@@ -364,7 +384,7 @@ task-manager changes owners. Developers set `review`. Only qa-engineer sets `don
 ## Dependencies & execution order
 
 ```text
-Level 0: T001   T018 (no dependencies; can start at any time)
+Level 0: T001   T018, T019 (no dependencies; can start at any time)
 Level 1: T002, T003, T004, T006                (each needs T001)
 Level 2: T005 (T002, T003)   T007 (T002, T003, T004)   T017 (T006)
 Level 3: T008 (T006, T007)   T009 (T003, T004, T007)
@@ -384,7 +404,7 @@ Level 7: T016 (T015)
 - After T001: **T002, T003, T004, T006** run in parallel (separate files and owners).
 - After T009: **T010, T012** and (once T008 is done) **T011** run in parallel. T010 and T012 both edit `bookings.service.ts` and `bookings.service.spec.ts` (different methods). Whichever merges second rebases. Their integration tests are in separate files (`bookings.int-spec.ts` and `my-bookings.int-spec.ts`).
 - T005 (seed) can land any time after T002 and T003. Only QA e2e (T014) needs it.
-- **T017** (ui.md follow-ups) and **T018** (gitleaks) block nothing and can run alongside any story work. T017 edits only ui.md. If T011's carry-over decision changes §3.5, it goes into T017.
+- **T017** (ui.md follow-ups), **T018** (gitleaks) and **T019** (api-client coverage) block nothing and can run alongside any story work. T018 and T019 both belong to devops and touch different files. T017 edits only ui.md. If T011's carry-over decision changes §3.5, it goes into T017.
 
 ## Implementation strategy
 
@@ -400,7 +420,11 @@ Level 7: T016 (T015)
   `api`, `web`, `db` or `docs` scope. Add a changeset for user-visible tasks (T007–T013).
 - Write tests first for business logic (T002, T003, T009, T012). The PR shows the failing test commit.
 - No new runtime dependencies are planned. Any new dependency needs a justification in the PR and must be raised with the task-manager.
-- The T008–T010 reviews found only minors and nits, with no blockers or majors. Their follow-ups are recorded in T011, T012 and T013 ("Review follow-ups") and in the new T017 and T018. They do not reopen T008, T009 or T010.
+- After fixes, only minor and nit findings remain from the T008–T010 reviews. Blockers and majors were raised and then fixed on this branch:
+  - T008 code review: blocker B1 (keyboard access to the space group) and major M1 (problem copy and time zone). Both were fixed in `d44fbf9`.
+  - T008 security review: major M1, an open redirect after sign-in that predates T008. It was fixed in `0efbe5c` and `f9dcb56`, and its dot-segment bypass was closed after a second re-review.
+
+  The remaining follow-ups are recorded in T011, T012, T013 and T014 ("Review follow-ups") and in the new tasks T017, T018 and T019. They do not reopen T008, T009 or T010.
 
 ## Open questions (human decision needed)
 
@@ -410,3 +434,18 @@ Level 7: T016 (T015)
   queue unbounded mail. This adds a dependency and needs product and architect decisions (the limit, whether it is keyed
   per user or per IP, the 429 problem `type`, and whether it needs an ADR). **Not assigned to any task yet.** If
   approved, the task-manager will create a backend-dev task, and T012 may need to depend on it.
+- **OQ-2: two `pnpm audit --prod` advisories that predate this feature. Accept or bump?**
+  - `braces` GHSA-vfj7-8cjw-p6xm (high). It comes in through the eslint tooling in `packages/config`. It is build-time only, and no patched version exists yet.
+  - `esbuild` GHSA-67mh-4wv8-2f99 (moderate). It comes in via `better-auth > drizzle-kit > @esbuild-kit`, and only the dev server is exposed.
+
+  A human decides whether to accept each one (record it, with a review date, in the audit or Trivy ignore list) or to bump or override it. If either is bumped or overridden, the task-manager will create a devops task.
+
+- **OQ-3: how to split `feat/001-seat-booking` into PRs.** The branch holds T002–T010 plus fix commits. A human decides between one PR
+  and a split per task. If it is split, the sign-in redirect fixes (`0efbe5c`, `f9dcb56` and the coming api-client commit) should be their own PR.
+
+### Optional hardening (not assigned)
+
+- `apps/web/src/components/welcome.tsx:23` shows `error.message` for any status, 5xx included (security n6). There are two options:
+  make "ProblemFilter never puts internals in a 5xx `detail`" an explicit API rule, enforced by a test in `problem.filter.spec.ts`;
+  or show generic copy for 5xx in the web app. The architect chooses. The task-manager then creates or extends a task (T013 is the
+  natural home for the web-side option).
