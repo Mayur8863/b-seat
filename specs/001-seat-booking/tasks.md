@@ -441,7 +441,7 @@ Level 7: T016 (T015)
   A human decides whether to accept each one (record it, with a review date, in the audit or Trivy ignore list) or to bump or override it. If either is bumped or overridden, the task-manager will create a devops task.
 
 - **OQ-3: how to split `feat/001-seat-booking` into PRs.** The branch holds T002–T010 plus fix commits. A human decides between one PR
-  and a split per task. If it is split, the sign-in redirect fixes (`0efbe5c`, `f9dcb56` and the coming api-client commit) should be their own PR.
+  and a split per task. If it is split, the sign-in redirect and fetcher error-body fixes (`0efbe5c`, `f9dcb56`, `6f696c5`, `ae0ae12`) should be their own PR.
 
 ### Optional hardening (not assigned)
 
