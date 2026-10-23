@@ -34,16 +34,42 @@ function baseUrl(): string {
   return process.env.API_INTERNAL_URL ?? 'http://localhost:3001';
 }
 
-/** Gateways and proxies can answer with HTML or arbitrary JSON; only trust real problem details. */
-function asProblem(data: unknown): ProblemDetails | undefined {
-  if (typeof data !== 'object' || data === null) return undefined;
-  return 'type' in data && typeof data.type === 'string' ? (data as ProblemDetails) : undefined;
+const str = (value: unknown): string | undefined => (typeof value === 'string' ? value : undefined);
+
+/**
+ * Gateways and proxies can answer with HTML or arbitrary JSON, so only trust real problem details.
+ * Requiring a string `type` is deliberately stricter than RFC 9457 (where it is optional):
+ * every BSeat API error carries one, so its absence means the body did not come from the API.
+ */
+function asProblem(data: unknown, status: number): ProblemDetails | undefined {
+  if (typeof data !== 'object' || data === null || !('type' in data)) return undefined;
+  const raw = data as Record<string, unknown>;
+  if (typeof raw.type !== 'string') return undefined;
+  const problem: ProblemDetails = {
+    type: raw.type,
+    title: str(raw.title) ?? raw.type,
+    status: typeof raw.status === 'number' ? raw.status : status,
+  };
+  const detail = str(raw.detail);
+  const instance = str(raw.instance);
+  const requestId = str(raw.requestId);
+  if (detail !== undefined) problem.detail = detail;
+  if (instance !== undefined) problem.instance = instance;
+  if (requestId !== undefined) problem.requestId = requestId;
+  if (Array.isArray(raw.errors)) problem.errors = raw.errors as ProblemDetails['errors'];
+  return problem;
 }
 
 async function parseBody(res: Response): Promise<unknown> {
   if (res.status === 204 || res.headers.get('content-length') === '0') return undefined;
-  const type = res.headers.get('content-type') ?? '';
-  return type.includes('json') ? res.json() : res.text();
+  const text = await res.text();
+  if (!text) return undefined;
+  if (!(res.headers.get('content-type') ?? '').includes('json')) return text;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
 }
 
 export async function apiFetch<T>(url: string, init: RequestInit = {}): Promise<T> {
@@ -51,7 +77,7 @@ export async function apiFetch<T>(url: string, init: RequestInit = {}): Promise<
   if (!headers.has('accept')) headers.set('accept', 'application/json');
   const res = await fetch(`${baseUrl()}${url}`, { credentials: 'include', ...init, headers });
   const data = await parseBody(res);
-  if (!res.ok) throw new ApiError(res.status, asProblem(data));
+  if (!res.ok) throw new ApiError(res.status, asProblem(data, res.status));
   return { data, status: res.status, headers: res.headers } as T;
 }
 

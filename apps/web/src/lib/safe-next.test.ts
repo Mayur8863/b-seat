@@ -5,6 +5,7 @@ import { safeNext } from './safe-next';
 describe('safeNext', () => {
   it.each([
     ['//x'],
+    ['/%E0%A4%A'],
     ['/.//x'],
     ['/a/..//x'],
     ['/%2e//x'],
@@ -36,6 +37,7 @@ describe('safeNext', () => {
     ['/book', '/book'],
     ['/bookings?x=1#y', '/bookings?x=1#y'],
     ['/book/a%20b', '/book/a%20b'],
+    ['/%2F%2Fx', '/%2F%2Fx'],
   ])('keeps same-site path %s', (input, expected) => {
     expect(safeNext(input)).toBe(expected);
   });

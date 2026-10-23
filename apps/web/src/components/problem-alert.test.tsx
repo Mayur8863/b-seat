@@ -69,4 +69,19 @@ describe('ProblemAlert', () => {
     render(<ProblemAlert error={new TypeError('network')} action="book" />);
     expect(screen.getByRole('alert')).toHaveTextContent("We couldn't reach BSeat");
   });
+
+  it('prefers an explicit context path over the current page', () => {
+    pathname = '/book';
+    render(
+      <ProblemAlert
+        error={problem(401, 'http-401')}
+        action="book"
+        context={{ path: '/bookings' }}
+      />,
+    );
+    expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute(
+      'href',
+      '/sign-in?next=%2Fbookings',
+    );
+  });
 });

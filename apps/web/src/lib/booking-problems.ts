@@ -49,7 +49,7 @@ export function describeProblem(
   const zone = context.timeZone ?? 'the office time zone';
 
   if (error.status === 401) {
-    const path = context.path === undefined ? undefined : safeNext(context.path, '');
+    const path = safeNext(context.path, '');
     const next = path ? `?next=${encodeURIComponent(path)}` : '';
     return {
       title: 'Your session has ended',
