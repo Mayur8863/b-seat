@@ -34,8 +34,8 @@ task-manager changes owners. Developers set `review`. Only qa-engineer sets `don
 | T006 | UI spec `ui.md` for booking screens                        | ui-ux-designer | T001             | M    | review | `docs/001-booking-ui-spec`            |
 | T007 | Spaces list and availability API                           | backend-dev    | T002, T003, T004 | M    | review | `feat/001-spaces-availability-api`    |
 | T008 | `/book` page: spaces, window form, seat availability       | frontend-dev   | T006, T007       | M    | todo   | `feat/001-book-page-availability`     |
-| T009 | Create booking API with rules and conflict mapping         | backend-dev    | T003, T004, T007 | M    | todo   | `feat/001-create-booking-api`         |
-| T010 | Booking confirmation email                                 | backend-dev    | T009             | S    | todo   | `feat/001-booking-confirmation-email` |
+| T009 | Create booking API with rules and conflict mapping         | backend-dev    | T003, T004, T007 | M    | review | `feat/001-create-booking-api`         |
+| T010 | Booking confirmation email                                 | backend-dev    | T009             | S    | review | `feat/001-booking-confirmation-email` |
 | T011 | Book a seat from the availability grid                     | frontend-dev   | T008, T009       | M    | todo   | `feat/001-book-seat-ui`               |
 | T012 | My bookings list and cancel API                            | backend-dev    | T009             | M    | todo   | `feat/001-my-bookings-api`            |
 | T013 | `/bookings` page with cancel, dashboard links              | frontend-dev   | T006, T008, T012 | M    | todo   | `feat/001-my-bookings-ui`             |
@@ -170,7 +170,7 @@ task-manager changes owners. Developers set `review`. Only qa-engineer sets `don
 **Independent test**: Book a free seat. It appears as taken for that window, and a confirmation email arrives.
 
 - [ ] T009 [US2] Build the bookings module `apps/api/src/bookings/` (`bookings.schemas.ts`, `bookings.service.ts`, `bookings.service.spec.ts`, `bookings.controller.ts`, `bookings.module.ts`) with `POST /api/bookings`, add `apps/api/test/bookings.int-spec.ts`, and regenerate `apps/api/openapi.json`
-  - **Owner**: backend-dev · **Branch**: `feat/001-create-booking-api` · **Size**: M · **Depends on**: T003, T004, T007 · **Status**: todo
+  - **Owner**: backend-dev · **Branch**: `feat/001-create-booking-api` · **Size**: M · **Depends on**: T003, T004, T007 · **Status**: review
   - **Scope**: As in `contracts/bookings.md` (`CreateBookingInput`, `Booking`). Load the seat and space, run `evaluateBookingRules`, insert, and map driver errors from `DrizzleQueryError.cause` exactly as in contracts/bookings.md (`23P01` by constraint name, `40P01` retried at most 3 attempts in total, seat FK `23503` → 404, anything else rethrown). Use the injected `Clock`. Log `booking.created` with ids only. Unit tests of the error mapping come first. The email is T010.
   - **Acceptance criteria**:
     - Given a free seat and a valid window tomorrow, When I `POST /api/bookings`, Then I get 201 `Booking` with local `date`, `startTime`, `endTime`, `timeZone`, UTC `startsAt` and `endsAt`, `status: "active"`, and availability for that window shows the seat `taken` (AC 2.1, FR-004).
@@ -185,7 +185,7 @@ task-manager changes owners. Developers set `review`. Only qa-engineer sets `don
     - Given `bin/pnpm gen:api`, When run, Then `openapi.json` includes `CreateBookingInput` and `Booking` and is committed.
 
 - [ ] T010 [P] [US2] Send the booking confirmation email: `apps/api/src/bookings/booking-confirmation.mail.ts` (+ `.spec.ts`), add an optional `jobId` to `apps/api/src/mail/mail.service.ts`, and extend `apps/api/test/bookings.int-spec.ts`
-  - **Owner**: backend-dev · **Branch**: `feat/001-booking-confirmation-email` · **Size**: S · **Depends on**: T009 · **Status**: todo
+  - **Owner**: backend-dev · **Branch**: `feat/001-booking-confirmation-email` · **Size**: S · **Depends on**: T009 · **Status**: review
   - **Scope**: Content per `contracts/booking-email.md`. Enqueue after commit with `jobId: booking-confirmed-<bookingId>` (no `:`, which BullMQ 6 rejects), awaited for at most 2 s. Catch enqueue errors and timeouts, and log them at `error` level as `booking.confirmation_not_queued` (research R-5, ADR-0008 section 5). The integration test polls Mailpit's HTTP API (`http://$SMTP_HOST:8025/api/v1/search?query=to:<unique address>`) through a small helper in `apps/api/test/fixtures.ts`.
   - **Acceptance criteria**:
     - Given a successful booking for a unique address, When at most 60 s pass, Then Mailpit holds one message to that address with subject `Seat {label} booked at {space} on {date}`, and the body contains the space name, seat label, local date, local start–end and the IANA time zone (AC 2.2, SC-004).

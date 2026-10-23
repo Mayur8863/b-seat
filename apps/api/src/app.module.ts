@@ -9,6 +9,7 @@ import type { Redis } from 'ioredis';
 import { LoggerModule } from 'nestjs-pino';
 
 import { AuthModule } from './auth/auth.module.js';
+import { BookingsModule } from './bookings/bookings.module.js';
 import { ProblemFilter } from './common/errors/problem.filter.js';
 import { validationPipe } from './common/errors/validation.js';
 import { type Env, loadEnv } from './config/env.js';
@@ -54,6 +55,7 @@ import { SpacesModule } from './spaces/spaces.module.js';
     MailModule,
     AuthModule,
     SpacesModule,
+    BookingsModule,
   ],
   controllers: [HealthController, MeController],
   providers: [

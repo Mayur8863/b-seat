@@ -9,8 +9,13 @@ import { MAIL_QUEUE, type MailJob } from './mail.types.js';
 export class MailService {
   constructor(@InjectQueue(MAIL_QUEUE) private readonly queue: Queue<MailJob>) {}
 
-  async send(job: MailJob): Promise<void> {
+  /**
+   * `jobId` makes the enqueue idempotent: BullMQ ignores a job whose id it still holds
+   * (ids must not contain a single `:`).
+   */
+  async send(job: MailJob, options: { jobId?: string } = {}): Promise<void> {
     await this.queue.add('send', job, {
+      jobId: options.jobId,
       attempts: 5,
       backoff: { type: 'exponential', delay: 2_000 },
       removeOnComplete: 1_000,

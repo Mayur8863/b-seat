@@ -1,18 +1,8 @@
 import { z } from 'zod';
 
-/*
- * Contract: specs/001-seat-booking/contracts/spaces.md. The field helpers below are unnamed
- * (no `.meta({ id })`) so they never become shared OpenAPI components; every named schema
- * belongs to one direction only.
- */
+import { Instant, LocalDate, LocalTime, TimeZone } from '../common/schemas/field-formats.js';
 
-const LocalDate = z.iso.date().describe("Date in the space's time zone (YYYY-MM-DD)");
-const LocalTime = z
-  .string()
-  .regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Expected a time as HH:mm')
-  .describe("Wall-clock time in the space's time zone (HH:mm)");
-const Instant = z.iso.datetime().describe('UTC instant (ISO 8601)');
-const TimeZone = z.string().describe('IANA time zone, e.g. Europe/London');
+// Contract: specs/001-seat-booking/contracts/spaces.md.
 
 // ---- Requests ----
 
