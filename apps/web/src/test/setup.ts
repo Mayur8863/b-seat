@@ -25,6 +25,7 @@ beforeAll(() => {
 });
 afterEach(() => {
   cleanup();
+  vi.mocked(Element.prototype.scrollIntoView).mockClear();
   server.resetHandlers();
 });
 afterAll(() => {

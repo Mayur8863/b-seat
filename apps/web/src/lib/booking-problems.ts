@@ -1,5 +1,7 @@
 import { ApiError } from '@bseat/api-client';
 
+import { safeNext } from './safe-next';
+
 export type BookingAction = 'availability' | 'book' | 'cancel';
 
 export interface ProblemContext {
@@ -22,10 +24,6 @@ export interface ProblemCopy {
 }
 
 const PREFIX = 'urn:bseat:problem:';
-/** `//host` and `scheme:` would make the sign-in redirect leave the site. */
-function isRelativePath(path: string | undefined): path is string {
-  return typeof path === 'string' && path.startsWith('/') && !path.startsWith('//');
-}
 
 const GENERIC = "We couldn't complete that. Try again in a moment.";
 
@@ -42,13 +40,17 @@ export function describeProblem(
     };
   }
 
-  const type = error.problem?.type.startsWith(PREFIX)
-    ? error.problem.type.slice(PREFIX.length)
-    : undefined;
+  // The body can be HTML (gateway error) or JSON without a string `type`.
+  const rawType: unknown = error.problem?.type;
+  const type =
+    typeof rawType === 'string' && rawType.startsWith(PREFIX)
+      ? rawType.slice(PREFIX.length)
+      : undefined;
   const zone = context.timeZone ?? 'the office time zone';
 
   if (error.status === 401) {
-    const next = isRelativePath(context.path) ? `?next=${encodeURIComponent(context.path)}` : '';
+    const path = context.path === undefined ? undefined : safeNext(context.path, '');
+    const next = path ? `?next=${encodeURIComponent(path)}` : '';
     return {
       title: 'Your session has ended',
       description: [{ text: 'Sign in', href: `/sign-in${next}` }, ' again to continue.'],
@@ -144,8 +146,8 @@ export function describeProblem(
       };
   }
 
-  const detail = error.problem?.detail;
-  if (error.status >= 400 && error.status < 500 && detail) {
+  const detail: unknown = error.problem?.detail;
+  if (error.status >= 400 && error.status < 500 && typeof detail === 'string' && detail) {
     return { title: context.fallbackTitle ?? 'Something went wrong', description: [detail] };
   }
   return { title: context.fallbackTitle ?? 'Something went wrong', description: [GENERIC] };

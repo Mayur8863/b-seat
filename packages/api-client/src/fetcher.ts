@@ -34,6 +34,12 @@ function baseUrl(): string {
   return process.env.API_INTERNAL_URL ?? 'http://localhost:3001';
 }
 
+/** Gateways and proxies can answer with HTML or arbitrary JSON; only trust real problem details. */
+function asProblem(data: unknown): ProblemDetails | undefined {
+  if (typeof data !== 'object' || data === null) return undefined;
+  return 'type' in data && typeof data.type === 'string' ? (data as ProblemDetails) : undefined;
+}
+
 async function parseBody(res: Response): Promise<unknown> {
   if (res.status === 204 || res.headers.get('content-length') === '0') return undefined;
   const type = res.headers.get('content-type') ?? '';
@@ -45,7 +51,7 @@ export async function apiFetch<T>(url: string, init: RequestInit = {}): Promise<
   if (!headers.has('accept')) headers.set('accept', 'application/json');
   const res = await fetch(`${baseUrl()}${url}`, { credentials: 'include', ...init, headers });
   const data = await parseBody(res);
-  if (!res.ok) throw new ApiError(res.status, data as ProblemDetails | undefined);
+  if (!res.ok) throw new ApiError(res.status, asProblem(data));
   return { data, status: res.status, headers: res.headers } as T;
 }
 

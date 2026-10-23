@@ -20,7 +20,7 @@ interface Props {
 /** Destructive alert with the ui.md section 6 copy for an API error. */
 export function ProblemAlert({ error, action, context, onRetry, ref }: Props) {
   const pathname = usePathname();
-  const copy = describeProblem(error, action, { path: pathname, ...context });
+  const copy = describeProblem(error, action, { ...context, path: context?.path ?? pathname });
   return (
     <Alert variant="destructive" role="alert" ref={ref} tabIndex={-1}>
       <AlertTitle>{copy.title}</AlertTitle>

@@ -6,12 +6,13 @@ import { Suspense } from 'react';
 
 import { AuthForm } from '@/components/auth-form';
 import { authClient } from '@/lib/auth-client';
+import { safeNext } from '@/lib/safe-next';
 
 function SignIn() {
   const router = useRouter();
   const next = useSearchParams().get('next');
   // Only allow same-site relative redirects (no open redirect).
-  const target = next?.startsWith('/') && !next.startsWith('//') ? next : '/dashboard';
+  const target = safeNext(next);
 
   return (
     <div className="grid gap-6">

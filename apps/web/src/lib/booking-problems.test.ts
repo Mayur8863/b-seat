@@ -1,4 +1,4 @@
-import { ApiError } from '@bseat/api-client';
+import { ApiError, type ProblemDetails } from '@bseat/api-client';
 import { describe, expect, it } from 'vitest';
 
 import { describeProblem } from './booking-problems';
@@ -111,5 +111,19 @@ describe('describeProblem', () => {
     expect(href('/book?x=1')).toEqual({ text: 'Sign in', href: '/sign-in?next=%2Fbook%3Fx%3D1' });
     expect(href('//evil.example')).toEqual({ text: 'Sign in', href: '/sign-in' });
     expect(href('https://evil.example')).toEqual({ text: 'Sign in', href: '/sign-in' });
+  });
+
+  it('shows generic copy when the error body is not problem details', () => {
+    const html = new ApiError(502, '<html>Bad Gateway</html>' as unknown as ProblemDetails);
+    expect(describeProblem(html, 'book').description).toEqual([
+      "We couldn't complete that. Try again in a moment.",
+    ]);
+    const noType = new ApiError(413, { title: 'x' } as unknown as ProblemDetails);
+    expect(describeProblem(noType, 'book').title).toBe('Something went wrong');
+  });
+
+  it('does not put unsafe paths in the sign-in link', () => {
+    const copy = describeProblem(new ApiError(401, undefined), 'book', { path: '/\\evil.example' });
+    expect(copy.description[0]).toEqual({ text: 'Sign in', href: '/sign-in' });
   });
 });
