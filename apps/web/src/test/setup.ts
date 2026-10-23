@@ -9,6 +9,15 @@ import { server } from './msw';
 // different vitest instance than the one the tests import.
 expect.extend(matchers);
 
+// jsdom has no ResizeObserver; Radix radios inside a form measure their hidden input with it.
+globalThis.ResizeObserver = class {
+  observe = () => undefined;
+  unobserve = () => undefined;
+  disconnect = () => undefined;
+};
+// jsdom does not implement scrolling.
+Element.prototype.scrollIntoView = () => undefined;
+
 beforeAll(() => {
   server.listen({ onUnhandledFrame: 'error' });
 });
