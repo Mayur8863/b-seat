@@ -54,8 +54,8 @@ Run 2026-10-23, commit `1008bdc` plus QA tests. Level: unit/component (Vitest, T
 
 ## Judgement on the ui.md deviations
 
-- `SpaceChoice` radiogroup `aria-label="Office space"` and `tabIndex={-1}`: acceptable. The label equals the legend, so the group name is
-  consistent; `tabIndex=-1` is not a tab stop, so keyboard order is unchanged (Radix items keep roving focus), and it lets RHF focus the group on error. axe is clean.
+- `SpaceChoice` radiogroup `aria-label="Office space"` and `tabIndex={-1}`: **withdrawn, this verdict was wrong** (see Re-verification).
+  The group was kept out of the Tab order (WCAG 2.1.1) and neither axe nor the earlier tests could see it.
 - Legend only in the loading state: acceptable. In empty the h2 stands alone with a message (no controls to group); in error the alert has its own
   title and is `role="alert"`. No unlabeled control exists in either state. Nit for ui.md: update section 3.2 to say so.
 
@@ -68,3 +68,30 @@ Run 2026-10-23, commit `1008bdc` plus QA tests. Level: unit/component (Vitest, T
 - `bin/pnpm install --frozen-lockfile`: passes ("Lockfile is up to date"). `bin/pnpm --filter @bseat/web build`: succeeds, lists `/book`.
 - e2e: `docker compose --profile e2e run --rm e2e` on the migrated and seeded stack: 16 passed (auth and book specs, chromium and mobile), axe clean.
 - Not covered here (T011/T013/T014): keyboard-only walk-through in a real browser, perf, booking and the My bookings link.
+
+## Re-verification after review fixes (`d44fbf9`)
+
+Code review found a blocker that QA and axe missed: `tabIndex={-1}` on the space radio group. Fixed in `d44fbf9` (B1: `tabIndex` removed,
+`aria-labelledby` on the legend). Each fix and the test that asserts it:
+
+| Fix                                                        | Test                                                                                                                                                                               | Level     | Result |
+| ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ------ |
+| B1 radios in tab order, group named by legend              | WF "puts the space radios in the tab order, first in the form" (`user.tab()` lands on the radio), "names the space group once, from its legend"                                    | component | pass   |
+| B1 keyboard-only journey in a real browser                 | E2E "/book can be completed with the keyboard only": Tab to radio, ArrowDown selects, Tab through Date (segments), Start, End, button, Enter shows seats; `:focus-visible` on each | e2e       | pass   |
+| Invalid range focuses End time                             | E2E "/book moves focus to End time when the range is invalid" (submit with Enter from Date; error shown, End focused, `aria-invalid`, no seats); WF unit test                      | e2e       | pass   |
+| M1 `fallbackTitle` only for generic outcomes               | `booking-problems.test.ts`; PA "uses the caller fallback title for generic outcomes only" (404 keeps its own title); BV "keeps the generic ... title"                              | unit      | pass   |
+| Minor 1 no busy UI on background refetch                   | BV "does not show the busy state for a background refetch"                                                                                                                         | component | pass   |
+| Minor 2 failed refetch keeps data                          | BV "keeps the seats when a background refetch fails"; SL "keeps the form when a later refetch fails"                                                                               | component | pass   |
+| Minor 3 scroll only on user-requested fetches              | BV "scrolls to the seats once the submitted request succeeds" and the not-called case (lines 132-154)                                                                              | component | pass   |
+| Minor 4 401 `next` from `usePathname`, relative paths only | PA "defaults the sign-in next path to the current page"; `booking-problems.test.ts` "only puts a relative path in the sign-in next parameter", "does not put unsafe paths..."      | unit      | pass   |
+| Minor 5 404 retry invalidates spaces                       | BV "refetches the spaces when Try again follows a 404"                                                                                                                             | component | pass   |
+
+Notes from writing the e2e: Chromium's native date input has day/month/year segments, so Tab needs several presses to leave it; the test
+asserts focus stays on Date until it reaches Start time. Enter inside a native `<select>` does not submit the form, so the submit path uses Date and the button.
+
+Results: web `lint` and `typecheck` clean; `test`: 11 files, 79 tests passed; `test:coverage`: statements 85.15%, branches 88.99%, functions 80%, lines 84.97%.
+Changed-line coverage for `d44fbf9` (lcov, non-test files): 30/30 executable changed lines (100%).
+e2e (`docker compose --profile e2e run --rm e2e`): 22 passed (was 16; +2 specs on chromium and mobile). Two earlier runs while writing the tests had 2-3 flaky failures
+in `auth.spec.ts` (sign-up redirect timeout, axe "execution context destroyed") and one `book.spec.ts` sign-up; the final two consecutive runs were 22/22. Cause not
+isolated: parallel sign-ups hitting hydration timing. Not a product defect found; worth watching in CI.
+Still not covered: booking from the grid (T011), the submit-from-fresh-cache scroll gap (known, dev-reported).
