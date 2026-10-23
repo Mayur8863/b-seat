@@ -233,6 +233,7 @@ describe('POST /api/bookings', () => {
       status: 404,
       detail: 'Seat not found',
     });
+    expect(await bookingsOf(userId)).toEqual([]);
   });
 
   it.each([
@@ -256,6 +257,7 @@ describe('POST /api/bookings', () => {
     expect(res.headers['content-type']).toContain('application/problem+json');
     expect(res.body).toMatchObject({ type: 'urn:bseat:problem:validation', status: 400 });
     expect(res.body.errors.length).toBeGreaterThan(0);
+    expect(await bookingsOf(userId)).toEqual([]);
   });
 
   it('is 401 problem+json without a session (FR-001)', async () => {
