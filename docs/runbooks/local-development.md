@@ -32,6 +32,9 @@ Change any of them in `.env` (`POSTGRES_PORT`, `REDIS_PORT`, `WEB_PORT`, …).
 - **Permission errors on files**: containers run as uid 1000. If your host uid differs, set
   `user:` in a `docker-compose.override.yml`.
 - **Git hook fails with "docker: command not found"**: hooks call `bin/*`, which need Docker on PATH.
+- **A booking worked but no email appears in Mailpit**: run `docker compose logs api | grep 'booking\.'`.
+  A `booking.confirmation_not_queued` line means Redis could not take the job. See
+  [booking-confirmations.md](booking-confirmations.md).
 
 ## Where things run
 

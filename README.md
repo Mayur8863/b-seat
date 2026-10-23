@@ -7,6 +7,36 @@ It is also a reference setup for **AI-assisted development**: a production-grade
 where a team of Claude Code agents takes features from spec to reviewed pull request,
 with humans approving every merge.
 
+## Features
+
+- **Find a free seat.** Pick a space, a date and a 15-minute window, and see each seat as free or taken on the Book a seat page (`/book`).
+- **Book a seat.** `POST /api/bookings` books one seat for a window in the space's local time zone.
+  Windows are 15 minutes to 10 hours, start and end on a quarter hour within 07:00–20:00 local time,
+  start in the future and at most 30 days ahead. Overlapping bookings are refused for the same seat
+  and for the same person.
+- **Confirmation email.** Each booking queues a confirmation email. Locally it is caught by Mailpit at
+  `http://localhost:8025`. See [booking confirmations](docs/runbooks/booking-confirmations.md).
+- **Demo data.** `docker compose up` seeds London HQ (12 seats, Europe/London) and Pune Hub (8 seats,
+  Asia/Kolkata).
+
+### API overview
+
+Full schemas are in Swagger UI at http://localhost:3001/docs. These resource routes are under `/api`
+and need a signed-in session cookie (sign-in is Better Auth under `/api/auth`).
+
+| Method | Path                                 | Purpose                                         |
+| ------ | ------------------------------------ | ----------------------------------------------- |
+| GET    | `/api/spaces`                        | List spaces with their time zone and seat count |
+| GET    | `/api/spaces/{spaceId}/availability` | Free and taken seats for a local window         |
+| POST   | `/api/bookings`                      | Book one seat for a local window                |
+
+Two things are not obvious from the schemas. Requests give the window in the space's local wall-clock
+time and never a zone, and responses add UTC `startsAt`/`endsAt`. Errors are problem details
+(`application/problem+json`). A rule breach is a 422 whose `type` names the rule
+(`urn:bseat:problem:booking-rule:<rule>`), and a clash is a 409 (`booking:seat-unavailable` or
+`booking:user-overlap`). The full list of `type` values is in
+[contracts/README.md](specs/001-seat-booking/contracts/README.md).
+
 ## Quick start
 
 The only prerequisite is **Docker** (Engine 24+ with Compose v2). There is no Node, pnpm or
@@ -132,3 +162,4 @@ Schemathesis API fuzzing, gitleaks, Semgrep and Trivy (lockfile and images).
 - [docs/runbooks/local-development.md](docs/runbooks/local-development.md): troubleshooting and resetting
 - [docs/runbooks/github-setup.md](docs/runbooks/github-setup.md): first push, branch protection, tokens
 - [docs/runbooks/database-migrations.md](docs/runbooks/database-migrations.md)
+- [docs/runbooks/booking-confirmations.md](docs/runbooks/booking-confirmations.md): confirmation emails, Mailpit and lost-email handling

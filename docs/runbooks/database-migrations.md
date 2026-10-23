@@ -8,6 +8,9 @@
 3. **Read the SQL.** Look for table rewrites, locks on large tables, and dropped columns.
 4. Constraints Drizzle can't express (e.g. exclusion constraints) go in a custom migration:
    `bin/pnpm --filter @bseat/api exec drizzle-kit generate --custom --name <name>`, then hand-write the SQL.
+   Generate it **after** the table migration, never before. A custom migration snapshots the current
+   schema, so one created first would hide the tables from the next `generate`. Drizzle diffs snapshots,
+   not the database, so changing an exclusion constraint needs a new custom migration (ADR-0008 section 2).
 5. Apply locally with `bin/pnpm db:migrate`. Integration tests migrate `bseat_test` on every run.
 6. Commit the schema, the SQL and `drizzle/meta` together. CI fails if the schema changed
    without a migration.

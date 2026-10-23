@@ -2,4 +2,4 @@
 '@bseat/api': minor
 ---
 
-Add `POST /api/bookings` to book a seat for a local time window, with per-rule 422 problems and 409 conflicts that stay correct under concurrent requests.
+Add `POST /api/bookings` to book a seat for a local time window. A window that breaks a booking rule returns 422 naming the rule, and a clash with an existing booking returns 409, even under concurrent requests.
