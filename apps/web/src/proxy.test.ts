@@ -17,6 +17,14 @@ describe('proxy', () => {
     expect(location.searchParams.get('next')).toBe('/book');
   });
 
+  it.each(['/book', '/bookings'])('redirects %s to /sign-in?next=%s without a cookie', (path) => {
+    const response = proxy(new NextRequest(`http://localhost:3000${path}`));
+    expect(response.status).toBe(307);
+    const location = new URL(response.headers.get('location') ?? '');
+    expect(location.pathname).toBe('/sign-in');
+    expect(location.searchParams.get('next')).toBe(path);
+  });
+
   it('lets a signed-in request through', () => {
     const request = new NextRequest('http://localhost:3000/book', {
       headers: { cookie: 'bseat.session_token=abc' },

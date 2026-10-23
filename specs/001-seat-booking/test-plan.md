@@ -27,3 +27,44 @@ Run 2026-10-23 on `feat/001-seat-booking`. All results: pass. Files: `I` = `apps
 - `bookings.int-spec.ts` run 3 more times: 26/26 each time.
 - Changed-line coverage of the files in commit ab169ba (lcov, diff vs main): 83 of 83 executable changed lines (100%).
 - Web, build and e2e not run (out of scope for this task; web is being built concurrently).
+
+---
+
+# Test plan: 001-seat-booking, T008 (`/book` page)
+
+Run 2026-10-23, commit `1008bdc` plus QA tests. Level: unit/component (Vitest, Testing Library, MSW) unless noted.
+`BV` = `book-view.test.tsx`, `SL` = `space-list.test.tsx`, `WF` = `booking-window-form.test.tsx`,
+`SA` = `seat-availability.test.tsx`, `PA` = `problem-alert.test.tsx`, `PG` = `app/(app)/book/page.test.tsx`,
+`PX` = `proxy.test.ts`, `E2E` = `apps/web/e2e/book.spec.ts` (Playwright + axe). All under `apps/web/src/...` except E2E.
+
+| Criterion                                                                                       | Test(s)                                                                                                                                               | Level      | Result |
+| ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ------ |
+| Loading first, then each space name and location (AC 1.1)                                       | SL "shows a loading state, then hands the spaces to its child" (asserts "Loading office spaces…" before data); WF "shows space details on each card"  | component  | pass   |
+| `items: []` shows the empty state, no form                                                      | SL "shows the empty state without a form"                                                                                                             | component  | pass   |
+| 500 problem shows `role="alert"`, with Try again (FR-013)                                       | SL "shows an error alert with a working Try again button"; PA "renders a role=alert..."                                                               | component  | pass   |
+| 6 seats (1 taken): 5 "Free", 1 "Taken" in text, time zone in the window line (AC 1.2)           | SA "shows six seats, five free and one taken, in text, with the space time zone"; BV "loads spaces, then seats for the chosen window"                 | component  | pass   |
+| Loading state for seats, stale note, all-taken, no-seats, error with retry                      | SA (loading, stale, empty, all taken, error); BV (stale and refetch, availability error)                                                              | component  | pass   |
+| end <= start: field error linked by `aria-describedby`, focus on field, no request sent         | WF "rejects an end time that is not after the start..." (onSubmit not called); BV "sends no availability request when validation fails" (MSW not hit) | component  | pass   |
+| Every input has a `<Label>`                                                                     | WF "labels every field and describes the time zone" (`getByLabelText` for Date, Start, End; space cards are labelled radios)                          | component  | pass   |
+| Page has metadata title, one h1, `main#main`                                                    | PG "has a metadata title, one h1, main#main..."                                                                                                       | component  | pass   |
+| No cookie: `/book` and `/bookings` redirect to `/sign-in?next=...`; matcher lists both          | PX "guards the booking pages", `it.each` redirect for `/book` and `/bookings` (307, `next` param); E2E "/book" and "/bookings redirects" (real stack) | unit + e2e | pass   |
+| Problem copy for every ui.md section 6 type used on this page                                   | `lib/booking-problems.test.ts` (extended with the 8 remaining types), PA (links, 401, network)                                                        | unit       | pass   |
+| axe (WCAG 2.1 AA) on `/book` with spaces loaded, and again with seats shown; desktop and mobile | E2E "/book lists spaces and seats and has no WCAG 2.1 AA violations" (projects chromium and mobile)                                                   | e2e, axe   | pass   |
+| lint, typecheck, test pass; changed-line coverage >= 80%                                        | see Results                                                                                                                                           | -          | pass   |
+
+## Judgement on the ui.md deviations
+
+- `SpaceChoice` radiogroup `aria-label="Office space"` and `tabIndex={-1}`: acceptable. The label equals the legend, so the group name is
+  consistent; `tabIndex=-1` is not a tab stop, so keyboard order is unchanged (Radix items keep roving focus), and it lets RHF focus the group on error. axe is clean.
+- Legend only in the loading state: acceptable. In empty the h2 stands alone with a message (no controls to group); in error the alert has its own
+  title and is `role="alert"`. No unlabeled control exists in either state. Nit for ui.md: update section 3.2 to say so.
+
+## Results
+
+- `bin/pnpm --filter @bseat/web lint`: clean (`--max-warnings=0`). `typecheck`: clean. `test`: 11 files, 61 tests passed (was 9 files, 43).
+- `test:coverage`: statements 83.64%, branches 88.08%, functions 77.58%, lines 83.33% (package; the web vitest config sets no thresholds).
+- Changed-line coverage, files in `1008bdc` (lcov): `book-view.tsx` 14/15 (line 63, the retry callback), all other executable lines of
+  the changed files covered, including `problem-alert.tsx` 3/3, `proxy.ts` 5/5, `book/page.tsx` 2/2, `booking-problems.ts` 29/29 after the added cases. Total over 98%.
+- `bin/pnpm install --frozen-lockfile`: passes ("Lockfile is up to date"). `bin/pnpm --filter @bseat/web build`: succeeds, lists `/book`.
+- e2e: `docker compose --profile e2e run --rm e2e` on the migrated and seeded stack: 16 passed (auth and book specs, chromium and mobile), axe clean.
+- Not covered here (T011/T013/T014): keyboard-only walk-through in a real browser, perf, booking and the My bookings link.

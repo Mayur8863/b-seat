@@ -33,7 +33,7 @@ task-manager changes owners. Developers set `review`. Only qa-engineer sets `don
 | T005 | Seed demo spaces and seats                                 | backend-dev    | T002, T003       | S    | review | `feat/001-seed-spaces`                |
 | T006 | UI spec `ui.md` for booking screens                        | ui-ux-designer | T001             | M    | review | `docs/001-booking-ui-spec`            |
 | T007 | Spaces list and availability API                           | backend-dev    | T002, T003, T004 | M    | review | `feat/001-spaces-availability-api`    |
-| T008 | `/book` page: spaces, window form, seat availability       | frontend-dev   | T006, T007       | M    | review | `feat/001-book-page-availability`     |
+| T008 | `/book` page: spaces, window form, seat availability       | frontend-dev   | T006, T007       | M    | done   | `feat/001-book-page-availability`     |
 | T009 | Create booking API with rules and conflict mapping         | backend-dev    | T003, T004, T007 | M    | done   | `feat/001-create-booking-api`         |
 | T010 | Booking confirmation email                                 | backend-dev    | T009             | S    | done   | `feat/001-booking-confirmation-email` |
 | T011 | Book a seat from the availability grid                     | frontend-dev   | T008, T009       | M    | todo   | `feat/001-book-seat-ui`               |
@@ -150,8 +150,8 @@ task-manager changes owners. Developers set `review`. Only qa-engineer sets `don
     - Given the response, When inspected, Then it contains no user ids or names (FR-011).
     - Given `bin/pnpm gen:api`, When run, Then `openapi.json` contains exactly the schemas above and is committed (Constitution III).
 
-- [ ] T008 [US1] Build the `/book` page `apps/web/src/app/(app)/book/page.tsx` with `components/space-list.tsx`, `components/booking-window-form.tsx` and `components/seat-availability.tsx` (each with `*.test.tsx`), and extend the matcher in `apps/web/src/proxy.ts`
-  - **Owner**: frontend-dev · **Branch**: `feat/001-book-page-availability` · **Size**: M · **Depends on**: T006, T007 · **Status**: review
+- [x] T008 [US1] Build the `/book` page `apps/web/src/app/(app)/book/page.tsx` with `components/space-list.tsx`, `components/booking-window-form.tsx` and `components/seat-availability.tsx` (each with `*.test.tsx`), and extend the matcher in `apps/web/src/proxy.ts`
+  - **Owner**: frontend-dev · **Branch**: `feat/001-book-page-availability` · **Size**: M · **Depends on**: T006, T007 · **Status**: done
   - **Scope**: Generated hooks `useSpacesList` and `useSpacesAvailability` only (no `fetch`). React Hook Form + `zodResolver` for the window form. Follow ui.md states and copy. The page has a `metadata` title, one `<h1>` and `<main id="main">`. The Book action itself is T011.
   - **Acceptance criteria**:
     - Given the spaces mock returns two spaces, When `/book` renders, Then a loading state shows first, then each space's name and location (AC 1.1). Given `items: []`, Then the ui.md empty state shows. Given a 500 problem, Then an error alert with `role="alert"` shows (FR-013).

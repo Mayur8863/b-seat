@@ -60,4 +60,26 @@ describe('describeProblem', () => {
       "We couldn't reach BSeat",
     );
   });
+
+  it.each([
+    ['booking:already-started', 'cancel', 'This booking has already started'],
+    ['booking-rule:end-before-start', 'book', 'End time is before start time'],
+    ['booking-rule:not-on-quarter-hour', 'book', 'Use 15-minute steps'],
+    ['booking-rule:too-short', 'book', 'Booking too short'],
+    ['booking-rule:too-long', 'book', 'Booking too long'],
+    ['booking-rule:outside-working-hours', 'book', 'Outside working hours'],
+    ['booking-rule:starts-in-past', 'book', 'That time has passed'],
+    ['booking-rule:too-far-ahead', 'book', 'Too far ahead'],
+  ] as const)('maps %s to its ui.md title', (type, action, title) => {
+    expect(
+      describeProblem(problem(type.startsWith('booking:') ? 409 : 422, type), action).title,
+    ).toBe(title);
+  });
+
+  it('names the time zone in the working-hours copy', () => {
+    const copy = describeProblem(problem(422, 'booking-rule:outside-working-hours'), 'book', {
+      timeZone: 'Europe/Paris',
+    });
+    expect(copy.description[0]).toContain('(Europe/Paris)');
+  });
 });
