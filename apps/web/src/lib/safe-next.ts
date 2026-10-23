@@ -1,4 +1,5 @@
 // Fixed, unroutable origin so the helper is pure and works on server and client.
+const MAX_LENGTH = 2048;
 const BASE = 'http://bseat.invalid';
 
 // Backslash and ASCII control characters (incl. tab and newline) are normalised by
@@ -13,13 +14,16 @@ function hasUnsafeChar(value: string): boolean {
 
 /** Returns a same-site path (`pathname + search + hash`) from untrusted input, else `fallback`. */
 export function safeNext(next: string | null | undefined, fallback = '/dashboard'): string {
-  if (!next || !next.startsWith('/') || hasUnsafeChar(next)) return fallback;
+  if (!next || next.length > MAX_LENGTH || !next.startsWith('/') || hasUnsafeChar(next))
+    return fallback;
   try {
     // A percent-encoded backslash is decoded by some servers, so judge the decoded form too.
     if (hasUnsafeChar(decodeURIComponent(next))) return fallback;
     const url = new URL(next, BASE);
     if (url.origin !== BASE) return fallback;
-    return url.pathname + url.search + url.hash;
+    const out = url.pathname + url.search + url.hash;
+    // Dot segments (even encoded) can collapse `/a/..//x` into the protocol-relative `//x`.
+    return out.startsWith('//') || out.startsWith('/\\') ? fallback : out;
   } catch {
     return fallback;
   }

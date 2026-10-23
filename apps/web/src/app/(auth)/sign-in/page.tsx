@@ -11,7 +11,6 @@ import { safeNext } from '@/lib/safe-next';
 function SignIn() {
   const router = useRouter();
   const next = useSearchParams().get('next');
-  // Only allow same-site relative redirects (no open redirect).
   const target = safeNext(next);
 
   return (
