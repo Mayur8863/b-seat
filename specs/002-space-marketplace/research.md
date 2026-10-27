@@ -171,11 +171,15 @@ dependency and more expressive than the spec).
     covers bookings and occupancy together (FR-018, SC-005 both halves).
   - `seat_hold_user_no_overlap EXCLUDE USING gist (user_id WITH =, tstzrange(starts_at, ends_at, '[)') WITH &&) WHERE (active AND user_id IS NOT NULL)`
     (FR-019; occupancy rows have no user, so owners can mark many seats at once).
-- **Create**: one transaction: lock the seat `FOR SHARE` (so a concurrent removal waits; R-15), insert the header,
+- **Create**: one transaction: `SET LOCAL lock_timeout = '5s'`, then the **seat lock**
+  `pg_advisory_xact_lock(1112735745, hashtext(seat_id::text))` via `lockSeats` (ADR-0009 section 9; always the first
+  lock taken), then lock the seat `FOR SHARE` (so a concurrent removal waits; R-15), insert the header,
   then insert all holds in chronological order (one multi-row INSERT). Map errors from `DrizzleQueryError.cause`:
   `23P01` on `seat_hold_seat_no_overlap` → 409 `booking:seat-unavailable`; on `seat_hold_user_no_overlap` → 409
   `booking:user-overlap`; `40P01` → retry the **whole transaction**, at most 3 attempts; anything else → rethrow.
-  Multi-row inserts deadlock more often than 001's single row, so the retry is essential for SC-005.
+  `55P03` (lock timeout) is not retried; it is logged and rethrown. The seat lock stops same-seat racers from
+  deadlocking inside the exclusion check (the 001 race fix, ADR-0008 section 2 amendment). The `40P01` retry stays
+  for one renter racing on different seats; that rule is retry-only, with no renter lock.
 - **Holds cannot disagree with their source** (AQ-7, **decided: database**, ADR-0009 section 3, verified on PG 18):
   - `booking.holds_active` is `GENERATED ALWAYS AS (status = 'active') STORED`, with
     `UNIQUE (id, seat_id, user_id, holds_active)`.
@@ -215,7 +219,9 @@ is small.
 - **A trigger that checks overlaps**: not concurrency-safe without explicit locking, and hidden logic.
 - **Cancel consistency in the service only** (the plan's first proposal for AQ-7): one plausible bug, such as
   deactivating holds when the header update matched no row, silently reopens a booked seat.
-- **`SERIALIZABLE` or advisory locks per seat**: they do not cover the renter rule across seats (ADR-0008).
+- **`SERIALIZABLE`, or advisory locks per seat instead of the constraints**: neither covers the renter rule across
+  seats (ADR-0008). Per-seat advisory locks are used **in addition**, only to order same-seat writers (ADR-0009
+  section 9). The constraints remain the guarantee.
 
 ## R-7. Retiring the hourly flow (expand/contract) (ADR)
 
@@ -326,10 +332,12 @@ slot rules and their DST policy).
 - A mark covers whole days: from the space's **day boundary** on the start date to the day boundary after the end
   date. The day boundary is the shift change time for 24-hour spaces and 00:00 for fixed-hours spaces, so a mark
   never clips the night slot of the day before. No end date → unbounded hold (`ends_at` null).
-- One request may mark several seats. All marks and holds are inserted in one transaction, ordered by
-  `(seat_id, starts_at)`, all or nothing. A `40P01` deadlock (likely when racing multi-row booking inserts) retries
-  the **whole transaction**, at most 3 attempts in total, with the same helper as booking create (ADR-0009
-  section 2).
+- One request may mark several seats. The transaction first sets `lock_timeout = '5s'` and takes **every requested
+  seat's lock** with `lockSeats(tx, seatIds)`: de-duplicated and taken in ascending **lock-key** order in one
+  statement, so overlapping requests and bookings cannot deadlock on lock order (ADR-0009 section 9). Then all marks
+  and holds are inserted, ordered by `(seat_id, starts_at)`, all or nothing. A `40P01` should no longer occur, but it
+  still retries the **whole transaction**, at most 3 attempts in total, with the same helper as booking create
+  (defence in depth, ADR-0009 section 2).
 - A renter booking in the way gives `23P01` on `seat_hold_seat_no_overlap`. The service rolls back, then reads
   the active holds that overlap each requested range (index-friendly spelling, R-6).
   - If any is a booking hold, it returns 409 `occupancy:conflicts-with-bookings`.

@@ -2,7 +2,9 @@
 
 - **Status:** Accepted. Amended by [ADR-0009](0009-pass-bookings-seat-holds-and-slots.md): section 1 for
   DST at owner-set slot boundaries (resolved, not refused), and section 2 for where the exclusion constraints live
-  (`seat_hold` instead of `booking`, from feature 002).
+  (`seat_hold` instead of `booking`, from feature 002). Section 2 amended in place on 2026-10-27 (per-seat
+  advisory lock before the insert; see "Amendment 2026-10-27" there). ADR-0009 section 9 sets the lock rule
+  for 002's writers.
 - **Date:** 2026-10-22
 - **Deciders:** architect agent (T001); product owner for the "30 days" and "own booking in availability" questions
 
@@ -68,8 +70,8 @@ contract (`openapi.json`, the generated client) or the stored data:
 - `btree_gist` provides `=` on `uuid`/`text` inside GiST. It is a trusted extension (PG 13+), so the
   migration's `CREATE EXTENSION IF NOT EXISTS btree_gist` works for a database owner on RDS as well
   as locally, where `docker/postgres/init/01-init.sh` already created it.
-- The service does a **plain single-statement `INSERT`** with no read-then-write pre-check and no
-  advisory locks or `SERIALIZABLE`.
+- The service does a **single `INSERT`** with no read-then-write pre-check and no `SERIALIZABLE`. Since the
+  2026-10-27 amendment below, the insert runs in a short transaction behind a per-seat advisory lock.
 - **Error mapping.** Drizzle 0.45 wraps driver errors in `DrizzleQueryError`; read SQLSTATE and constraint
   from `err.cause` (the `pg` `DatabaseError`), never from the message:
 
@@ -77,21 +79,31 @@ contract (`openapi.json`, the generated client) or the stored data:
   | -------- | ---------------------------- | -------------------------------------------------------------------------------------- |
   | `23P01`  | `booking_seat_no_overlap`    | 409 `urn:bseat:problem:booking:seat-unavailable`                                       |
   | `23P01`  | `booking_user_no_overlap`    | 409 `urn:bseat:problem:booking:user-overlap`                                           |
-  | `40P01`  | (deadlock)                   | **retry the INSERT**, at most 3 attempts in total, then rethrow (500)                  |
+  | `40P01`  | (deadlock)                   | **retry the attempt** (lock + INSERT), at most 3 attempts in total, then rethrow (500) |
   | `23503`  | `booking_seat_id_seat_id_fk` | 404 "Seat not found"                                                                   |
   | other    | any (including `23514`)      | rethrow → 500 (a CHECK failure means the TS rules and the DB disagree, which is a bug) |
 
   **Why the retry:** PostgreSQL checks exclusion constraints _after_ inserting the index entry. Two
   backends inserting conflicting rows at the same moment can each wait for the other, and the deadlock
   detector then aborts one with `40P01` instead of `23P01` (documented in `src/backend/executor/execIndexing.c`).
-  Each attempt is its own autocommit statement and nothing was committed, so a retry is safe. The retry
+  Each attempt is its own transaction and nothing was committed, so a retry is safe. The retry
   then either fails with `23P01` (the winner committed) or succeeds (the other one was the victim).
   Without it, SC-002 ("19 refused") would sometimes see a 500.
 
-  **Amendment (fix/001-booking-race-flake):** the retry alone was not enough. With 20+ racers each
-  deadlock costs `deadlock_timeout` (1 s) and the victims collide again, exhausting 3 attempts (500) or
-  stalling. Each attempt is now a short transaction that first takes `pg_advisory_xact_lock` on the seat,
-  so same-seat inserts queue instead of deadlocking; the retry remains for cross-seat user-overlap deadlocks.
+  **Amendment 2026-10-27 (per-seat lock; `fix/001-booking-race-flake`):** the retry alone was not enough.
+  With 20+ racers each deadlock costs `deadlock_timeout` (1 s) and the victims collide again, so 3 attempts
+  ran out (500) or requests stalled (177 `40P01` in one day's log). Each attempt is now a short transaction
+  whose first statement is `pg_advisory_xact_lock(hashtextextended(seat_id::text, 0))`, then the `INSERT`.
+  - Same-seat inserts queue on the lock instead of meeting inside the exclusion check, so the seat
+    constraint answers `23P01` (409) without deadlocks. The lock only **orders** attempts; the exclusion
+    constraints remain the guarantee, and a hash collision between two seats only adds queueing.
+  - The `40P01` retry stays for the case the lock does not cover: one user racing on **different** seats
+    (`booking_user_no_overlap`). That fan-in is one person's concurrent requests, so retry-only is enough.
+  - Nothing but the lock and the `INSERT` runs inside the transaction (the email is queued after commit,
+    section 5), so the lock is held for milliseconds. No `lock_timeout` is set for this path because
+    there is no application await between the two statements, and 002 T008 removes the path.
+  - Rejected: `SERIALIZABLE` (aborts with `40001` instead of naming the constraint, still needs retries).
+    Feature 002 uses the namespaced, multi-seat form of this lock in ADR-0009 section 9.
 
 - **Migrations.** drizzle-kit generates the tables, FKs, uniques, CHECKs, enum and btree indexes. The
   exclusion constraints go in a **custom migration** created with

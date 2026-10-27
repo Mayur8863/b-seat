@@ -1,6 +1,7 @@
 # ADR-0009: Pass bookings, seat holds and the slot time model
 
-- **Status:** Accepted
+- **Status:** Accepted. Amended 2026-10-27 by section 9 (seat-hold write locks, after the 001 race fix in
+  ADR-0008 section 2); section 2's write steps and `40P01` note are updated to match.
 - **Date:** 2026-10-27
 - **Deciders:** architect agent (002 T001); the requester for the product decisions OQ-1 to OQ-12 (accepted 2026-10-27)
 - **Amends:** [ADR-0008](0008-booking-time-and-conflict-model.md) section 1 (DST at owner-set slot boundaries only)
@@ -53,8 +54,9 @@ EXCLUDE USING gist ("user_id" WITH =, tstzrange("starts_at", "ends_at", '[)') WI
 
 - Half-open `[)` ranges keep touching slots legal. A 24-hour occurrence overlaps both the day and night
   occurrences of that date, so "24 hours blocks both" needs no special code.
-- **Writes**: a booking is one transaction. It locks the seat `FOR SHARE` (removal takes `FOR UPDATE`), inserts the
-  header, then inserts every hold in one multi-row `INSERT` in chronological order. An occupancy request inserts its
+- **Writes**: a booking is one transaction. It **first takes the seat lock (section 9)**, then locks the seat
+  `FOR SHARE` (removal takes `FOR UPDATE`), inserts the header, then inserts every hold in one multi-row `INSERT` in
+  chronological order. An occupancy request **first takes the locks of all its seats (section 9)**, then inserts its
   marks and holds in one transaction, ordered by `(seat_id, starts_at)`.
 - **Error mapping** (read SQLSTATE and constraint from `DrizzleQueryError.cause`, as in ADR-0008):
 
@@ -65,7 +67,8 @@ EXCLUDE USING gist ("user_id" WITH =, tstzrange("starts_at", "ends_at", '[)') WI
   | `40P01`  | (deadlock)                  | retry the **whole transaction**, at most 3 attempts in total, then rethrow (500) | same                                                                                                                                                |
   | other    | any (`23503`, `23514`, ...) | rethrow → 500 (the TS rules and the DB disagree, which is a bug)                 | same                                                                                                                                                |
 
-  Multi-row inserts deadlock more often than 001's single row, so both writers **must** retry `40P01`.
+  Multi-row inserts deadlock more often than 001's single row. The seat locks of section 9 remove same-seat
+  deadlocks; `40P01` is still retried by both writers (the renter rule across seats, and defence in depth).
 
 ### 3. Holds cannot disagree with their source (AQ-7: enforced by the database)
 
@@ -175,6 +178,62 @@ it:
 `ProblemException` gains an optional `extensions` record. `ProblemFilter` writes the extensions first and the
 standard members last, so an extension can never override `type`, `status` or `title` (RFC 9457 section 3.2).
 
+### 9. Seat-hold write locks (amendment 2026-10-27)
+
+001 showed that exclusion constraints alone deadlock under contention: racing inserts meet inside the constraint
+check, each `40P01` costs `deadlock_timeout` (1 s), and 3 attempts ran out (ADR-0008 section 2, amendment). Every
+transaction that **inserts active `seat_hold` rows** follows this rule: pass booking create (T036) and occupancy
+create (T047). T005 adds the helper. Writers that only end or deactivate holds (cancel, mark vacant, seat or
+cubicle removal) cannot create an overlap and take no seat lock. Test fixtures that insert holds directly to prove
+the constraints do not lock either.
+
+1. **Key: one lock per seat, namespaced.** `pg_advisory_xact_lock(1112735745, hashtext(seat_id::text))`, the
+   two-`int4` form. The class `1112735745` (`0x42530001`) means "seat-hold write". The two-int key space does not
+   overlap the `bigint` form (PostgreSQL docs, advisory lock functions), so 001's `hashtextextended` lock and
+   libraries that use bigint keys cannot collide with it. A new lock class takes the next value and is added
+   here. One helper, `lockSeats(tx, seatIds)`, holds the constant and the SQL. No other code calls
+   `pg_advisory_*`.
+2. **Order: ascending lock key, deduplicated, in one statement.** Sort by the **key**, not by seat id: two seats
+   can share a 32-bit hash, and only key order is free of lock-order cycles. A collision only adds queueing.
+
+   ```sql
+   SELECT pg_advisory_xact_lock(1112735745, k)
+   FROM (SELECT DISTINCT hashtext(id::text) AS k FROM unnest($1::uuid[]) AS t(id) ORDER BY k) AS keys;
+   ```
+
+   A subquery with `ORDER BY` is not flattened, so the locks are taken in its order. A pass books one seat and
+   passes one id. Occupancy passes all its de-duplicated seat ids (at most 200 per space, so at most 200 locks).
+   That fits the shared lock table (`max_locks_per_transaction` × connections). Re-check this before raising the
+   seat cap.
+
+3. **Position: first in every attempt.** Each attempt's transaction starts with `SET LOCAL lock_timeout = '5s'`,
+   then `lockSeats`, and only then the seat `FOR SHARE` (or any other row lock) and the inserts. If a writer took
+   the row lock first, it could wait on the advisory lock while holding the `FOR SHARE` that a pending removal's
+   `FOR UPDATE` waits on, while the lock's holder queues behind that removal: a deadlock. Only database statements
+   run while the locks are held (emails are queued after commit). Each retry is a new transaction and takes the
+   locks again. Transaction-scoped locks are released at commit or rollback and are safe behind a
+   transaction-mode pooler.
+4. **`lock_timeout` is required (5 s).** Without it, one stuck transaction makes every request for that seat wait
+   while holding a pool connection, which can starve the whole API. 5 s is above `deadlock_timeout` (1 s locally
+   and on RDS), so a real cycle still ends as `40P01` (retried) before the timeout fires. It is also far above the
+   normal queue (about 10 ms per attempt × 20 racers). The timeout also bounds the row-lock and constraint-check
+   waits in the same transaction. `55P03` (`lock_not_available`) is **not retried**, because it has already waited
+   5 s. Log `warn` `booking.lock_timeout` or `occupancy.lock_timeout` with ids only, then rethrow (500): it signals an incident. The contract is
+   unchanged.
+5. **The renter rule stays retry-only.** There is no per-renter lock. `seat_hold_user_no_overlap` can still
+   deadlock when one renter books two different seats at once, because each transaction holds a different seat
+   lock. `40P01` retries the whole transaction (at most 3 attempts), and the retry ends in `23P01` → 409
+   `booking:user-overlap`. The fan-in is one person's concurrent requests, and a second lock class would add an
+   ordering rule for every writer. Revisit this (a renter lock, class `0x42530002`, taken **after** the seat lock)
+   only if `booking.insert_deadlock_retry` warnings for different seats persist after rate limiting (OQ-10).
+   Occupancy holds have no user, so with the seat locks occupancy create should never see `40P01`. It keeps the
+   retry as defence in depth.
+6. **Proof.** T005's raw-constraint race (no locks) still proves the invariant and may see `40P01`. The service
+   race tests in T036 and T047 must show that the locks work:
+   - 20 concurrent bookings for one seat by 20 renters → exactly 1 × 201 and 19 × 409 `seat-unavailable`, with no
+     5xx and no deadlock-retry warning.
+   - Two occupancy requests over the same seats passed in opposite order → one 201 and one 409, with no `40P01`.
+
 ## Alternatives considered
 
 - **(B) Occurrence rows in the existing `booking` table** with a separate pass header: the 001 constraints keep
@@ -196,6 +255,11 @@ standard members last, so an extension can never override `type`, `status` or `t
 - **Optional extension members on `ProblemSchema`:** additive, but every error response in the generated client
   would claim it might carry `conflicts`, `labels` and `missing`.
 - **Deleting holds on cancel:** loses the booking's `days` for display, and the invariant stays cross-table.
+- **Seat locks via `FOR NO KEY UPDATE` on the seat row instead of advisory locks (section 9):** no hash or
+  namespace, but every booking would write a row lock to the seat tuple and queue seat edits and removal checks
+  behind bookings. It would also diverge from the lock 001 already proved. Kept as the fallback.
+- **A per-renter lock as well (section 9):** turns the rare cross-seat renter race into a clean 409, but adds a
+  second lock class and an ordering rule for every writer, for one person's own concurrent requests.
 
 ## Consequences
 
@@ -206,6 +270,8 @@ standard members last, so an extension can never override `type`, `status` or `t
 - `booking` no longer carries any exclusion constraint. It holds two generations of rows: legacy hourly rows
   (read-only, still blocking through their backfilled holds) and pass headers. Anyone changing `seat_hold`, `booking.status` or the range expression must read this
   ADR and the custom migration.
+- Every writer that inserts active holds goes through `lockSeats` first (section 9). Same-seat contention queues
+  for milliseconds instead of deadlocking, and a stuck holder fails after 5 s instead of draining the pool.
 - `booking.holds_active` is a stored generated column. Changing `booking_status` values needs a new migration
   that recreates it.
 - Follow-ups: the contract migration for hourly rows (validate or drop `booking_no_new_hourly`, drop

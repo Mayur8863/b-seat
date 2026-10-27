@@ -246,6 +246,20 @@ ALTER TABLE "seat_hold" ADD CONSTRAINT "seat_hold_user_no_overlap"
   WHERE ("active" AND "user_id" IS NOT NULL);
 ```
 
+Write locking (runtime rule, no migration; ADR-0009 section 9). Every transaction that **inserts active holds**
+(T036 booking create, T047 occupancy create) begins with `SET LOCAL lock_timeout = '5s'`, then
+`lockSeats(tx, seatIds)`, before any row lock or insert:
+
+```sql
+SELECT pg_advisory_xact_lock(1112735745, k)  -- class 0x42530001 "seat-hold write"; two-int form, never bigint
+FROM (SELECT DISTINCT hashtext(id::text) AS k FROM unnest($1::uuid[]) AS t(id) ORDER BY k) AS keys;
+```
+
+That means one lock per seat, de-duplicated and taken in ascending key order: a pass takes one, and occupancy
+takes one per requested seat. The exclusion constraints still decide the outcome. The renter rule has no lock (it
+uses the `40P01` retry), and `55P03` is rethrown, not retried. Cancel, vacate and removal take no seat lock. T005
+adds the helper.
+
 Btree indexes (FK lookups; the GiST indexes are partial and cannot serve them): `seat_hold_seat_id_idx (seat_id)`,
 `seat_hold_booking_id_idx (booking_id)`, `seat_hold_user_id_idx (user_id)`. The unique index on `occupancy_mark_id`
 serves the mark lookups.
