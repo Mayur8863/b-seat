@@ -125,13 +125,13 @@ deletes prices (edge case).
 
 ### pass_price (new, `schema/pricing.ts`)
 
-| Column     | Type          | Null | Notes                                     |
-| ---------- | ------------- | ---- | ----------------------------------------- |
-| space_id   | uuid          | no   | FK → `space.id`                           |
-| slot       | `slot_kind`   | no   |                                           |
-| pass       | `pass_type`   | no   |                                           |
-| amount     | numeric(12,2) | no   | CHECK `pass_price_positive`: `amount > 0` |
-| updated_at | timestamptz   | no   |                                           |
+| Column     | Type          | Null | Notes                                                                               |
+| ---------- | ------------- | ---- | ----------------------------------------------------------------------------------- |
+| space_id   | uuid          | no   | FK → `space.id`                                                                     |
+| slot       | `slot_kind`   | no   |                                                                                     |
+| pass       | `pass_type`   | no   |                                                                                     |
+| amount     | numeric(12,2) | no   | CHECK `pass_price_positive`: `amount > 0 AND amount <> 'NaN'` (numeric accepts NaN) |
+| updated_at | timestamptz   | no   | default `now()`                                                                     |
 
 PK `(space_id, slot, pass)`. No row = pass not offered (FR-011). A pass is **offered** when its slot is offered,
 `space_slot.enabled` is true, and a price row exists.

@@ -1,19 +1,29 @@
 import { sql } from 'drizzle-orm';
 import {
+  boolean,
   check,
   numeric,
   pgEnum,
   pgTable,
   primaryKey,
-  boolean,
   timestamp,
   uuid,
 } from 'drizzle-orm/pg-core';
 
+import type { PassType } from '../../marketplace/pass-period.js';
+import type { SlotKind } from '../../marketplace/slots.js';
 import { space } from './space.js';
 
 export const SLOT_KINDS = ['day', 'night', 'full_day', 'working_hours'] as const;
 export const PASS_TYPES = ['day', 'week', 'month'] as const;
+
+// The domain types (marketplace/) and these enums must list the same values; this fails to compile
+// if either side gains or loses one.
+type Equal<A, B> = [A] extends [B] ? ([B] extends [A] ? true : never) : never;
+export const ENUMS_MATCH_DOMAIN_TYPES: [
+  Equal<(typeof SLOT_KINDS)[number], SlotKind>,
+  Equal<(typeof PASS_TYPES)[number], PassType>,
+] = [true, true];
 export const slotKind = pgEnum('slot_kind', SLOT_KINDS);
 export const passType = pgEnum('pass_type', PASS_TYPES);
 
@@ -47,6 +57,7 @@ export const passPrice = pgTable(
   },
   (t) => [
     primaryKey({ columns: [t.spaceId, t.slot, t.pass] }),
-    check('pass_price_positive', sql`${t.amount} > 0`),
+    // numeric accepts 'NaN', which compares greater than every number.
+    check('pass_price_positive', sql`${t.amount} > 0 AND ${t.amount} <> 'NaN'`),
   ],
 );

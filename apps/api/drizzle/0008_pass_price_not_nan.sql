@@ -1,0 +1,2 @@
+ALTER TABLE "pass_price" DROP CONSTRAINT "pass_price_positive";--> statement-breakpoint
+ALTER TABLE "pass_price" ADD CONSTRAINT "pass_price_positive" CHECK ("pass_price"."amount" > 0 AND "pass_price"."amount" <> 'NaN');

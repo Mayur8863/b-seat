@@ -57,6 +57,13 @@
       "when": 1793095977991,
       "tag": "0007_shared_calendar_backfill",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793096379073,
+      "tag": "0008_pass_price_not_nan",
+      "breakpoints": true
     }
   ]
 }

@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -104,8 +107,8 @@ describe('migration 0007_shared_calendar_backfill on top of existing spaces', ()
   beforeAll(async () => {
     scratch = await createScratchDatabase();
     await scratch.migrateTo('0005_renter_preferences');
-    // 23:30 UTC on 7 Jan is already 8 Jan in Auckland and still 7 Jan in Los Angeles.
-    const createdAt = '2030-01-07 23:30+00';
+    // 03:00 UTC on 8 Jan is 8 Jan in UTC and Auckland (16:00) but still 7 Jan in Los Angeles (19:00).
+    const createdAt = '2030-01-08 03:00+00';
     for (const [id, zone] of [
       [utcSpace, 'UTC'],
       [aucklandSpace, 'Pacific/Auckland'],
@@ -138,7 +141,7 @@ describe('migration 0007_shared_calendar_backfill on top of existing spaces', ()
       {
         space_id: utcSpace,
         seat_id: null,
-        start_date: '2030-01-07',
+        start_date: '2030-01-08',
         end_date: null,
         weekdays: 127,
       },
@@ -151,5 +154,17 @@ describe('migration 0007_shared_calendar_backfill on top of existing spaces', ()
       },
       { space_id: laSpace, seat_id: null, start_date: '2030-01-07', end_date: null, weekdays: 127 },
     ]);
+  });
+
+  it('is safe to run again: the body of the migration adds nothing', async () => {
+    const sqlText = readFileSync(
+      fileURLToPath(new URL('../drizzle/0007_shared_calendar_backfill.sql', import.meta.url)),
+      'utf8',
+    );
+    await scratch.pool.query(sqlText);
+    const { rows } = await scratch.pool.query<{ count: string }>(
+      'SELECT count(*) FROM availability_calendar',
+    );
+    expect(rows).toEqual([{ count: '3' }]);
   });
 });

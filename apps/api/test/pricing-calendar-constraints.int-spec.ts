@@ -10,6 +10,8 @@ import { createTestApp, pgFailure, resetDb } from './helpers.js';
 // data-model.md "space_slot", "pass_price" and "availability_calendar", against the migrated database.
 // The backfill of existing spaces is tested in migrations.int-spec.ts.
 
+const UNKNOWN = '00000000-0000-4000-8000-000000000000';
+
 describe('pricing and calendar constraints (database)', () => {
   let app: NestExpressApplication;
   let db: Database;
@@ -40,12 +42,12 @@ describe('pricing and calendar constraints (database)', () => {
     it('refuses an unknown space', async () => {
       const failure = await pgFailure(
         db.insert(spaceSlot).values({
-          spaceId: '00000000-0000-4000-8000-000000000000',
+          spaceId: UNKNOWN,
           slot: 'day',
           enabled: true,
         }),
       );
-      expect(failure.code).toBe('23503');
+      expect(failure).toEqual({ code: '23503', constraint: 'space_slot_space_id_space_id_fk' });
     });
   });
 
@@ -65,12 +67,22 @@ describe('pricing and calendar constraints (database)', () => {
       expect(failure).toEqual({ code: '23505', constraint: 'pass_price_space_id_slot_pass_pk' });
     });
 
-    it.each(['0', '0.00', '-1'])('refuses amount %s (pass_price_positive)', async (amount) => {
-      expect(await pgFailure(price(amount))).toEqual({
-        code: '23514',
-        constraint: 'pass_price_positive',
-      });
+    it('refuses an unknown space', async () => {
+      const failure = await pgFailure(
+        db.insert(passPrice).values({ spaceId: UNKNOWN, slot: 'day', pass: 'day', amount: '1' }),
+      );
+      expect(failure).toEqual({ code: '23503', constraint: 'pass_price_space_id_space_id_fk' });
     });
+
+    it.each(['0', '0.00', '-1', 'NaN'])(
+      'refuses amount %s (pass_price_positive)',
+      async (amount) => {
+        expect(await pgFailure(price(amount))).toEqual({
+          code: '23514',
+          constraint: 'pass_price_positive',
+        });
+      },
+    );
   });
 
   describe('availability_calendar', () => {
@@ -86,9 +98,11 @@ describe('pricing and calendar constraints (database)', () => {
         constraint: 'availability_calendar_shared_unique',
       });
       const other = await createSpace(db);
-      await expect(
-        db.insert(availabilityCalendar).values({ spaceId: other.id, startDate: '2030-01-01' }),
-      ).resolves.toBeDefined();
+      const [row] = await db
+        .insert(availabilityCalendar)
+        .values({ spaceId: other.id, startDate: '2030-01-01' })
+        .returning();
+      expect(row).toMatchObject({ spaceId: other.id, seatId: null });
     });
 
     it('allows one own calendar per seat', async () => {
@@ -102,12 +116,20 @@ describe('pricing and calendar constraints (database)', () => {
       });
     });
 
+    it('refuses an unknown space', async () => {
+      expect(await pgFailure(calendar({ spaceId: UNKNOWN }))).toEqual({
+        code: '23503',
+        constraint: 'availability_calendar_space_id_space_id_fk',
+      });
+    });
+
     it('refuses an end date before the start date', async () => {
       expect(await pgFailure(calendar({ endDate: '2029-12-31' }))).toEqual({
         code: '23514',
         constraint: 'availability_calendar_range',
       });
-      await expect(calendar({ endDate: '2030-01-01' })).resolves.toBeDefined();
+      const [row] = await calendar({ endDate: '2030-01-01' }).returning();
+      expect(row).toMatchObject({ startDate: '2030-01-01', endDate: '2030-01-01' });
     });
 
     it.each([0, 128, -1])('refuses weekdays = %i', async (weekdays) => {
@@ -118,7 +140,8 @@ describe('pricing and calendar constraints (database)', () => {
     });
 
     it.each([1, 127])('accepts the weekdays bound %i', async (weekdays) => {
-      await expect(calendar({ weekdays })).resolves.toBeDefined();
+      const [row] = await calendar({ weekdays }).returning();
+      expect(row?.weekdays).toBe(weekdays);
     });
 
     it('refuses a seat calendar whose space is not the seat space', async () => {

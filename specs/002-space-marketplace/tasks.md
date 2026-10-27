@@ -33,7 +33,7 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 | T001 | ADR-0009, ADR-0010 and plan approval                         | architect      | none                   | M    | done   | `docs/002-marketplace-adrs`           |
 | T002 | Account role: Better Auth field, migration, role guard       | backend-dev    | T001                   | M    | done   | `feat/002-account-role`               |
 | T003 | Listing schema: space columns, cubicle, seat changes         | backend-dev    | T001                   | M    | done   | `feat/002-listing-schema`             |
-| T004 | Pricing and calendar schema, shared calendar backfill        | backend-dev    | T003                   | M    | done   | `feat/002-pricing-calendar-schema`    |
+| T004 | Pricing and calendar schema, shared calendar backfill        | backend-dev    | T003                   | M    | review | `feat/002-pricing-calendar-schema`    |
 | T005 | Pass booking header, seat holds, occupancy marks, exclusions | backend-dev    | T003, T008             | M    | todo   | `feat/002-seat-hold-schema`           |
 | T006 | Slot, calendar and pass-period engine (pure, TDD)            | backend-dev    | T001                   | M    | done   | `feat/002-slot-engine`                |
 | T007 | Money, problem types and pass booking rules (pure, TDD)      | backend-dev    | T006                   | M    | todo   | `feat/002-pass-rules`                 |
@@ -153,7 +153,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given the migrations, When `db:generate` runs again, Then no new migration is produced.
 
 - [x] T004 Add `apps/api/src/db/schema/pricing.ts` (`space_slot`, `pass_price`) and `apps/api/src/db/schema/calendar.ts` (`availability_calendar`), migrations `pricing_calendar` (generated) and `shared_calendar_backfill` (custom), tests `apps/api/test/pricing-calendar-constraints.int-spec.ts`
-  - **Owner**: backend-dev · **Branch**: `feat/002-pricing-calendar-schema` · **Size**: M · **Depends on**: T003 · **Status**: done
+  - **Owner**: backend-dev · **Branch**: `feat/002-pricing-calendar-schema` · **Size**: M · **Depends on**: T003 · **Status**: review
   - **Scope**: data-model.md verbatim: PK `(space_id, slot)`; PK `(space_id, slot, pass)`; `amount numeric(12,2)` with `pass_price_positive` `amount > 0`; `weekdays smallint DEFAULT 127` with `availability_calendar_weekdays` `BETWEEN 1 AND 127`; `availability_calendar_range`; partial unique `availability_calendar_shared_unique (space_id) WHERE seat_id IS NULL`; `availability_calendar_seat_unique (seat_id)`; composite FK `(seat_id, space_id)`. Custom backfill: one shared calendar per existing space, `start_date = (created_at AT TIME ZONE time_zone)::date`.
   - **Added (T006 review)**: the migration also adds CHECK `shift_change_at < '12:00'` on `space` (R-4).
   - **Acceptance criteria**:
@@ -201,6 +201,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 
 - [ ] T007 Implement `apps/api/src/common/money/money.ts`, `apps/api/src/common/errors/problem-types.ts` and `apps/api/src/marketplace/booking-rules.ts`, with unit tests written first
   - **Owner**: backend-dev · **Branch**: `feat/002-pass-rules` · **Size**: M · **Depends on**: T006 · **Status**: todo
+  - **Added (T004 review)**: money parsing follows the same rule as T027: Zod string `^\d{1,10}(\.\d{1,2})?$`, value > 0, explicit upper bound, never `z.coerce.number()`; `pass_price.updated_at` is set by the service on update.
   - **Scope**: research R-8; contracts/README.md problem types, rule order and extension schemas (AQ-3, ADR-0009 section 8). `parseDecimal`, `formatDecimal`, `fullDaySaving(day, night, fullDay)` → `{ amount, percent } | null` (percent rounded half-up). `evaluatePassBookingRules({ space, isOwner, offered, startDayOpen, firstStartsAt }, now)` returns the first violation in the documented order or `null`. Problem type constants for every row of the contracts README table. `ProblemException` gains an optional `extensions` record and `ProblemFilter` spreads it before the standard members; export `PublishIncompleteProblem`, `LabelTakenProblem` and `OccupancyConflictProblem` (`ProblemSchema.extend(...)`, response only) for T020, T021 and T047. `ProblemSchema` itself is unchanged.
   - **Boundary assumptions (T006 security review)**: dates `YYYY-MM-DD` within years 0100-9998; server-side max span for any iterated date range and max seats per request; `slot`/`pass` as `z.enum` matching the opening mode; calendar weekdays 1-127 and `endDate >= startDate`; services catch `RangeError` from the slot modules and map it to a typed problem or treat the date as closed.
   - **Added (T006 review)**: the service checks `offeredSlots(...).includes(slot)` and returns 422 `pass-not-offered` before calling `passPeriod`.
@@ -224,6 +225,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 - [ ] T009 Seed demo marketplace data in `apps/api/src/db/demo-spaces.ts` and `apps/api/src/db/seed.ts`, tests in `apps/api/test/seed.int-spec.ts`
   - **Owner**: backend-dev · **Branch**: `feat/002-seed-marketplace` · **Size**: M · **Depends on**: T002, T004, T012 · **Status**: todo
   - **Carry-over (T003 review)**: decide whether the seed recreates soft-removed demo seats (its seat upsert now targets active labels only).
+  - **Added (T004 review)**: every seeded space has exactly one shared calendar, and the seed test asserts it.
   - **Scope**: Idempotent. Create `owner@bseat.local` (owner) and `renter@bseat.local` (renter, preferences IN / Pune once T013 exists; skip the preference row if the table is absent) with the password from `SEED_DEMO_PASSWORD` (Better Auth password hashing, no plain text stored; fail with a clear message if unset). Claim the 001 demo spaces for the owner (by name where `owner_id IS NULL`; **OQ-11**) in one `UPDATE` per space that sets `owner_id` and every listing field together (`space_owned_complete`), complete them (London HQ: GB, London, Westminster, `Europe/London`, GBP, always open, shift 07:00, day/night/full_day enabled, day and monthly prices with a 24-hour saving; Pune Hub: IN, Pune, Baner, `Asia/Kolkata`, INR, fixed 09:00–18:00, working-hours day/week/month prices), one or two cubicles each, and publish. Seat bookings and occupancy are not seeded (e2e creates its own).
   - **Acceptance criteria**:
     - Given a migrated, empty dev DB, When `bin/pnpm db:seed` runs twice, Then exactly 2 demo accounts, 2 published spaces owned by the owner, 20 active seats, their prices and shared calendars exist (Assumptions "seeded demo owner").
@@ -343,6 +345,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 - [ ] T020 [US2] Build `apps/api/src/owner-spaces/` (schemas, service, controller, module; spaces only) with `apps/api/test/owner-spaces.int-spec.ts`; regenerate `apps/api/openapi.json`
   - **Owner**: backend-dev · **Branch**: `feat/002-owner-spaces-api` · **Size**: M · **Depends on**: T002, T004, T019 · **Status**: todo
   - **Carry-over (T003 review)**: `ownerId`, `status` and `spaceId` come only from the session or route, never the request body, and the service maintains `space.updated_at`.
+  - **Added (T004 review)**: every space has exactly one shared calendar (created with the space); the integration test asserts it.
   - **Scope**: contracts/owner-spaces.md "Listing". Create also inserts the shared calendar (AC 6.1). Publish check: at least one active seat and one offered pass (enabled slot valid for the mode with a price). Scope every query by `owner_id`. Integration tests first.
   - **Added (T019 review)**: validate the stored time zone with `isOfferedTimeZone` (`reference/reference-data.ts`, allow-list of suggested zones plus UTC) and `.max(64)`; reuse `CountryCode`, `CurrencyCode` from `common/schemas/field-formats.ts`.
   - **Boundary assumptions (T006 security review)**: dates `YYYY-MM-DD` within years 0100-9998; server-side max span for any iterated date range and max seats per request; `slot`/`pass` as `z.enum` matching the opening mode; calendar weekdays 1-127 and `endDate >= startDate`; services catch `RangeError` from the slot modules and map it to a typed problem or treat the date as closed.
@@ -423,6 +426,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 
 - [ ] T027 [US3] Add pricing to `apps/api/src/owner-spaces/` (`GET`/`PUT …/pricing`) with `apps/api/test/owner-pricing.int-spec.ts`; regenerate `apps/api/openapi.json`
   - **Owner**: backend-dev · **Branch**: `feat/002-pricing-api` · **Size**: M · **Depends on**: T007, T020 · **Status**: todo
+  - **Added (T004 review)**: the money input is a Zod string matching `^\d{1,10}(\.\d{1,2})?$`, value > 0, with an explicit upper bound. Never `z.coerce.number()`. Postgres rounds sub-cent values silently (`10.005` becomes `10.01`) and a value >= 10^10 raises 22003. The service must set `pass_price.updated_at` on update.
   - **Scope**: contracts/owner-spaces.md "Pricing". Slot times come from `slots.ts`. Changing `shiftChangeAt` or `openingHours` never touches bookings (edge).
   - **Boundary assumptions (T006 security review)**: see T007.
   - **Acceptance criteria**:
@@ -502,6 +506,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 
 - [ ] T035 [US4] Add `GET /api/listings/{spaceId}/seats` to `apps/api/src/listings/` with `apps/api/test/listings-seats.int-spec.ts`; regenerate `apps/api/openapi.json`
   - **Owner**: backend-dev · **Branch**: `feat/002-seat-availability-api` · **Size**: M · **Depends on**: T005, T028 · **Status**: todo
+  - **Added (T004 review)**: the availability engine treats a missing shared calendar as closed (fail closed), never open.
   - **Scope**: contracts/listings.md; research R-10 (one hold query over the envelope, spelled for the GiST index; occurrences computed once per distinct calendar).
   - **Acceptance criteria**:
     - Given 6 seats and an active weekly day-slot booking on one of them, When requesting `pass=week&slot=day&startDate=` that week, Then 5 `free` and 1 `taken`, with `endDate`, `firstStartsAt`, `lastEndsAt` and the price (AC 4.4, FR-016).
@@ -697,6 +702,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 
 - [ ] T055 [US7] Add `GET /api/bookings` and `POST /api/bookings/{bookingId}/cancel` to `apps/api/src/bookings/` with `apps/api/test/my-bookings.int-spec.ts`; regenerate `apps/api/openapi.json`
   - **Owner**: backend-dev · **Branch**: `feat/002-my-bookings-api` · **Size**: M · **Depends on**: T036 · **Status**: todo
+  - **Added (T004 review)**: the availability engine treats a missing shared calendar as closed (fail closed), never open.
   - **Scope**: contracts/bookings.md. Cancel is the single scoped `UPDATE booking`; `seat_hold_booking_fk` cascades the holds to inactive (AQ-7, ADR-0009 section 3), so the service never updates `seat_hold`. Legacy hourly rows are not listed (**OQ-3**).
   - **Boundary assumptions (T006 security review)**: see T007.
   - **Acceptance criteria**:
@@ -989,6 +995,7 @@ Level 12: T071
 - **Follow-up (devops, from T011):** decide whether CI runs the perf script (`marketplace.perf-spec.ts`, T044), nightly or manual. Until then it is a QA gate recorded in test-plan.md.
 - **Follow-up (security, from T013):** every new free-text input (space name, description, custom utilities, seat and cubicle labels, layout item labels) uses `PlainText` from `common/schemas/field-formats.ts`, which rejects control and bidi-override characters (a NUL byte otherwise reaches Postgres, returns 500 and logs the input). Existing 001 free-text fields (space `name`/`location`) get the same treatment in the task that next touches them.
 - **Follow-up (devops, from T013 security review):** `bin/security` (all) stops at gitleaks because `gitleaks dir .` scans the gitignored `.pnpm-store/` (76 third-party matches), so Semgrep and Trivy never run locally. Add a path allow-list (`.pnpm-store/`, `node_modules/`, `.next/`) or scan with `gitleaks git`.
+- **Follow-up (deploy, from T004 security review):** before a production deploy, check that every `space.time_zone` exists in `pg_timezone_names`, otherwise migration 0007 aborts (`AT TIME ZONE` on an unknown zone).
 - Tests first for business logic (T005, T006, T007, T036, T047, T055, T064). The PR shows the failing-test commit.
 - No new runtime dependency is planned. Any new dependency needs a justification in the PR and must be raised with the task-manager.
 - Migrations: `0000`–`0002` are never edited; new migrations are generated first and `--custom` second (data-model.md).
