@@ -37,6 +37,72 @@
         ]
       }
     },
+    "/api/me/preferences": {
+      "put": {
+        "operationId": "Me_updatePreferences",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePreferencesInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Preferences"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Owner account",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ],
+        "tags": [
+          "me"
+        ]
+      }
+    },
     "/api/reference": {
       "get": {
         "operationId": "Reference_get",
@@ -344,6 +410,14 @@
               "owner",
               "renter"
             ]
+          },
+          "preferences": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Preferences"
+              }
+            ]
           }
         },
         "required": [
@@ -351,10 +425,37 @@
           "name",
           "email",
           "emailVerified",
-          "accountType"
+          "accountType",
+          "preferences"
         ],
         "additionalProperties": false,
         "description": "The signed-in user"
+      },
+      "Preferences": {
+        "type": "object",
+        "properties": {
+          "country": {
+            "nullable": true,
+            "type": "string",
+            "pattern": "^[A-Z]{2}$",
+            "description": "ISO 3166-1 alpha-2 country code, e.g. IN"
+          },
+          "city": {
+            "nullable": true,
+            "type": "string"
+          },
+          "area": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "country",
+          "city",
+          "area"
+        ],
+        "additionalProperties": false,
+        "description": "Renter search defaults"
       },
       "Problem": {
         "type": "object",
@@ -407,6 +508,36 @@
           "status"
         ],
         "additionalProperties": false
+      },
+      "UpdatePreferencesInput": {
+        "type": "object",
+        "properties": {
+          "country": {
+            "nullable": true,
+            "type": "string",
+            "pattern": "^[A-Z]{2}$",
+            "description": "ISO 3166-1 alpha-2 country code, e.g. IN"
+          },
+          "city": {
+            "nullable": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "area": {
+            "nullable": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          }
+        },
+        "required": [
+          "country",
+          "city",
+          "area"
+        ],
+        "additionalProperties": false,
+        "description": "Renter search defaults; all null clears them"
       },
       "Reference": {
         "type": "object",

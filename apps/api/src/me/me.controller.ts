@@ -1,34 +1,53 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
-import { ApiCookieAuth, ApiOkResponse, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger';
-import { z } from 'zod';
+import { Body, Controller, Get, Put, UseGuards } from '@nestjs/common';
+import {
+  ApiBadRequestResponse,
+  ApiCookieAuth,
+  ApiForbiddenResponse,
+  ApiOkResponse,
+  ApiTags,
+  ApiUnauthorizedResponse,
+} from '@nestjs/swagger';
 
 import type { AuthSession } from '../auth/auth.js';
-import { ACCOUNT_TYPES } from '../auth/account-type.js';
 import { AuthGuard, CurrentSession } from '../auth/auth.guard.js';
+import { RequireRole } from '../auth/roles.guard.js';
 import { ProblemSchema } from '../common/errors/problem.js';
-
-export const MeSchema = z
-  .object({
-    id: z.string(),
-    name: z.string(),
-    email: z.email(),
-    emailVerified: z.boolean(),
-    accountType: z.enum(ACCOUNT_TYPES),
-  })
-  .meta({ id: 'Me', description: 'The signed-in user' });
-
-export type Me = z.infer<typeof MeSchema>;
+import {
+  type Me,
+  MeSchema,
+  type Preferences,
+  PreferencesSchema,
+  type UpdatePreferencesInput,
+  UpdatePreferencesInputSchema,
+} from './me.schemas.js';
+import { MeService } from './me.service.js';
 
 @ApiTags('me')
 @ApiCookieAuth()
 @Controller('me')
-@UseGuards(AuthGuard)
 export class MeController {
+  constructor(private readonly me: MeService) {}
+
   @Get()
+  @UseGuards(AuthGuard)
   @ApiOkResponse({ standardSchema: MeSchema })
   @ApiUnauthorizedResponse({ standardSchema: ProblemSchema })
-  get(@CurrentSession() session: AuthSession): Me {
+  async get(@CurrentSession() session: AuthSession): Promise<Me> {
     const { id, name, email, emailVerified, accountType } = session.user;
-    return { id, name, email, emailVerified, accountType };
+    const preferences = await this.me.getPreferences(id);
+    return { id, name, email, emailVerified, accountType, preferences };
+  }
+
+  @Put('preferences')
+  @RequireRole('renter')
+  @ApiOkResponse({ standardSchema: PreferencesSchema })
+  @ApiBadRequestResponse({ standardSchema: ProblemSchema })
+  @ApiUnauthorizedResponse({ standardSchema: ProblemSchema })
+  @ApiForbiddenResponse({ standardSchema: ProblemSchema, description: 'Owner account' })
+  updatePreferences(
+    @CurrentSession() session: AuthSession,
+    @Body({ schema: UpdatePreferencesInputSchema }) input: UpdatePreferencesInput,
+  ): Promise<Preferences> {
+    return this.me.savePreferences(session.user.id, input);
   }
 }
