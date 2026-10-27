@@ -12,7 +12,7 @@ import type { Request } from 'express';
 import type { Auth, AuthSession } from './auth.js';
 import { AUTH } from './auth.tokens.js';
 
-type AuthedRequest = Request & { session?: AuthSession };
+export type AuthedRequest = Request & { session?: AuthSession };
 
 /**
  * Requires a valid Better Auth session cookie. Use with `@UseGuards(AuthGuard)`

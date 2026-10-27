@@ -2,6 +2,7 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import pg from 'pg';
 import request from 'supertest';
 
+import type { AccountType } from '../src/auth/account-type.js';
 import { createApp } from '../src/bootstrap.js';
 import { PG_POOL } from '../src/db/db.module.js';
 
@@ -28,7 +29,7 @@ export async function resetDb(app: NestExpressApplication): Promise<void> {
 export async function signedInAgent(
   app: NestExpressApplication,
   user = { name: 'Test User', email: 'test@example.com', password: 'correct-horse-battery' },
-  accountType: 'owner' | 'renter' = 'renter',
+  accountType: AccountType = 'renter',
 ) {
   const agent = request.agent(app.getHttpServer());
   await agent

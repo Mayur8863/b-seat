@@ -1,22 +1,29 @@
 import {
+  applyDecorators,
   type CanActivate,
   type ExecutionContext,
   ForbiddenException,
   Injectable,
   SetMetadata,
   UnauthorizedException,
+  UseGuards,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import type { Request } from 'express';
 
-import type { AuthSession } from './auth.js';
+import type { AccountType } from './account-type.js';
+import { AuthGuard, type AuthedRequest } from './auth.guard.js';
 
-export type AccountType = 'owner' | 'renter';
+export type { AccountType } from './account-type.js';
 
 const ROLE_KEY = 'bseat:required-role';
 
-/** Restricts a handler or controller to one account type. Use after AuthGuard. */
-export const RequireRole = (role: AccountType) => SetMetadata(ROLE_KEY, role);
+/**
+ * Restricts a handler or controller to one account type. It applies AuthGuard and RolesGuard
+ * itself, so a route cannot carry the role without the check (fail closed, OWASP A01).
+ * Handler-level metadata overrides class-level metadata (`getAllAndOverride`).
+ */
+export const RequireRole = (role: AccountType) =>
+  applyDecorators(UseGuards(AuthGuard, RolesGuard), SetMetadata(ROLE_KEY, role));
 
 /**
  * Enforces `@RequireRole()` from the session set by AuthGuard. The wrong role gets 403,
@@ -32,9 +39,7 @@ export class RolesGuard implements CanActivate {
       context.getClass(),
     ]);
     if (!required) return true;
-    const session = context
-      .switchToHttp()
-      .getRequest<Request & { session?: AuthSession }>().session;
+    const session = context.switchToHttp().getRequest<AuthedRequest>().session;
     if (!session) throw new UnauthorizedException('Sign in required');
     if (session.user.accountType !== required) {
       throw new ForbiddenException('This action is not available for your account type');

@@ -8,6 +8,8 @@ import type { Database } from '../db/db.js';
 import * as schema from '../db/schema/index.js';
 import type { MailJob } from '../mail/mail.types.js';
 
+import { ACCOUNT_TYPES } from './account-type.js';
+
 export const AUTH_BASE_PATH = '/api/auth';
 
 export interface AuthDeps {
@@ -60,10 +62,10 @@ export function createAuth({ db, env, sendMail }: AuthDeps) {
     user: {
       additionalFields: {
         accountType: {
-          type: ['owner', 'renter'],
+          type: [...ACCOUNT_TYPES],
           required: true,
           input: true,
-          validator: { input: z.enum(['owner', 'renter']) },
+          validator: { input: z.enum(ACCOUNT_TYPES) },
           // No defaultValue on purpose: a JS default would satisfy `required` and skip the choice.
         },
       },

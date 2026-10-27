@@ -78,7 +78,12 @@ describe('account type (sign-up, immutability, role guard)', () => {
   it('refuses to change accountType through update-user and leaves the row untouched', async () => {
     const agent = await signedInAgent(app);
     for (const body of [{ accountType: 'owner' }, { accountType: 'owner', name: 'Hacker' }]) {
-      await agent.post('/api/auth/update-user').set('origin', ORIGIN).send(body).expect(400);
+      const res = await agent
+        .post('/api/auth/update-user')
+        .set('origin', ORIGIN)
+        .send(body)
+        .expect(400);
+      expect(res.body.message).toBe('accountType cannot be changed');
     }
     const { rows } = await pool.query<{ account_type: string; name: string }>(
       `select account_type, name from "user"`,

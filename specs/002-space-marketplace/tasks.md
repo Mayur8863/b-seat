@@ -281,6 +281,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
   - **Owner**: frontend-dev · **Branch**: `feat/002-sign-up-role` · **Size**: M · **Depends on**: T002, T013, T014, T019 · **Status**: todo
   - **Scope**: ui/01. RHF + `zodResolver`. After a renter's successful sign-up, save preferences with `useMeUpdatePreferences` (a failure shows a non-blocking notice; the account stands). The country picker uses `useReferenceGet` (T019), the same list as the space form.
   - **Note (T002 bridge)**: T002 added a temporary `accountType: 'renter'` in `sign-up/page.tsx` (and `inferAdditionalFields` in `auth-client.ts`, which stays). Replace the hard-coded value with the user's choice and update `sign-up/page.test.tsx`.
+  - **Note (T002 review)**: rewrite `sign-up/page.test.tsx` to mock HTTP with MSW (capture the request body) instead of mocking `@/lib/auth-client`, and cover the error path. Do not send `accountType` on profile edits: the update hook rejects even no-op values.
   - **Acceptance criteria**:
     - Given the sign-up form, When submitted without a role, Then a field error tied by `aria-describedby` shows and no request is sent (AC 1.1, FR-001).
     - Given "I need a space" with country IN and city Pune, When sign-up succeeds, Then preferences are saved and the user lands on `/dashboard` as a renter (AC 1.2).

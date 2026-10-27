@@ -2,6 +2,7 @@ import { type ExecutionContext, ForbiddenException, UnauthorizedException } from
 import { Reflector } from '@nestjs/core';
 import { describe, expect, it } from 'vitest';
 
+import { AuthGuard } from './auth.guard.js';
 import { RequireRole, RolesGuard } from './roles.guard.js';
 
 class Probe {
@@ -24,6 +25,13 @@ function context(handler: () => unknown, session?: { user: { accountType: string
 }
 
 const guard = new RolesGuard(new Reflector());
+
+describe('RequireRole', () => {
+  it('applies AuthGuard then RolesGuard so the role cannot be set without the guards', () => {
+    const guards: unknown = Reflect.getMetadata('__guards__', Probe.prototype.ownerOnly);
+    expect(guards).toEqual([AuthGuard, RolesGuard]);
+  });
+});
 
 describe('RolesGuard', () => {
   it('lets an owner into an owner-only handler', () => {

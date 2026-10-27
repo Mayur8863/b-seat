@@ -3,6 +3,7 @@ import { ApiCookieAuth, ApiOkResponse, ApiTags, ApiUnauthorizedResponse } from '
 import { z } from 'zod';
 
 import type { AuthSession } from '../auth/auth.js';
+import { ACCOUNT_TYPES } from '../auth/account-type.js';
 import { AuthGuard, CurrentSession } from '../auth/auth.guard.js';
 import { ProblemSchema } from '../common/errors/problem.js';
 
@@ -12,7 +13,7 @@ export const MeSchema = z
     name: z.string(),
     email: z.email(),
     emailVerified: z.boolean(),
-    accountType: z.enum(['owner', 'renter']),
+    accountType: z.enum(ACCOUNT_TYPES),
   })
   .meta({ id: 'Me', description: 'The signed-in user' });
 

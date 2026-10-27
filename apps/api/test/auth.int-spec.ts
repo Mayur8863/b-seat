@@ -28,8 +28,9 @@ describe('auth (Better Auth mounted at /api/auth)', () => {
     const res = await request(app.getHttpServer())
       .post('/api/auth/sign-up/email')
       .set('origin', ORIGIN)
-      .send({ name: 'Bob', email: 'bob@example.com', password: 'short' });
+      .send({ name: 'Bob', email: 'bob@example.com', password: 'short', accountType: 'renter' });
     expect(res.status).toBe(400);
+    expect(res.body.code).toBe('PASSWORD_TOO_SHORT');
   });
 
   it('has no session without a cookie', async () => {

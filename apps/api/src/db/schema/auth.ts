@@ -5,6 +5,7 @@
  */
 import { sql } from 'drizzle-orm';
 import { boolean, check, index, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
+import { ACCOUNT_TYPES } from '../../auth/account-type.js';
 
 const timestamps = {
   createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
@@ -24,7 +25,7 @@ export const user = pgTable(
     image: text(),
     // Better Auth additional field (ADR-0010). Not `role`: the admin plugin owns that key.
     // The default makes accounts that predate the marketplace renters (FR-003).
-    accountType: text().notNull().default('renter'),
+    accountType: text({ enum: ACCOUNT_TYPES }).notNull().default('renter'),
     ...timestamps,
   },
   (t) => [check('user_account_type_valid', sql`${t.accountType} IN ('owner','renter')`)],
