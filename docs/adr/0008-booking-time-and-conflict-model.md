@@ -100,8 +100,10 @@ contract (`openapi.json`, the generated client) or the stored data:
   - The `40P01` retry stays for the case the lock does not cover: one user racing on **different** seats
     (`booking_user_no_overlap`). That fan-in is one person's concurrent requests, so retry-only is enough.
   - Nothing but the lock and the `INSERT` runs inside the transaction (the email is queued after commit,
-    section 5), so the lock is held for milliseconds. No `lock_timeout` is set for this path because
-    there is no application await between the two statements, and 002 T008 removes the path.
+    section 5), so the lock is held for milliseconds. The first statement of each attempt is
+    `SET LOCAL lock_timeout = '5s'` (ADR-0009 section 9); `55P03` is logged as `booking.lock_timeout`, not retried,
+    and answers a generic 500. The API pool also bounds waits: `connectionTimeoutMillis` 5 s, `statement_timeout`
+    10 s, `idle_in_transaction_session_timeout` 10 s (`API_POOL_LIMITS`; migrate and seed set none).
   - Rejected: `SERIALIZABLE` (aborts with `40001` instead of naming the constraint, still needs retries).
     Feature 002 uses the namespaced, multi-seat form of this lock in ADR-0009 section 9.
 

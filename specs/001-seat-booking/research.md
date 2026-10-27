@@ -122,7 +122,7 @@ If both constraints would fail, PostgreSQL reports whichever it checks first. Ei
 correct for the user. Tests set up only one conflict per case.
 
 Concurrent inserts that conflict make the later transaction wait for the earlier one and then
-fail with `23P01`. No advisory locks or `SERIALIZABLE` isolation are needed. SC-002 is proven by
+fail with `23P01`. This alone proved insufficient under load: a per-seat advisory lock was added (ADR-0008 section 2 amendment). `SERIALIZABLE` is not needed. SC-002 is proven by
 an integration test that fires 20 parallel `POST /api/bookings` from 20 users for one seat and
 window, and expects exactly one 201 and nineteen 409s, run in a loop of several iterations.
 

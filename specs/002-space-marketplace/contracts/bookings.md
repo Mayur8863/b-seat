@@ -61,7 +61,8 @@ Always books for the caller. Processing:
 2. `evaluatePassBookingRules(...)` in the order of [README](./README.md#problem-types-introduced-by-this-feature)
    → 422 with the rule's `type`.
 3. Compute occurrences with `pass-period.ts` (research R-5).
-4. Transaction: `SELECT … FROM seat WHERE id = $seat AND removed_at IS NULL FOR SHARE`; insert the `booking`
+4. Transaction: `SET LOCAL lock_timeout = '5s'` and `lockSeats` first (ADR-0009 section 9; `55P03` → log
+   `booking.lock_timeout` with ids only and rethrow, no retry), then `SELECT … FROM seat WHERE id = $seat AND removed_at IS NULL FOR SHARE`; insert the `booking`
    header (`kind 'pass'`, envelope, price snapshot); insert all holds in chronological order. Map
    `DrizzleQueryError.cause`: `23P01` + `seat_hold_seat_no_overlap` → 409 `booking:seat-unavailable`;
    `23P01` + `seat_hold_user_no_overlap` → 409 `booking:user-overlap`; `40P01` → retry the transaction (at most 3
