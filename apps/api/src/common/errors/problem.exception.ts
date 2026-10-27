@@ -12,6 +12,8 @@ export class ProblemException extends HttpException {
     readonly type: string,
     readonly title: string,
     readonly detail: string,
+    /** Extra members for the body; the filter never lets them override standard ones. */
+    readonly extensions?: Readonly<Record<string, unknown>>,
   ) {
     super(detail, status);
   }

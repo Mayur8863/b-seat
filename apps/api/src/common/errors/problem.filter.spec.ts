@@ -99,6 +99,41 @@ describe('ProblemFilter', () => {
   });
 });
 
+describe('ProblemFilter extensions', () => {
+  it('adds the extension members to the body', () => {
+    const { body } = run(
+      new ProblemException(409, 'urn:bseat:problem:listing:label-taken', 'Label taken', 'Taken.', {
+        labels: ['A-1'],
+      }),
+    );
+    expect(body).toMatchObject({ labels: ['A-1'], status: 409, detail: 'Taken.' });
+  });
+
+  it('never lets an extension override a standard member', () => {
+    const { body, res } = run(
+      new ProblemException(409, 'urn:bseat:problem:listing:label-taken', 'Label taken', 'Taken.', {
+        labels: ['A-1'],
+        type: 'x',
+        title: 'x',
+        status: 200,
+        detail: 'x',
+        instance: 'x',
+        requestId: 'x',
+      }),
+    );
+    expect(res.status).toHaveBeenCalledWith(409);
+    expect(body).toEqual({
+      labels: ['A-1'],
+      type: 'urn:bseat:problem:listing:label-taken',
+      title: 'Label taken',
+      status: 409,
+      detail: 'Taken.',
+      instance: '/x',
+      requestId: 'req-1',
+    });
+  });
+});
+
 describe('ProblemException', () => {
   it('is an HttpException with the status, and the detail as its message', () => {
     const err = new ProblemException(

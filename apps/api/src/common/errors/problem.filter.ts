@@ -48,6 +48,7 @@ export class ProblemFilter implements ExceptionFilter {
 
     if (exception instanceof ProblemException) {
       return {
+        ...exception.extensions,
         ...base,
         type: exception.type,
         title: exception.title,
