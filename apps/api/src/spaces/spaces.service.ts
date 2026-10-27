@@ -33,7 +33,8 @@ export function resolveWindow(query: AvailabilityQueryInput, timeZone: string): 
 
 /**
  * Spaces are shared reference data: any signed-in user may read them, so these queries are
- * not scoped to the caller. Only published spaces are visible (FR-009): a draft is a 404. Availability never exposes who holds a booking (FR-011).
+ * not scoped to the caller. Only published spaces are visible (FR-009): a draft is a 404.
+ * Availability never exposes who holds a booking (FR-011).
  */
 @Injectable()
 export class SpacesService {

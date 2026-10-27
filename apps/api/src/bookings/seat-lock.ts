@@ -12,18 +12,24 @@ export const LOCK_TIMEOUT = '5s';
 export type SeatLockTx = Parameters<Parameters<Database['transaction']>[0]>[0];
 
 /**
- * Runs `work` in one short transaction that first takes a transaction-scoped advisory lock
- * on the seat, so concurrent writers for the same seat queue here instead of colliding
- * inside an exclusion-constraint check, where Postgres resolves the collision as a deadlock
- * only after `deadlock_timeout` (1 s) and 20+ racers exhaust the retries (HTTP 500). The
- * constraints still decide the outcome; the lock only orders the attempts. Different seats
- * do not contend.
+ * LEGACY, kept only until T005: this is 001's seat lock (`hashtextextended(seatId, 0)`), not the
+ * `lockSeats` of ADR-0009 section 9 (advisory class 1112735745, sorted keys, many seats). The
+ * two never exclude each other, so never use this next to `lockSeats` and do not build new
+ * callers on it. T005 replaces the lock statement with `lockSeats` and generalises this into
+ * `withSeatLocks` (see T005 in tasks.md).
  *
- * Kept from the retired hourly create (T008) for the pass booking and hold writes (T005,
- * T036). A deadlock is retried up to `MAX_INSERT_ATTEMPTS` times, one fresh transaction each,
- * so `work` must be safe to run again. A lock timeout is not retried: the seat is under heavy
- * contention, so waiting again would pile on. A database error that maps to a 409 is thrown
- * as that problem (`classifyInsertError`).
+ * Runs `work` in one short transaction that first sets `lock_timeout` and takes a
+ * transaction-scoped advisory lock on the seat, so concurrent writers for the same seat queue
+ * here instead of colliding inside an exclusion-constraint check (where Postgres resolves the
+ * collision as a deadlock only after `deadlock_timeout` and 20+ racers exhaust the retries).
+ *
+ * A deadlock is retried up to `MAX_INSERT_ATTEMPTS` times, one fresh transaction each, so `work`
+ * must be safe to re-run: it only runs database statements on `tx` (no mail, cache or success
+ * logging), it does not catch database errors, and it returns only values derived from `tx`.
+ * A lock timeout is not retried: waiting again would pile on. A database error that maps to a
+ * 409 is thrown as that problem (`classifyInsertError`, which knows only the `booking_*`
+ * constraints that T005 drops). A throw from `onLockTimeout` is swallowed so it cannot replace
+ * the original 55P03 error.
  */
 export async function withSeatLock<T>(
   db: Database,
@@ -41,7 +47,11 @@ export async function withSeatLock<T>(
     } catch (err) {
       const outcome = classifyInsertError(err);
       if (outcome === 'lock-timeout') {
-        onLockTimeout?.();
+        try {
+          onLockTimeout?.();
+        } catch {
+          // A failing hook must not hide the lock timeout.
+        }
         throw err;
       }
       if (outcome === 'retry' && attempt < MAX_INSERT_ATTEMPTS) continue;

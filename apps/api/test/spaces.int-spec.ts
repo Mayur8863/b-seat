@@ -299,19 +299,28 @@ describe('spaces API', () => {
       }
     });
 
-    it('is 404 for a draft or unpublished space, as for an unknown one (FR-009, T008)', async () => {
+    it('is 404 for a draft or unpublished space, identical to an unknown one (FR-009, T008)', async () => {
       const db = testDb(app);
       const owner = await createOwner(db);
       const draft = await createListing(db, owner.id);
       const retired = await createListing(db, owner.id, { status: 'unpublished' });
       await createSeats(db, draft.id, 1);
+      const query = { date: '2026-10-23', startTime: '10:00', endTime: '11:00' };
+      const unknown = await agent
+        .get('/api/spaces/00000000-0000-4000-8000-000000000000/availability')
+        .query(query)
+        .expect(404);
+      const { instance: _i, requestId: _r, ...expected } = unknown.body as Record<string, unknown>;
 
+      // No existence oracle: the whole problem body matches, apart from the per-request instance and requestId.
       for (const id of [draft.id, retired.id]) {
-        const res = await agent
-          .get(`/api/spaces/${id}/availability`)
-          .query({ date: '2026-10-23', startTime: '10:00', endTime: '11:00' })
-          .expect(404);
-        expect(res.body).toMatchObject({ type: 'urn:bseat:problem:http-404', status: 404 });
+        const res = await agent.get(`/api/spaces/${id}/availability`).query(query).expect(404);
+        const {
+          instance: _instance,
+          requestId: _requestId,
+          ...rest
+        } = res.body as Record<string, unknown>;
+        expect(rest).toEqual(expected);
       }
     });
 

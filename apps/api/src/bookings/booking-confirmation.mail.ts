@@ -1,7 +1,7 @@
 import { toLocal } from '../common/time/zoned-time.js';
 import type { MailJob } from '../mail/mail.types.js';
 
-/** What the confirmation needs of a booking; the pass booking response (T036) satisfies it too. */
+/** What the confirmation needs of a booking. Kept until T037 replaces it with `booking-emails.ts`. */
 export interface BookingConfirmationSource {
   id: string;
   startsAt: string;
