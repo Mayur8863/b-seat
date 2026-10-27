@@ -1,13 +1,28 @@
 import type { NestExpressApplication } from '@nestjs/platform-express';
-import { asc, eq } from 'drizzle-orm';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { asc, eq, isNull } from 'drizzle-orm';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { DEMO_OWNER_EMAIL, DEMO_RENTER_EMAIL, seedAccounts } from '../src/db/demo-accounts.js';
 import { DEMO_SPACES, type SeedSpace, seedSpaces } from '../src/db/demo-spaces.js';
-import { seat, space } from '../src/db/schema/index.js';
+import {
+  account,
+  availabilityCalendar,
+  cubicle,
+  passPrice,
+  renterPreference,
+  seat,
+  space,
+  spaceSlot,
+  user,
+} from '../src/db/schema/index.js';
+import { runSeed, type SeedConnection } from '../src/db/seed-run.js';
 import { createListing, createOwner, testDb } from './fixtures.js';
-import { createTestApp, resetDb } from './helpers.js';
+import { createTestApp, ORIGIN, resetDb } from './helpers.js';
+import request from 'supertest';
 
-describe('seedSpaces (demo data, FR-012)', () => {
+const PASSWORD = 'demo-password-123';
+
+describe('demo marketplace seed (FR-012, OQ-11)', () => {
   let app: NestExpressApplication;
 
   beforeAll(async () => {
@@ -16,85 +31,236 @@ describe('seedSpaces (demo data, FR-012)', () => {
   beforeEach(() => resetDb(app));
   afterAll(() => app.close());
 
-  async function snapshot() {
+  /** Mimics the 001 seed: unowned draft spaces with seats. */
+  async function insertLegacyDemo() {
     const db = testDb(app);
-    const spaces = await db.select().from(space).orderBy(asc(space.name));
-    const seats = await db
-      .select({ spaceName: space.name, label: seat.label, features: seat.features })
-      .from(seat)
-      .innerJoin(space, eq(seat.spaceId, space.id))
-      .orderBy(asc(space.name), asc(seat.label));
-    return { spaces, seats };
+    for (const s of DEMO_SPACES) {
+      const [row] = await db
+        .insert(space)
+        .values({ name: s.name, location: s.location, timeZone: s.timeZone })
+        .returning();
+      if (!row) throw new Error('no row');
+      await db
+        .insert(seat)
+        .values(s.seats.slice(0, 2).map((x) => ({ spaceId: row.id, label: x.label })));
+    }
   }
 
-  it('creates London HQ (12 seats) and Pune Hub (8 seats), and is idempotent', async () => {
+  async function snapshot() {
     const db = testDb(app);
-    await seedSpaces(db);
+    return {
+      users: await db.select().from(user).orderBy(asc(user.email)),
+      spaces: await db.select().from(space).orderBy(asc(space.name)),
+      seats: await db.select().from(seat).orderBy(asc(seat.spaceId), asc(seat.label)),
+      cubicles: await db.select().from(cubicle).orderBy(asc(cubicle.name)),
+      slots: await db.select().from(spaceSlot),
+      prices: await db.select().from(passPrice),
+      calendars: await db.select().from(availabilityCalendar),
+    };
+  }
+
+  async function seedAll() {
+    const db = testDb(app);
+    const { ownerId } = await seedAccounts(db, PASSWORD);
+    await seedSpaces(db, ownerId);
+    return ownerId;
+  }
+
+  it('seeds 2 accounts, 2 published spaces, 20 seats, prices and one shared calendar each, twice', async () => {
+    const ownerId = await seedAll();
     const first = await snapshot();
-    await seedSpaces(db);
+    await seedAll();
     const second = await snapshot();
 
     expect(second).toEqual(first);
-    expect(second.spaces.map((s) => [s.name, s.location, s.timeZone])).toEqual([
-      ['London HQ', 'London, United Kingdom', 'Europe/London'],
-      ['Pune Hub', 'Pune, India', 'Asia/Kolkata'],
+    expect(second.users.map((u) => [u.email, u.accountType])).toEqual([
+      [DEMO_OWNER_EMAIL, 'owner'],
+      [DEMO_RENTER_EMAIL, 'renter'],
     ]);
-    expect(second.seats).toHaveLength(20);
-
-    const labels = (name: string) =>
-      second.seats.filter((s) => s.spaceName === name).map((s) => s.label);
-    expect(labels('London HQ')).toEqual(
-      Array.from({ length: 12 }, (_, i) => `A-${String(i + 1).padStart(2, '0')}`),
+    expect(second.spaces).toHaveLength(2);
+    expect(second.spaces.every((s) => s.ownerId === ownerId && s.status === 'published')).toBe(
+      true,
     );
-    expect(labels('Pune Hub')).toEqual(
-      Array.from({ length: 8 }, (_, i) => `P-${String(i + 1).padStart(2, '0')}`),
-    );
+    const [london, pune] = second.spaces;
+    expect(london).toMatchObject({
+      name: 'London HQ',
+      country: 'GB',
+      city: 'London',
+      area: 'Westminster',
+      currency: 'GBP',
+      openingMode: 'always_open',
+      timeZone: 'Europe/London',
+    });
+    expect(london?.shiftChangeAt?.slice(0, 5)).toBe('07:00');
+    expect(pune).toMatchObject({
+      country: 'IN',
+      city: 'Pune',
+      area: 'Baner',
+      currency: 'INR',
+      openingMode: 'fixed_hours',
+      timeZone: 'Asia/Kolkata',
+    });
+    expect(pune?.opensAt?.slice(0, 5)).toBe('09:00');
+    expect(pune?.closesAt?.slice(0, 5)).toBe('18:00');
 
-    const features = new Set(second.seats.flatMap((s) => s.features));
-    expect(features).toEqual(new Set(['standing desk', 'dual monitor']));
+    expect(second.seats.filter((s) => s.removedAt === null)).toHaveLength(20);
+    expect(second.seats.every((s) => s.cubicleId !== null)).toBe(true);
+    expect(second.cubicles.length).toBeGreaterThanOrEqual(2);
+
+    // Exactly one shared calendar per space.
+    expect(second.calendars.map((c) => c.spaceId).sort()).toEqual(
+      second.spaces.map((s) => s.id).sort(),
+    );
+    expect(second.calendars.every((c) => c.seatId === null)).toBe(true);
+
+    const londonPrices = second.prices.filter((p) => p.spaceId === london?.id);
+    const amount = (slot: string, pass: string) =>
+      Number(londonPrices.find((p) => p.slot === slot && p.pass === pass)?.amount);
+    expect(amount('full_day', 'day')).toBeLessThan(amount('day', 'day') + amount('night', 'day'));
+    expect(
+      second.prices
+        .filter((p) => p.spaceId === pune?.id)
+        .map((p) => p.pass)
+        .sort(),
+    ).toEqual(['day', 'month', 'week']);
+    expect(
+      second.slots
+        .filter((s) => s.spaceId === london?.id)
+        .map((s) => s.slot)
+        .sort(),
+    ).toEqual(['day', 'full_day', 'night']);
   });
 
-  it('fills in a space that exists with missing seats without duplicating it', async () => {
+  it('gives the renter IN / Pune preferences', async () => {
+    await seedAll();
     const db = testDb(app);
-    const london = DEMO_SPACES.filter((s) => s.name === 'London HQ');
-    await seedSpaces(
-      db,
-      london.map((s) => ({ ...s, seats: s.seats.slice(0, 3) })),
-    );
-    await seedSpaces(db);
+    const rows = await db.select().from(renterPreference);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ country: 'IN', city: 'Pune', area: null });
+  });
 
+  it('lets both demo accounts sign in with the password', async () => {
+    await seedAll();
+    for (const email of [DEMO_OWNER_EMAIL, DEMO_RENTER_EMAIL]) {
+      await request(app.getHttpServer())
+        .post('/api/auth/sign-in/email')
+        .set('origin', ORIGIN)
+        .send({ email, password: PASSWORD })
+        .expect(200);
+    }
+    const db = testDb(app);
+    const accounts = await db.select().from(account);
+    expect(accounts.every((a) => a.password !== null && !a.password.includes(PASSWORD))).toBe(true);
+  });
+
+  it('claims and completes the 001 demo spaces in place instead of duplicating them', async () => {
+    await insertLegacyDemo();
+    const before = await testDb(app).select({ id: space.id }).from(space).orderBy(asc(space.id));
+    await seedAll();
     const { spaces, seats } = await snapshot();
-    expect(spaces).toHaveLength(2);
+    expect(spaces.map((s) => s.id).sort()).toEqual(before.map((b) => b.id).sort());
+    expect(spaces.every((s) => s.status === 'published' && s.ownerId !== null)).toBe(true);
     expect(seats).toHaveLength(20);
+  });
+
+  it('does not resurrect a seat the owner removed, nor reset an edited listing', async () => {
+    await seedAll();
+    const db = testDb(app);
+    await db.update(seat).set({ removedAt: new Date() }).where(eq(seat.label, 'A-01'));
+    await db
+      .update(space)
+      .set({ description: 'Edited by the owner.' })
+      .where(eq(space.name, 'Pune Hub'));
+    await seedAll();
+
+    const active = await db.select().from(seat).where(isNull(seat.removedAt));
+    expect(active).toHaveLength(19);
+    const [pune] = await db.select().from(space).where(eq(space.name, 'Pune Hub'));
+    expect(pune?.description).toBe('Edited by the owner.');
+  });
+
+  it('recreates a missing shared calendar for a space the owner already holds', async () => {
+    await seedAll();
+    const db = testDb(app);
+    await db.delete(availabilityCalendar);
+    await seedAll();
+    expect(await db.select().from(availabilityCalendar)).toHaveLength(2);
+  });
+
+  it('ignores a same-named space of someone else and creates its own', async () => {
+    const db = testDb(app);
+    const other = await createOwner(db);
+    const owned = await createListing(db, other.id, { name: 'London HQ' });
+    await seedAll();
+    await seedAll();
+
+    const rows = await db.select().from(space).where(eq(space.name, 'London HQ'));
+    expect(rows).toHaveLength(2);
+    expect(rows.find((r) => r.id === owned.id)).toMatchObject({ ownerId: other.id });
+    expect(await db.select().from(seat).where(eq(seat.spaceId, owned.id))).toHaveLength(0);
   });
 
   it('rejects an invalid time zone, naming it, before writing anything', async () => {
     const db = testDb(app);
-    const bad: SeedSpace = {
-      name: 'Mars Base',
-      location: 'Mars',
-      timeZone: 'Mars/Base',
-      seats: [{ label: 'M-01' }],
-    };
+    const { ownerId } = await seedAccounts(db, PASSWORD);
+    const first = DEMO_SPACES[0];
+    if (!first) throw new Error('no demo space');
+    const bad: SeedSpace = { ...first, name: 'Mars Base', timeZone: 'Mars/Base' };
 
-    await expect(seedSpaces(db, [...DEMO_SPACES, bad])).rejects.toThrow(/Mars\/Base/);
+    await expect(seedSpaces(db, ownerId, [...DEMO_SPACES, bad])).rejects.toThrow(/Mars\/Base/);
+    expect((await snapshot()).spaces).toHaveLength(0);
+  });
+});
 
-    const { spaces, seats } = await snapshot();
-    expect(spaces).toHaveLength(0);
-    expect(seats).toHaveLength(0);
+describe('runSeed guards', () => {
+  const connect = vi.fn<(url: string) => SeedConnection>();
+  afterEach(() => connect.mockReset());
+
+  const base = { DATABASE_URL: 'postgres://x', SEED_DEMO_PASSWORD: PASSWORD };
+
+  it('refuses production before opening a pool, with or without the password', async () => {
+    for (const env of [
+      { ...base, NODE_ENV: 'production' },
+      { DATABASE_URL: 'postgres://x', NODE_ENV: 'production' },
+    ]) {
+      await expect(runSeed(env, connect)).rejects.toThrow(/production/);
+    }
+    expect(connect).not.toHaveBeenCalled();
   });
 
-  it('ignores a same-named owned space and creates its own unowned one', async () => {
-    const db = testDb(app);
-    const owner = await createOwner(db);
-    const owned = await createListing(db, owner.id, { name: 'London HQ' });
-    await seedSpaces(db);
-    await seedSpaces(db);
+  it.each([undefined, '', 'short'])(
+    'rejects SEED_DEMO_PASSWORD=%j naming it, without the value',
+    async (pw) => {
+      const err = await runSeed({ ...base, SEED_DEMO_PASSWORD: pw }, connect).catch(
+        (e: unknown) => e,
+      );
+      expect(err).toBeInstanceOf(Error);
+      const message = err instanceof Error ? err.message : '';
+      expect(message).toMatch(/SEED_DEMO_PASSWORD/);
+      if (pw) expect(message).not.toContain(pw);
+      expect(connect).not.toHaveBeenCalled();
+    },
+  );
 
-    const rows = await db.select().from(space).where(eq(space.name, 'London HQ'));
-    expect(rows).toHaveLength(2);
-    expect(rows.find((r) => r.id === owned.id)).toMatchObject({ ownerId: owner.id });
-    const seatsOfOwned = await db.select().from(seat).where(eq(seat.spaceId, owned.id));
-    expect(seatsOfOwned).toHaveLength(0);
+  it('seeds through the connection and never prints the password', async () => {
+    const out: string[] = [];
+    const spies = (['log', 'warn', 'error', 'info'] as const).map((m) =>
+      vi.spyOn(console, m).mockImplementation((...a: unknown[]) => void out.push(a.join(' '))),
+    );
+    const app = await createTestApp();
+    try {
+      await resetDb(app);
+      const db = testDb(app);
+      const close = vi.fn(() => Promise.resolve());
+      connect.mockReturnValue({ db, close });
+      await runSeed(base, connect);
+      await runSeed(base, connect);
+      expect(close).toHaveBeenCalledTimes(2);
+      expect(await db.select().from(space)).toHaveLength(2);
+      expect(out.join('\n')).not.toContain(PASSWORD);
+    } finally {
+      for (const s of spies) s.mockRestore();
+      await app.close();
+    }
   });
 });
