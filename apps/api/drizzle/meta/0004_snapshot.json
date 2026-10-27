@@ -1,5 +1,5 @@
 {
-  "id": "a314c2e7-7b76-461e-91e9-7b428e405134",
+  "id": "f75cbf61-5bd0-428d-8e87-24f472237419",
   "prevId": "8d6afe3b-8434-466e-a522-83cafbb4ccf1",
   "version": "7",
   "dialect": "postgresql",
@@ -1047,6 +1047,14 @@
         "space_custom_utilities_max": {
           "name": "space_custom_utilities_max",
           "value": "cardinality(\"space\".\"custom_utilities\") <= 5"
+        },
+        "space_utilities_max": {
+          "name": "space_utilities_max",
+          "value": "cardinality(\"space\".\"utilities\") <= 11"
+        },
+        "space_custom_utilities_length": {
+          "name": "space_custom_utilities_length",
+          "value": "length(array_to_string(\"space\".\"custom_utilities\", '')) <= 200"
         },
         "space_owned_complete": {
           "name": "space_owned_complete",

@@ -1,6 +1,6 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { PinoLogger } from 'nestjs-pino';
 
 import { ProblemException } from '../common/errors/problem.exception.js';
@@ -9,8 +9,9 @@ import { toLocal } from '../common/time/zoned-time.js';
 import type { Env } from '../config/env.js';
 import type { Database } from '../db/db.js';
 import { DB } from '../db/db.module.js';
-import { booking, legacyLocation, seat, space } from '../db/schema/index.js';
+import { booking, seat, space } from '../db/schema/index.js';
 import { MailService } from '../mail/mail.service.js';
+import { legacyLocation } from '../spaces/legacy-location.js';
 import { resolveWindow } from '../spaces/spaces.service.js';
 import { buildBookingConfirmation, confirmationJobId } from './booking-confirmation.mail.js';
 import { classifyInsertError } from './booking-conflicts.js';
@@ -95,7 +96,7 @@ export class BookingsService {
       })
       .from(seat)
       .innerJoin(space, eq(space.id, seat.spaceId))
-      .where(eq(seat.id, input.seatId));
+      .where(and(eq(seat.id, input.seatId), isNull(seat.removedAt)));
     if (!found) throw new NotFoundException('Seat not found');
 
     const violation = evaluateBookingRules(input, found.space.timeZone, this.clock.now());

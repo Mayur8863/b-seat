@@ -4,7 +4,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { DEMO_SPACES, type SeedSpace, seedSpaces } from '../src/db/demo-spaces.js';
 import { seat, space } from '../src/db/schema/index.js';
-import { testDb } from './fixtures.js';
+import { createListing, createOwner, testDb } from './fixtures.js';
 import { createTestApp, resetDb } from './helpers.js';
 
 describe('seedSpaces (demo data, FR-012)', () => {
@@ -82,5 +82,19 @@ describe('seedSpaces (demo data, FR-012)', () => {
     const { spaces, seats } = await snapshot();
     expect(spaces).toHaveLength(0);
     expect(seats).toHaveLength(0);
+  });
+
+  it('ignores a same-named owned space and creates its own unowned one', async () => {
+    const db = testDb(app);
+    const owner = await createOwner(db);
+    const owned = await createListing(db, owner.id, { name: 'London HQ' });
+    await seedSpaces(db);
+    await seedSpaces(db);
+
+    const rows = await db.select().from(space).where(eq(space.name, 'London HQ'));
+    expect(rows).toHaveLength(2);
+    expect(rows.find((r) => r.id === owned.id)).toMatchObject({ ownerId: owner.id });
+    const seatsOfOwned = await db.select().from(seat).where(eq(seat.spaceId, owned.id));
+    expect(seatsOfOwned).toHaveLength(0);
   });
 });

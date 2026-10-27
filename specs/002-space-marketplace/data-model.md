@@ -47,25 +47,25 @@ Better Auth's `admin` plugin owns `user.role` (ADR-0010).
 
 Existing columns: `id`, `name` (CHECK 1–100 kept), `location` (legacy), `time_zone`, `created_at`.
 
-| Column              | Type           | Null              | Default   | Notes                                                                                              |
-| ------------------- | -------------- | ----------------- | --------- | -------------------------------------------------------------------------------------------------- |
-| owner_id            | text           | yes               |           | FK → `user.id` `ON DELETE RESTRICT`. Nullable only for legacy rows (expand); the seed claims them. |
-| status              | `space_status` | no                | `'draft'` |                                                                                                    |
-| description         | text           | yes               |           | CHECK `length(btrim(description)) between 1 and 2000`                                              |
-| country             | char(2)        | yes               |           | ISO 3166-1 alpha-2; CHECK `country ~ '^[A-Z]{2}$'`                                                 |
-| city                | text           | yes               |           | CHECK 1–100 after trim                                                                             |
-| area                | text           | yes               |           | CHECK 1–100 after trim                                                                             |
-| city_key            | text           | yes               | generated | `GENERATED ALWAYS AS (lower(btrim(city))) STORED`                                                  |
-| area_key            | text           | yes               | generated | `GENERATED ALWAYS AS (lower(btrim(area))) STORED`                                                  |
-| street_address      | text           | yes               |           | CHECK 1–200 after trim                                                                             |
-| currency            | char(3)        | yes               |           | ISO 4217; CHECK `currency ~ '^[A-Z]{3}$'`; validated against `Intl` in TS                          |
-| opening_mode        | `opening_mode` | yes               |           |                                                                                                    |
-| opens_at, closes_at | time           | yes               |           | fixed hours                                                                                        |
-| shift_change_at     | time           | yes               |           | 24-hour spaces                                                                                     |
-| utilities           | text[]         | no                | `'{}'`    | standard codes (OQ-8), validated by Zod                                                            |
-| custom_utilities    | text[]         | no                | `'{}'`    | CHECK `space_custom_utilities_max`: `cardinality(custom_utilities) <= 5`; each 1–40 chars (Zod)    |
-| updated_at          | timestamptz    | no                | `now()`   |                                                                                                    |
-| location            | text           | **yes** (changed) |           | legacy; NOT NULL dropped; dropped in a later contract migration                                    |
+| Column              | Type           | Null              | Default   | Notes                                                                                                                                                                                                |
+| ------------------- | -------------- | ----------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| owner_id            | text           | yes               |           | FK → `user.id` `ON DELETE RESTRICT`. Nullable only for legacy rows (expand); the seed claims them.                                                                                                   |
+| status              | `space_status` | no                | `'draft'` |                                                                                                                                                                                                      |
+| description         | text           | yes               |           | CHECK `length(btrim(description)) between 1 and 2000`                                                                                                                                                |
+| country             | char(2)        | yes               |           | ISO 3166-1 alpha-2; CHECK `country ~ '^[A-Z]{2}$'`                                                                                                                                                   |
+| city                | text           | yes               |           | CHECK 1–100 after trim                                                                                                                                                                               |
+| area                | text           | yes               |           | CHECK 1–100 after trim                                                                                                                                                                               |
+| city_key            | text           | yes               | generated | `GENERATED ALWAYS AS (lower(btrim(city))) STORED`                                                                                                                                                    |
+| area_key            | text           | yes               | generated | `GENERATED ALWAYS AS (lower(btrim(area))) STORED`                                                                                                                                                    |
+| street_address      | text           | yes               |           | CHECK 1–200 after trim                                                                                                                                                                               |
+| currency            | char(3)        | yes               |           | ISO 4217; CHECK `currency ~ '^[A-Z]{3}$'`; validated against `Intl` in TS                                                                                                                            |
+| opening_mode        | `opening_mode` | yes               |           |                                                                                                                                                                                                      |
+| opens_at, closes_at | time           | yes               |           | fixed hours                                                                                                                                                                                          |
+| shift_change_at     | time           | yes               |           | 24-hour spaces                                                                                                                                                                                       |
+| utilities           | text[]         | no                | `'{}'`    | standard codes (OQ-8), validated by Zod; CHECK `space_utilities_max`: `cardinality(utilities) <= 11`                                                                                                 |
+| custom_utilities    | text[]         | no                | `'{}'`    | CHECK `space_custom_utilities_max`: `cardinality(custom_utilities) <= 5`; each 1–40 chars (Zod); CHECK `space_custom_utilities_length`: total `length(array_to_string(custom_utilities, '')) <= 200` |
+| updated_at          | timestamptz    | no                | `now()`   |                                                                                                                                                                                                      |
+| location            | text           | **yes** (changed) |           | legacy; NOT NULL dropped; dropped in a later contract migration                                                                                                                                      |
 
 Constraints:
 

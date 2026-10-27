@@ -39,3 +39,23 @@ export async function signedInAgent(
     .expect(200);
   return agent;
 }
+
+export interface PgFailure {
+  code: string | undefined;
+  constraint: string | undefined;
+}
+
+/** Awaits a query that must fail and returns the driver's SQLSTATE and constraint name. */
+export async function pgFailure(query: PromiseLike<unknown>): Promise<PgFailure> {
+  try {
+    await query;
+  } catch (err) {
+    // Drizzle wraps the driver error in DrizzleQueryError; the pg error is its cause.
+    const cause = err instanceof Error && err.cause instanceof pg.DatabaseError ? err.cause : err;
+    if (cause instanceof pg.DatabaseError) {
+      return { code: cause.code, constraint: cause.constraint };
+    }
+    throw err;
+  }
+  throw new Error('expected the query to fail');
+}

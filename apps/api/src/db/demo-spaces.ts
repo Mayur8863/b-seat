@@ -1,4 +1,4 @@
-import { eq, isNull } from 'drizzle-orm';
+import { and, asc, eq, isNull } from 'drizzle-orm';
 
 import { isValidTimeZone } from '../common/time/zoned-time.js';
 import type { Database } from './db.js';
@@ -50,8 +50,8 @@ export const DEMO_SPACES: readonly SeedSpace[] = [
 ];
 
 /**
- * Inserts the spaces and their seats if missing, keyed by `space.name` and
- * `(space_id, label)`, so it is safe to run on every `docker compose up`. Existing rows are
+ * Inserts the spaces and their seats if missing, keyed by `space.name` among
+ * unowned spaces and `(space_id, label)` among active seats, so it is safe to run on every `docker compose up`. Existing rows are
  * left untouched. Every zone is checked before anything is written.
  */
 export async function seedSpaces(
@@ -70,7 +70,8 @@ export async function seedSpaces(
       let [row] = await tx
         .select({ id: space.id })
         .from(space)
-        .where(eq(space.name, values.name))
+        .where(and(eq(space.name, values.name), isNull(space.ownerId)))
+        .orderBy(asc(space.createdAt), asc(space.id))
         .limit(1);
       if (!row) [row] = await tx.insert(space).values(values).returning({ id: space.id });
       if (!row) throw new Error(`seed: space "${values.name}" was not created`);

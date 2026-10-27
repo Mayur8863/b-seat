@@ -74,6 +74,12 @@ export const space = pgTable(
       sql`${t.openingMode} IS NULL OR (${t.openingMode} = 'always_open' AND ${t.shiftChangeAt} IS NOT NULL) OR (${t.openingMode} = 'fixed_hours' AND ${t.opensAt} IS NOT NULL AND ${t.closesAt} IS NOT NULL AND ${t.closesAt} > ${t.opensAt})`,
     ),
     check('space_custom_utilities_max', sql`cardinality(${t.customUtilities}) <= 5`),
+    // Standard list size (OQ-8). Per-element lengths (1-40) are Zod's; the total bounds row size.
+    check('space_utilities_max', sql`cardinality(${t.utilities}) <= 11`),
+    check(
+      'space_custom_utilities_length',
+      sql`length(array_to_string(${t.customUtilities}, '')) <= 200`,
+    ),
     // An owned space is complete, so owner and renter response schemas stay non-nullable.
     check(
       'space_owned_complete',
@@ -148,6 +154,3 @@ export const seat = pgTable(
     check('seat_label_length', sql`length(btrim(${t.label})) between 1 and 20`),
   ],
 );
-
-/** The legacy `location` for 001 responses, which promise a string; owned listings have none. */
-export const legacyLocation = sql<string>`coalesce(${space.location}, '')`;

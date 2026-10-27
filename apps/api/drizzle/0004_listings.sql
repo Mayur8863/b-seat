@@ -51,5 +51,7 @@ ALTER TABLE "space" ADD CONSTRAINT "space_street_address_length" CHECK (length(b
 ALTER TABLE "space" ADD CONSTRAINT "space_currency_format" CHECK ("space"."currency" ~ '^[A-Z]{3}$');--> statement-breakpoint
 ALTER TABLE "space" ADD CONSTRAINT "space_opening_hours_valid" CHECK ("space"."opening_mode" IS NULL OR ("space"."opening_mode" = 'always_open' AND "space"."shift_change_at" IS NOT NULL) OR ("space"."opening_mode" = 'fixed_hours' AND "space"."opens_at" IS NOT NULL AND "space"."closes_at" IS NOT NULL AND "space"."closes_at" > "space"."opens_at"));--> statement-breakpoint
 ALTER TABLE "space" ADD CONSTRAINT "space_custom_utilities_max" CHECK (cardinality("space"."custom_utilities") <= 5);--> statement-breakpoint
+ALTER TABLE "space" ADD CONSTRAINT "space_utilities_max" CHECK (cardinality("space"."utilities") <= 11);--> statement-breakpoint
+ALTER TABLE "space" ADD CONSTRAINT "space_custom_utilities_length" CHECK (length(array_to_string("space"."custom_utilities", '')) <= 200);--> statement-breakpoint
 ALTER TABLE "space" ADD CONSTRAINT "space_owned_complete" CHECK ("space"."owner_id" IS NULL OR ("space"."description" IS NOT NULL AND "space"."country" IS NOT NULL AND "space"."city" IS NOT NULL AND "space"."area" IS NOT NULL AND "space"."street_address" IS NOT NULL AND "space"."currency" IS NOT NULL AND "space"."opening_mode" IS NOT NULL));--> statement-breakpoint
 ALTER TABLE "space" ADD CONSTRAINT "space_published_has_owner" CHECK ("space"."status" = 'draft' OR "space"."owner_id" IS NOT NULL);

@@ -1,6 +1,5 @@
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { eq, sql } from 'drizzle-orm';
-import pg from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import type { Database } from '../src/db/db.js';
@@ -13,32 +12,12 @@ import {
   type SpaceRow,
   testDb,
 } from './fixtures.js';
-import { createTestApp, resetDb, signedInAgent } from './helpers.js';
+import { createTestApp, pgFailure, resetDb, signedInAgent } from './helpers.js';
 
 // The invariants in data-model.md, tested against the migrated database (no API code involved).
 
 const DAY = '2030-01-15';
 const at = (time: string) => new Date(`${DAY}T${time}Z`);
-
-interface PgFailure {
-  code: string | undefined;
-  constraint: string | undefined;
-}
-
-/** Awaits a query that must fail and returns the driver's SQLSTATE and constraint name. */
-async function pgFailure(query: PromiseLike<unknown>): Promise<PgFailure> {
-  try {
-    await query;
-  } catch (err) {
-    // Drizzle wraps the driver error in DrizzleQueryError; the pg error is its cause.
-    const cause = err instanceof Error && err.cause instanceof pg.DatabaseError ? err.cause : err;
-    if (cause instanceof pg.DatabaseError) {
-      return { code: cause.code, constraint: cause.constraint };
-    }
-    throw err;
-  }
-  throw new Error('expected the query to fail');
-}
 
 async function signUpUserId(app: NestExpressApplication, email: string): Promise<string> {
   const agent = await signedInAgent(app, { name: email, email, password: 'correct-horse-battery' });

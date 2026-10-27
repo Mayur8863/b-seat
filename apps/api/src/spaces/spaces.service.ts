@@ -1,12 +1,13 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, asc, count, eq, exists, sql } from 'drizzle-orm';
+import { and, asc, count, eq, exists, isNull, sql } from 'drizzle-orm';
 
 import { ruleViolation } from '../bookings/booking-rules.js';
 import { ProblemException } from '../common/errors/problem.exception.js';
 import { toInstant } from '../common/time/zoned-time.js';
 import type { Database } from '../db/db.js';
 import { DB } from '../db/db.module.js';
-import { booking, legacyLocation, seat, space } from '../db/schema/index.js';
+import { booking, seat, space } from '../db/schema/index.js';
+import { legacyLocation } from './legacy-location.js';
 import type { AvailabilityQueryInput, SpaceAvailability, SpaceList } from './spaces.schemas.js';
 
 /** A local window as UTC instants, `[startsAt, endsAt)`. */
@@ -48,9 +49,9 @@ export class SpacesService {
         seatCount: count(seat.id),
       })
       .from(space)
-      .leftJoin(seat, eq(seat.spaceId, space.id))
+      .leftJoin(seat, and(eq(seat.spaceId, space.id), isNull(seat.removedAt)))
       .groupBy(space.id)
-      .orderBy(asc(space.name));
+      .orderBy(asc(space.name), asc(space.id));
     return { items };
   }
 
@@ -89,7 +90,7 @@ export class SpacesService {
         taken: sql<boolean>`${exists(overlapping)}`,
       })
       .from(seat)
-      .where(eq(seat.spaceId, found.id))
+      .where(and(eq(seat.spaceId, found.id), isNull(seat.removedAt)))
       .orderBy(asc(seat.label));
 
     return {

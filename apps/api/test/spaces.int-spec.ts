@@ -1,7 +1,9 @@
 import type { NestExpressApplication } from '@nestjs/platform-express';
+import { eq } from 'drizzle-orm';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
+import { seat } from '../src/db/schema/index.js';
 import { toInstant, toLocal } from '../src/common/time/zoned-time.js';
 import { SpaceAvailabilitySchema } from '../src/spaces/spaces.schemas.js';
 import { createSeats, createSpace, insertBooking, testDb } from './fixtures.js';
@@ -93,6 +95,37 @@ describe('spaces API', () => {
       const res = await request(app.getHttpServer()).get('/api/spaces').expect(401);
       expect(res.headers['content-type']).toContain('application/problem+json');
       expect(res.body).toMatchObject({ type: 'urn:bseat:problem:http-401', status: 401 });
+    });
+  });
+
+  describe('soft-removed seats (R-15)', () => {
+    it('are excluded from the seat count and the availability list, and the space still lists', async () => {
+      const db = testDb(app);
+      const sp = await createSpace(db, { name: 'London HQ', timeZone: 'Europe/London' });
+      const bare = await createSpace(db, { name: 'Bare Annex', timeZone: 'Europe/London' });
+      const seats = await createSeats(db, sp.id, 3);
+      const [gone] = await createSeats(db, bare.id, 1);
+      if (!seats[1] || !gone) throw new Error('expected seats');
+      await db.update(seat).set({ removedAt: new Date() }).where(eq(seat.id, seats[1].id));
+      await db.update(seat).set({ removedAt: new Date() }).where(eq(seat.id, gone.id));
+
+      const list = await agent.get('/api/spaces').expect(200);
+      const counts = Object.fromEntries(
+        (list.body as { items: { name: string; seatCount: number }[] }).items.map((i) => [
+          i.name,
+          i.seatCount,
+        ]),
+      );
+      expect(counts).toEqual({ 'London HQ': 2, 'Bare Annex': 0 });
+
+      const res = await agent
+        .get(`/api/spaces/${sp.id}/availability`)
+        .query({ date: tomorrow('Europe/London'), startTime: '09:00', endTime: '10:00' })
+        .expect(200);
+      expect(SpaceAvailabilitySchema.parse(res.body).seats.map((x) => x.label)).toEqual([
+        'S-01',
+        'S-03',
+      ]);
     });
   });
 

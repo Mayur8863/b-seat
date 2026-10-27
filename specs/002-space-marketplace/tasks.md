@@ -211,6 +211,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 
 - [ ] T008 Retire the hourly create and make legacy space reads published-only: remove `POST /api/bookings` from `apps/api/src/bookings/bookings.controller.ts` and `bookings.service.ts` (keep `booking-conflicts.ts`, `booking-confirmation.mail.ts`), filter `status = 'published'` in `apps/api/src/spaces/spaces.service.ts`, update `apps/api/test/bookings.int-spec.ts` and `spaces.int-spec.ts`; regenerate `apps/api/openapi.json`
   - **Owner**: backend-dev · **Branch**: `chore/002-retire-hourly-create` · **Size**: S · **Depends on**: T003 · **Status**: todo
+  - **Carry-over (T003 review)**: legacy reads filter `status = 'published'`, and T008 must merge before any owner create route (T020), because owned drafts must never reach the legacy list.
   - **Scope**: research R-7 step 2 (AQ-8). No web code calls `useBookingsCreate` today; confirm with a grep in the PR. Hourly integration tests that only exercised the removed route are deleted; their coverage of `classifyInsertError` and the deadlock retry stays in unit tests. Must merge **before** T005.
   - **Acceptance criteria**:
     - Given the API, When `POST /api/bookings` is called with the 001 body, Then 404 (the route no longer exists) (R-7).
@@ -219,6 +220,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 
 - [ ] T009 Seed demo marketplace data in `apps/api/src/db/demo-spaces.ts` and `apps/api/src/db/seed.ts`, tests in `apps/api/test/seed.int-spec.ts`
   - **Owner**: backend-dev · **Branch**: `feat/002-seed-marketplace` · **Size**: M · **Depends on**: T002, T004, T012 · **Status**: todo
+  - **Carry-over (T003 review)**: decide whether the seed recreates soft-removed demo seats (its seat upsert now targets active labels only).
   - **Scope**: Idempotent. Create `owner@bseat.local` (owner) and `renter@bseat.local` (renter, preferences IN / Pune once T013 exists; skip the preference row if the table is absent) with the password from `SEED_DEMO_PASSWORD` (Better Auth password hashing, no plain text stored; fail with a clear message if unset). Claim the 001 demo spaces for the owner (by name where `owner_id IS NULL`; **OQ-11**) in one `UPDATE` per space that sets `owner_id` and every listing field together (`space_owned_complete`), complete them (London HQ: GB, London, Westminster, `Europe/London`, GBP, always open, shift 07:00, day/night/full_day enabled, day and monthly prices with a 24-hour saving; Pune Hub: IN, Pune, Baner, `Asia/Kolkata`, INR, fixed 09:00–18:00, working-hours day/week/month prices), one or two cubicles each, and publish. Seat bookings and occupancy are not seeded (e2e creates its own).
   - **Acceptance criteria**:
     - Given a migrated, empty dev DB, When `bin/pnpm db:seed` runs twice, Then exactly 2 demo accounts, 2 published spaces owned by the owner, 20 active seats, their prices and shared calendars exist (Assumptions "seeded demo owner").
@@ -328,6 +330,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 
 - [ ] T020 [US2] Build `apps/api/src/owner-spaces/` (schemas, service, controller, module; spaces only) with `apps/api/test/owner-spaces.int-spec.ts`; regenerate `apps/api/openapi.json`
   - **Owner**: backend-dev · **Branch**: `feat/002-owner-spaces-api` · **Size**: M · **Depends on**: T002, T004, T019 · **Status**: todo
+  - **Carry-over (T003 review)**: `ownerId`, `status` and `spaceId` come only from the session or route, never the request body, and the service maintains `space.updated_at`.
   - **Scope**: contracts/owner-spaces.md "Listing". Create also inserts the shared calendar (AC 6.1). Publish check: at least one active seat and one offered pass (enabled slot valid for the mode with a price). Scope every query by `owner_id`. Integration tests first.
   - **Acceptance criteria**:
     - Given an owner, When `POST /api/owner/spaces` with every required field, Then 201 `OwnerSpace` with `status: "draft"`, and a shared calendar from today (local), no end, all days exists (AC 2.1, FR-006, AC 6.1).
@@ -340,6 +343,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 
 - [ ] T021 [US2] Add seats and cubicles to `apps/api/src/owner-spaces/` with `apps/api/test/owner-seats.int-spec.ts`; regenerate `apps/api/openapi.json`
   - **Owner**: backend-dev · **Branch**: `feat/002-seats-cubicles-api` · **Size**: M · **Depends on**: T005, T020 · **Status**: todo
+  - **Carry-over (T003 review)**: every seat read and booking path filters `removed_at IS NULL` (legacy availability, list and create already do).
   - **Scope**: contracts/owner-spaces.md "Seats and cubicles"; research R-15 (space row `FOR UPDATE` for the cap, seat `FOR UPDATE` for removal). Cubicle delete per **OQ-6** is a **soft** removal of the cubicle and its seats in one transaction (architect, T001). Label conflicts use `LabelTakenProblem`; duplicate cubicle names are 409 `listing:cubicle-name-taken`. `OwnerSeat.today` returns `vacant` with null note until T047; `calendar` returns `shared` until T051.
   - **Acceptance criteria**:
     - Given a space, When `POST …/seats` with pattern `{ prefix: "A-", from: 1, to: 20 }`, Then 201 with seats `A-1` … `A-20` (AC 2.3).

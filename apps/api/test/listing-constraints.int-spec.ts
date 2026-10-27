@@ -1,31 +1,13 @@
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { eq, sql } from 'drizzle-orm';
-import pg from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import type { Database } from '../src/db/db.js';
 import { cubicle, seat, space } from '../src/db/schema/index.js';
 import { createCubicle, createListing, createOwner, createSpace, testDb } from './fixtures.js';
-import { createTestApp, resetDb } from './helpers.js';
+import { createTestApp, pgFailure, resetDb } from './helpers.js';
 
 // data-model.md "space (changed)", "cubicle" and "seat (changed)", tested against the migrated database.
-
-interface PgFailure {
-  code: string | undefined;
-  constraint: string | undefined;
-}
-
-async function pgFailure(query: PromiseLike<unknown>): Promise<PgFailure> {
-  try {
-    await query;
-  } catch (err) {
-    const cause = err instanceof Error && err.cause instanceof pg.DatabaseError ? err.cause : err;
-    if (cause instanceof pg.DatabaseError)
-      return { code: cause.code, constraint: cause.constraint };
-    throw err;
-  }
-  throw new Error('expected the query to fail');
-}
 
 describe('listing constraints (database)', () => {
   let app: NestExpressApplication;
@@ -44,8 +26,11 @@ describe('listing constraints (database)', () => {
 
   describe('space', () => {
     it('defaults a legacy row to draft with no owner and a nullable location', async () => {
-      const row = await createSpace(db, { location: null });
-      expect(row).toMatchObject({ status: 'draft', ownerId: null, location: null });
+      await expect(createSpace(db, { location: null })).resolves.toMatchObject({
+        status: 'draft',
+        ownerId: null,
+        location: null,
+      });
     });
 
     it('accepts a complete owned listing', async () => {
@@ -98,12 +83,14 @@ describe('listing constraints (database)', () => {
     });
 
     it('accepts an always_open space with a shift change time', async () => {
-      await createListing(db, ownerId, {
-        openingMode: 'always_open',
-        opensAt: null,
-        closesAt: null,
-        shiftChangeAt: '07:00',
-      });
+      await expect(
+        createListing(db, ownerId, {
+          openingMode: 'always_open',
+          opensAt: null,
+          closesAt: null,
+          shiftChangeAt: '07:00',
+        }),
+      ).resolves.toMatchObject({ openingMode: 'always_open', shiftChangeAt: '07:00:00' });
     });
 
     it('derives city_key and area_key by trimming and lower-casing', async () => {
@@ -118,6 +105,21 @@ describe('listing constraints (database)', () => {
         createListing(db, ownerId, { customUtilities: [...names, 'f'] }),
       );
       expect(failure).toEqual({ code: '23514', constraint: 'space_custom_utilities_max' });
+    });
+
+    it('refuses more than 11 standard utilities (space_utilities_max)', async () => {
+      const codes = Array.from({ length: 12 }, (_, i) => `u${i}`);
+      const failure = await pgFailure(createListing(db, ownerId, { utilities: codes }));
+      expect(failure).toEqual({ code: '23514', constraint: 'space_utilities_max' });
+      await createListing(db, ownerId, { utilities: codes.slice(0, 11) });
+    });
+
+    it('bounds the total length of custom utilities (space_custom_utilities_length)', async () => {
+      await createListing(db, ownerId, { customUtilities: ['x'.repeat(200)] });
+      const failure = await pgFailure(
+        createListing(db, ownerId, { customUtilities: ['x'.repeat(100), 'y'.repeat(101)] }),
+      );
+      expect(failure).toEqual({ code: '23514', constraint: 'space_custom_utilities_length' });
     });
 
     it.each([
@@ -143,7 +145,7 @@ describe('listing constraints (database)', () => {
     it('refuses deleting an owner who has a space (ON DELETE RESTRICT)', async () => {
       await createListing(db, ownerId);
       const failure = await pgFailure(db.execute(sql`delete from "user" where id = ${ownerId}`));
-      expect(failure.code).toBe('23001');
+      expect(failure).toEqual({ code: '23001', constraint: 'space_owner_id_user_id_fk' });
     });
   });
 
@@ -168,7 +170,7 @@ describe('listing constraints (database)', () => {
       const failure = await pgFailure(
         db.insert(seat).values({ spaceId: a.id, label: 'A-1', cubicleId: bay.id }),
       );
-      expect(failure.code).toBe('23503');
+      expect(failure).toEqual({ code: '23503', constraint: 'seat_cubicle_space_fk' });
 
       await db.insert(seat).values({ spaceId: b.id, label: 'B-1', cubicleId: bay.id });
     });
