@@ -26,4 +26,20 @@ describe('loadEnv', () => {
       /BETTER_AUTH_SECRET must be at least 32 characters/,
     );
   });
+
+  it('boots without SEED_DEMO_PASSWORD (seed-only, optional)', () => {
+    expect(loadEnv(valid).SEED_DEMO_PASSWORD).toBeUndefined();
+  });
+
+  it('accepts SEED_DEMO_PASSWORD of 8+ characters', () => {
+    expect(loadEnv({ ...valid, SEED_DEMO_PASSWORD: '12345678' }).SEED_DEMO_PASSWORD).toBe(
+      '12345678',
+    );
+  });
+
+  it('rejects a SEED_DEMO_PASSWORD shorter than 8 characters, naming the variable', () => {
+    expect(() => loadEnv({ ...valid, SEED_DEMO_PASSWORD: 'short' })).toThrow(
+      /SEED_DEMO_PASSWORD must be at least 8 characters/,
+    );
+  });
 });
