@@ -9,9 +9,11 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import type { Request } from 'express';
 
 import type { AccountType } from './account-type.js';
-import { AuthGuard, type AuthedRequest } from './auth.guard.js';
+import { AuthGuard } from './auth.guard.js';
+import { getAttachedSession } from './request-session.js';
 
 export type { AccountType } from './account-type.js';
 
@@ -39,7 +41,7 @@ export class RolesGuard implements CanActivate {
       context.getClass(),
     ]);
     if (!required) return true;
-    const session = context.switchToHttp().getRequest<AuthedRequest>().session;
+    const session = getAttachedSession(context.switchToHttp().getRequest<Request>());
     if (!session) throw new UnauthorizedException('Sign in required');
     if (session.user.accountType !== required) {
       throw new ForbiddenException('This action is not available for your account type');

@@ -3,6 +3,7 @@ import { Reflector } from '@nestjs/core';
 import { describe, expect, it } from 'vitest';
 
 import { AuthGuard } from './auth.guard.js';
+import { attachSession } from './request-session.js';
 import { RequireRole, RolesGuard } from './roles.guard.js';
 
 class Probe {
@@ -17,10 +18,12 @@ class Probe {
 }
 
 function context(handler: () => unknown, session?: { user: { accountType: string } }) {
+  const req = {};
+  if (session) attachSession(req as never, session as never);
   return {
     getHandler: () => handler,
     getClass: () => Probe,
-    switchToHttp: () => ({ getRequest: () => ({ session }) }),
+    switchToHttp: () => ({ getRequest: () => req }),
   } as unknown as ExecutionContext;
 }
 
@@ -42,6 +45,15 @@ describe('RolesGuard', () => {
   it('answers 403 for a renter on an owner-only handler', () => {
     const ctx = context(Probe.prototype.ownerOnly, { user: { accountType: 'renter' } });
     expect(() => guard.canActivate(ctx)).toThrow(ForbiddenException);
+  });
+
+  it('ignores a foreign req.session (401)', () => {
+    const ctx = {
+      getHandler: () => Probe.prototype.ownerOnly,
+      getClass: () => Probe,
+      switchToHttp: () => ({ getRequest: () => ({ session: { user: { accountType: 'owner' } } }) }),
+    } as unknown as ExecutionContext;
+    expect(() => guard.canActivate(ctx)).toThrow(UnauthorizedException);
   });
 
   it('answers 401 when AuthGuard did not run first', () => {
