@@ -146,4 +146,20 @@ describe('withSeatLock', () => {
     expect(transaction).toHaveBeenCalledTimes(1);
     expect(onLockTimeout).toHaveBeenCalledTimes(1);
   });
+
+  it('still throws the lock timeout when the onLockTimeout hook itself throws', async () => {
+    const { db, transaction } = fakeDb();
+    const timeout = driverError('55P03');
+    const onLockTimeout = vi.fn(() => {
+      throw new Error('metrics down');
+    });
+
+    const err = await rejection(
+      withSeatLock(db, SEAT_ID, () => Promise.reject(timeout), onLockTimeout),
+    );
+
+    expect(err).toBe(timeout);
+    expect(onLockTimeout).toHaveBeenCalledTimes(1);
+    expect(transaction).toHaveBeenCalledTimes(1);
+  });
 });
