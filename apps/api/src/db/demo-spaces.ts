@@ -1,4 +1,4 @@
-import { and, asc, eq, isNull, or, sql } from 'drizzle-orm';
+import { and, asc, eq, isNotNull, isNull, or, sql } from 'drizzle-orm';
 
 import { isValidTimeZone, toLocal } from '../common/time/zoned-time.js';
 import type { SlotKind } from '../marketplace/slots.js';
@@ -176,16 +176,17 @@ export async function seedSpaces(
       claimed = false;
     }
 
-    // A space claimed by the first seed version has seats but never had a cubicle row (even a
-    // removed one marks an owner's choice), so it is repaired once.
-    const [anyCubicle] = claimed
+    // A space claimed by the first seed version has seats but none in a cubicle (its seat upsert
+    // skipped existing seats), so it is repaired once. Any seat in a cubicle means the owner has
+    // organised the space, and it is left alone.
+    const [placed] = claimed
       ? []
       : await db
-          .select({ id: cubicle.id })
-          .from(cubicle)
-          .where(eq(cubicle.spaceId, spaceId))
+          .select({ id: seat.id })
+          .from(seat)
+          .where(and(eq(seat.spaceId, spaceId), isNotNull(seat.cubicleId)))
           .limit(1);
-    const needsCubicles = claimed || !anyCubicle;
+    const needsCubicles = claimed || !placed;
 
     if (claimed) {
       await db

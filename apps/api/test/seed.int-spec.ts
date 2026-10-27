@@ -189,19 +189,18 @@ describe('demo marketplace seed (FR-012, OQ-11)', () => {
     expect(pune?.description).toBe('Edited by the owner.');
   });
 
-  it('gives cubicles once to a space the first seed version claimed without any', async () => {
+  it('gives cubicles once to a space the first seed version claimed with empty cubicles', async () => {
     await seedAll();
     const db = testDb(app);
     await db.update(seat).set({ cubicleId: null });
-    await db.delete(cubicle);
     await seedAll();
     expect((await snapshot()).seats.every((s) => s.cubicleId !== null)).toBe(true);
 
-    // Once a cubicle row exists (even removed), later runs leave seats alone.
-    await db.update(cubicle).set({ removedAt: new Date() });
-    await db.update(seat).set({ cubicleId: null });
+    // Once any seat is in a cubicle, later runs leave the rest alone.
+    await db.update(seat).set({ cubicleId: null }).where(eq(seat.label, 'A-01'));
     await seedAll();
-    expect((await snapshot()).seats.every((s) => s.cubicleId === null)).toBe(true);
+    const rows = (await snapshot()).seats;
+    expect(rows.find((s) => s.label === 'A-01')?.cubicleId).toBeNull();
   });
 
   it('recreates a missing shared calendar for a space the owner already holds', async () => {
