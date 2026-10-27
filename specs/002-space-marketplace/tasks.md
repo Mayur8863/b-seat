@@ -242,7 +242,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given mobile, tablet and desktop, When read, Then layout, contrast notes (semantic tokens only) and live regions are defined (SC-007).
 
 - [ ] T011 [P] Write `specs/002-space-marketplace/test-plan.md`: test levels per story, data setup, race and performance methods, axe coverage list, and the traceability skeleton
-  - **Owner**: qa-engineer · **Branch**: `test/002-test-plan` · **Size**: S · **Depends on**: T001 · **Status**: review (re-opened for review fixes — done: M1, minors 1-2; next: minors 3-11, nits)
+  - **Owner**: qa-engineer · **Branch**: `test/002-test-plan` · **Size**: S · **Depends on**: T001 · **Status**: review
   - **Acceptance criteria**:
     - Given the spec, When the test plan is read, Then every AC, FR, SC and edge case has a planned test level and an owning task (Constitution II).
     - Given SC-003, SC-004 and SC-005, When read, Then the data volumes, repetition counts, p95 method and `EXPLAIN` evidence are defined.
@@ -517,7 +517,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
   - **Acceptance criteria**:
     - Given a free seat, When a renter books `pass=week, slot=day, startDate=next Monday`, Then 201 `Booking` with 7 `days`, the price and currency snapshot, and availability shows the seat `taken` for that week (AC 4.5, FR-017, FR-013).
     - Given another renter or an occupancy mark holds the seat on any day of the period in an overlapping slot, When booking, Then 409 `booking:seat-unavailable` and no header or hold row exists (AC 4.6, FR-018).
-    - Given 20 renters, When all 20 book the same seat for overlapping periods concurrently (mixed day and week passes), Then exactly one 201 and nineteen 409 `seat-unavailable`, repeated 5 times (AC 4.7, SC-005).
+    - Given 20 renters, When all 20 book the same seat for overlapping periods concurrently (mixed day and week passes), Then exactly one 201 and nineteen 409 `seat-unavailable`, repeated 5 times, with no `booking.insert_deadlock_retry` warning logged in any round (AC 4.7, SC-005).
     - Given I hold a day-slot pass at space X, When I book a day-slot pass at space Y overlapping in time, Then 409 `booking:user-overlap` (AC 4.8, FR-019).
     - Given one case per rule (unpublished, own space, pass not offered, start day closed, slot started, 31 days ahead), When booking, Then 422 with that `type` and nothing is created (AC 4.9, FR-020, edge "owner books own").
     - Given 60 renters race for one seat (service-level, as 001's 60-way test), Then one success, 59 `seat-unavailable`, and exactly one transaction per caller (no `40P01` retry) (ADR-0009 section 9).
@@ -581,16 +581,16 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given the API, When `GET /api/spaces` or `GET /api/spaces/{id}/availability` is called, Then 404 (R-7 step 6).
     - Given `gen:api`, Then `Space`, `SpaceList`, `AvailabilityQueryInput`, `SpaceAvailability` and `SeatAvailability` are gone from `openapi.json`, and the web typecheck passes.
 
-- [ ] T044 [US4] QA: `apps/web/e2e/search-book.spec.ts` (journey + axe), `apps/api/test/booking-races.int-spec.ts` (mixed slots), `apps/api/test/marketplace-perf.int-spec.ts`; set T034–T043 to `done` when green
+- [ ] T044 [US4] QA: `apps/web/e2e/search-book.spec.ts` (journey + axe), `apps/api/test/booking-races.int-spec.ts` (mixed slots), `apps/api/test/marketplace.perf-spec.ts`; set T034–T043 to `done` when green
   - **Owner**: qa-engineer · **Branch**: `test/002-us4-search-book-e2e` · **Size**: M · **Depends on**: T009, T037, T038, T042 · **Status**: todo
   - **Scope**: e2e picks dates 2–28 days ahead and the first free seat (avoid collisions with persisted dev data, 001 T014 lesson). Use a sturdy sign-up helper (API sign-up, wait for hydration), no retries-only fixes.
-  - **Perf spec**: `marketplace-perf.int-spec.ts` runs only through a dedicated `@bseat/api` script that QA runs; it is excluded from the default `bin/pnpm test` so it neither slows the suite nor disturbs the shared test DB (test-plan.md sections 5 and 8). Whether CI runs it is a devops follow-up (Notes).
+  - **Perf spec**: `marketplace.perf-spec.ts` (suffix `.perf-spec.ts`, so it does not match the `test/**/*.int-spec.ts` include in `apps/api/vitest.config.ts`) runs only through its own vitest config or project and a dedicated `@bseat/api` script that QA runs; it is excluded from the default `bin/pnpm test` so it neither slows the suite nor disturbs the shared test DB (test-plan.md sections 5 and 8). Whether CI runs it is a devops follow-up (Notes).
   - **Acceptance criteria**:
     - Given two seeded cities, When a renter searches one, opens the result, books a weekly day pass on a free seat, Then the confirmation shows, both emails arrive in Mailpit, and the seat is taken for those 7 days (US4 independent test, AC 4.1, AC 4.4, AC 4.5, AC 4.10).
     - Given the dashboard, When a renter reaches a confirmed booking by keyboard only, Then no address is typed and the time is under 60 s (SC-002).
     - Given concurrent 24-hour vs day vs night bookings on one seat and date (10 each), When raced 5 times, Then the outcomes respect "24 hours blocks both; day and night coexist" exactly (edge, FR-018, SC-005).
     - Given 1,000 published spaces, When 50 searches run, Then p95 < 1000 ms; Given a 200-seat space with a month of holds, When monthly-pass availability is requested 50 times, Then p95 < 1000 ms; `EXPLAIN` in the PR shows the GiST index on `seat_hold`; 3 consecutive runs of the perf script are recorded in test-plan.md (SC-003, SC-004).
-    - Given `bin/pnpm test`, When it runs, Then `marketplace-perf.int-spec.ts` is not included.
+    - Given `bin/pnpm test`, When it runs, Then `marketplace.perf-spec.ts` is not included.
     - Given `/find` (results, empty), the listing page (seats loaded, conflict error) and the confirmation, When axe runs, Then zero violations (SC-007).
 
 - [ ] T045 [US4] Docs: README "Find and book", `docs/runbooks/booking-confirmations.md` (two emails), `docs/runbooks/database-migrations.md` (the T005 expand/contract and backfill), changeset check
@@ -882,7 +882,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 | AC 7.4                                              | T055, T056, T059                                                   |
 | AC 8.1                                              | T062, T064, T065, T067                                             |
 | AC 8.2                                              | T062, T064, T065                                                   |
-| AC 8.3                                              | T061, T065, T067                                                   |
+| AC 8.3                                              | T061, T064, T065, T067                                             |
 | AC 8.4                                              | T062, T066, T067                                                   |
 | AC 8.5                                              | T062, T066, T063                                                   |
 | FR-001                                              | T002, T015                                                         |
@@ -912,7 +912,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 | FR-027                                              | T056, T058                                                         |
 | FR-028                                              | T055, T056                                                         |
 | FR-029                                              | T062, T064, T065                                                   |
-| FR-030                                              | T061, T065                                                         |
+| FR-030                                              | T061, T064, T065                                                   |
 | FR-031                                              | T066                                                               |
 | FR-032                                              | T010, T018, T029, T046, T061 and every frontend task               |
 | FR-033                                              | T006, T035, T037, T040, T057                                       |
@@ -985,7 +985,7 @@ Level 12: T071
   - **Counted**: everything hand-written, including tests, fixtures and every migration `.sql` file (generated or custom). Migration SQL is reviewed line by line.
   - The PR description states both numbers (`git diff --stat` with and without the exclusions).
 - **Follow-up (001 booking race flake, fixed on `fix/001-booking-race-flake`):** concurrent booking inserts deadlocked inside the exclusion-constraint check and 3 retries ran out under load (500/timeouts). Every insert of active `seat_hold` rows must follow the lock rule in ADR-0009 section 9 (`SET LOCAL lock_timeout`, then `lockSeats`, then row locks and inserts); 001's `BookingsService.insertWithRetry` is the first implementation (ADR-0008 section 2 amendment).
-- **Follow-up (devops, from T011):** decide whether CI runs the perf script (`marketplace-perf.int-spec.ts`, T044), nightly or manual. Until then it is a QA gate recorded in test-plan.md.
+- **Follow-up (devops, from T011):** decide whether CI runs the perf script (`marketplace.perf-spec.ts`, T044), nightly or manual. Until then it is a QA gate recorded in test-plan.md.
 - Tests first for business logic (T005, T006, T007, T036, T047, T055, T064). The PR shows the failing-test commit.
 - No new runtime dependency is planned. Any new dependency needs a justification in the PR and must be raised with the task-manager.
 - Migrations: `0000`–`0002` are never edited; new migrations are generated first and `--custom` second (data-model.md).

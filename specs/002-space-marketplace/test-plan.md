@@ -34,7 +34,7 @@ Rules every task's tests follow (from AGENTS.md and the 001 lessons):
 - **Weak spots to assert on purpose** (found by 001 review, not by axe): radio groups and tab order reachable by keyboard
   (`user.tab()` lands on the control), `aria-describedby` on every field error, focus moved to the first invalid field,
   no raw `error.message` in the UI (ui/01 section 7), status never colour alone.
-- **E2E stability.** No retries as a fix. T070 requires 5 consecutive green e2e runs.
+- **E2E stability.** No retries as a fix. `apps/web/playwright.config.ts` sets `retries: CI ? 2 : 0`, so the gated runs (T070's 5 consecutive green runs) pass `--retries=0` explicitly.
 - **Seeded demo accounts** need `SEED_DEMO_PASSWORD` in the compose `e2e` service (T012 review note, first needed in T025).
 - **Coverage.** At least 80% on changed lines per PR (diff-cover); pure modules aim for 100%.
 
@@ -101,68 +101,69 @@ proposes one (marked "proposed"). Every Result is `planned`.
 | AC 7.4  | `my-bookings.int-spec` and `owner-bookings.int-spec` other user's booking and random UUID give identical 404 (I); `owner-scoping` sweep                                                                                   | T055, T056, T059       |
 | AC 8.1  | `layout.int-spec` GET and PUT, version conflict (I); `model.test` reducer add, move, resize, rename, delete (U); `layout-editor.test` (C); `layout.spec` pointer run (E)                                                  | T062, T064, T065, T067 |
 | AC 8.2  | `layout.int-spec` seats are the list's seats, unplaced tray, soft removal drops the element (I); `unplaced-tray.test` (C)                                                                                                 | T062, T064, T065       |
-| AC 8.3  | `model.test` keyboard actions (U); `layout-editor.test`, `layout-item-form.test` (C); `layout.spec` keyboard-only run (E)                                                                                                 | T061, T065, T067       |
+| AC 8.3  | `model.test` keyboard actions (U); `layout-editor.test`, `layout-item-form.test` (C); `layout.spec` keyboard-only run (E)                                                                                                 | T061, T064, T065, T067 |
 | AC 8.4  | `layout.int-spec` renter layout GET (I); `listing-plan.test` text and icon, list toggle (C); `layout.spec` renter books from the plan (E)                                                                                 | T062, T066, T067       |
 | AC 8.5  | `layout.int-spec` `hasLayout: false`, 404 on layout GET (I); `listing-plan.test` list only (C)                                                                                                                            | T062, T066, T063       |
 
 ## 4. Traceability: functional requirements, success criteria, edge cases
 
-| ID                                                | Test (level)                                                                                                                                                                                           | Owning task(s)                                       |
-| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------- |
-| FR-001                                            | `roles.int-spec` (I); `auth-form.test` (C); update-user rejects `accountType` even as a no-op (I)                                                                                                      | T002, T015                                           |
-| FR-002                                            | `me.int-spec` (I); `preferences-form.test` success state (C); find prefill (C)                                                                                                                         | T013, T015, T039                                     |
-| FR-003                                            | DB default `renter` on a row without the column, then `GET /api/me` (I)                                                                                                                                | T002                                                 |
-| FR-004                                            | `nav.test` route manifest fails when a page under `(app)` is not in its role's nav or "reached from" (U); keyboard nav walk (E)                                                                        | T014, every page task                                |
-| FR-005                                            | `proxy.test` matcher and redirect with `next` for each `(app)` route (U); 401 in every API task (I); e2e sweep of signed-out visits (E, section 7.2)                                                   | T014, every API task, T016, T070                     |
-| FR-006                                            | `listing-constraints.int-spec` CHECKs (DB); `owner-spaces.int-spec` (I); `space-form.test` (C)                                                                                                         | T003, T019, T020, T022                               |
-| FR-007                                            | `listing-constraints` unique active label (DB); `owner-seats.int-spec` 200 cap, remove with future bookings refused (I); `seat-manager.test` (C)                                                       | T003, T021, T024                                     |
-| FR-008                                            | `space_owned_complete` and publish CHECKs (DB); `owner-spaces.int-spec` publish refusal (I); search and detail exclude drafts (I)                                                                      | T003, T020, T023, T028, T034                         |
-| FR-009                                            | `owner-scoping.int-spec` sweep (I) plus the per-route cases in each owner API task; legacy `GET /api/spaces` returns published only (I)                                                                | T003, T008, T020, T021, T025, T047, T051, T056, T062 |
-| FR-010                                            | `slots.spec` (U); `owner-pricing.int-spec` (I)                                                                                                                                                         | T006, T027                                           |
-| FR-011                                            | `pricing-calendar-constraints` (DB); `money.spec` (U); `owner-pricing.int-spec` (I)                                                                                                                    | T004, T007, T027                                     |
-| FR-012                                            | `money.spec` (U); `listings-detail.int-spec` (I); `pass-options.test` (C)                                                                                                                              | T007, T028, T031                                     |
-| FR-013                                            | `seat-hold-constraints` price CHECKs (DB); `owner-pricing.int-spec` and `pass-bookings.int-spec` (I)                                                                                                   | T005, T027, T036                                     |
-| FR-014, FR-015                                    | `listings-search.int-spec` (I); `listing-results.test`, `listing-search-form.test` (C)                                                                                                                 | T034, T039                                           |
-| FR-016                                            | `listings-seats.int-spec` (I); `pass-picker.test`, `listing-seat-list.test` (C)                                                                                                                        | T035, T040                                           |
-| FR-017                                            | `pass-period.spec` (U); `listings-seats.int-spec`, `pass-bookings.int-spec` hold rows equal the occurrence list (I)                                                                                    | T006, T035, T036                                     |
-| FR-018                                            | `seat-hold-constraints` (DB); `pass-bookings.int-spec` 20 x 5 (I); `booking-races.int-spec` (I); `occupancy.int-spec` opposite-order creates (I); `occupancy-races.int-spec` (I)                       | T005, T036, T044, T049                               |
-| FR-019                                            | `seat-hold-constraints` (DB); `pass-bookings.int-spec` same user, two seats, overlapping periods (I)                                                                                                   | T005, T036                                           |
-| FR-020                                            | `booking-rules.spec` (U); `pass-bookings.int-spec`: slot started, over 30 days, unpublished (422 `space-not-published`), draft (404), own space (I); `book-pass.test` (C)                              | T007, T036, T041                                     |
-| FR-021                                            | `booking-emails.spec` (U); `pass-bookings.int-spec` queue rejecting or never settling still books within the 2 s bound (I); producer fail-fast (U)                                                     | T037, T069                                           |
-| FR-022, FR-023                                    | `occupancy.int-spec` (I); `mark-occupied-dialog.test` (C); note length 200 (I)                                                                                                                         | T047, T048                                           |
-| FR-024                                            | `pricing-calendar-constraints` (DB); `calendars.int-spec` (I); `calendar-form.test` (C)                                                                                                                | T004, T051, T052                                     |
-| FR-025                                            | `calendars.int-spec` outside-count, no hold or booking touched (I); `calendar-form.test` (C)                                                                                                           | T051, T052                                           |
-| FR-026                                            | `my-bookings.int-spec` (I); `my-bookings.test` (C)                                                                                                                                                     | T055, T057                                           |
-| FR-027                                            | `owner-bookings.int-spec` (I); `owner-bookings.test` (C)                                                                                                                                               | T056, T058                                           |
-| FR-028                                            | `my-bookings.int-spec`, `owner-bookings.int-spec`, `owner-scoping` sweep (I)                                                                                                                           | T055, T056, T025                                     |
-| FR-029                                            | `layout.int-spec` (I); `model.test` (U); `layout-editor.test` (C)                                                                                                                                      | T062, T064, T065                                     |
-| FR-030                                            | `model.test`, `layout-editor.test`, `layout-item-form.test` (U, C); keyboard-only run (E)                                                                                                              | T061, T065, T067                                     |
-| FR-031                                            | `listing-plan.test` (C); `layout.spec` renter books from the plan (E)                                                                                                                                  | T066, T067                                           |
-| FR-032                                            | each frontend task's component tests assert loading, empty, error, success (C); axe on the routes in section 6 (A)                                                                                     | T010, T018, T029, T046, T061, every UI task          |
-| FR-033                                            | `slots.spec` and `zoned-time` (U); `listings-seats.int-spec`, `my-bookings.int-spec` bodies carry local time and zone (I); `booking-emails.spec` (U); `my-bookings.test`, `listing-seat-list.test` (C) | T006, T035, T037, T040, T057                         |
-| SC-001                                            | owner journey to publish, timed (R, section 5.4); `owner-listing.spec` records its own time                                                                                                            | T025, T070                                           |
-| SC-002                                            | renter keyboard-only dashboard to booking, timed (R, E)                                                                                                                                                | T044, T070                                           |
-| SC-003, SC-004                                    | `marketplace-perf.int-spec`, method in section 5.1 to 5.3                                                                                                                                              | T044                                                 |
-| SC-005                                            | DB level (T005), API level 20 x 5 (T036), mixed slots (T044), opposite-order marks (T047), booking vs mark (T049); method in section 5.5                                                               | T005, T036, T044, T049                               |
-| SC-006                                            | `pass-bookings.int-spec` polls Mailpit, asserts both messages within 60 s of the 201 (I); `search-book.spec` (E)                                                                                       | T037                                                 |
-| SC-007                                            | axe on every route in section 6                                                                                                                                                                        | T016, T025, T032, T044, T049, T053, T059, T067       |
-| Edge: night crosses midnight                      | `slots.spec` end on the next date, last night of a weekly pass ends the morning after day 7 (U); `listings-seats.int-spec` `lastEndsAt` (I)                                                            | T006, T035                                           |
-| Edge: day and night differ; 24 h blocks both      | `seat-hold-constraints` (DB); `listings-seats.int-spec` (I); `booking-races.int-spec` mixed slots (I)                                                                                                  | T005, T035, T044                                     |
-| Edge: touching slots                              | `seat-hold-constraints` touching ranges allowed (DB); `slots.spec` adjacent slots touch (U)                                                                                                            | T005, T006                                           |
-| Edge: DST (11 or 13 h day)                        | `slots.spec` spring and autumn in `Europe/London` and a 2-hour shift zone (U); `booking-emails.spec` (U); `seat_hold_booking_max_length` (DB)                                                          | T005, T006, T037                                     |
-| Edge: switch to fixed hours                       | `owner-pricing.int-spec` existing night booking unchanged, new bookings use the working slot (I); `pricing.spec` (E)                                                                                   | T027, T032                                           |
-| Edge: delete seat or cubicle with future bookings | `owner-seats.int-spec` 409, whole cubicle delete refused if any seat has one (I); `seat-manager.test` (C)                                                                                              | T021, T024                                           |
-| Edge: city with no spaces                         | `listings-search.int-spec` empty page (I); `listing-results.test` empty state suggests the country (C); `search-book.spec` (E)                                                                         | T034, T039, T044                                     |
-| Edge: owner books own space                       | `booking-rules.spec` (U); `listings-detail.int-spec` `isOwnSpace` (I); `pass-bookings.int-spec` 422 (I); `book-pass.test` (C)                                                                          | T007, T028, T036, T041                               |
-| Edge: no seat free for the whole pass             | `listings-search-availability.int-spec` space left out (I); `listing-seat-list.test` "no seat is free for the whole period" (C)                                                                        | T038, T040                                           |
+| ID                                                | Test (level)                                                                                                                                                                                              | Owning task(s)                                       |
+| ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| FR-001                                            | `roles.int-spec` (I); `auth-form.test` (C); update-user rejects `accountType` even as a no-op (I)                                                                                                         | T002, T015                                           |
+| FR-002                                            | `me.int-spec` (I); `preferences-form.test` success state (C); find prefill (C)                                                                                                                            | T013, T015, T039                                     |
+| FR-003                                            | DB default `renter` on a row without the column, then `GET /api/me` (I)                                                                                                                                   | T002                                                 |
+| FR-004                                            | `nav.test` route manifest fails when a page under `(app)` is not in its role's nav or "reached from" (U); keyboard nav walk (E)                                                                           | T014, every page task                                |
+| FR-005                                            | `proxy.test` matcher and redirect with `next` for each `(app)` route (U); 401 in every API task (I); e2e sweep of signed-out visits (E, section 7.2)                                                      | T014, every API task, T016, T070                     |
+| FR-006                                            | `listing-constraints.int-spec` CHECKs (DB); `owner-spaces.int-spec` (I); `space-form.test` (C)                                                                                                            | T003, T019, T020, T022                               |
+| FR-007                                            | `listing-constraints` unique active label (DB); `owner-seats.int-spec` 200 cap, remove with future bookings refused (I); `seat-manager.test` (C)                                                          | T003, T021, T024                                     |
+| FR-008                                            | `space_owned_complete` and publish CHECKs (DB); `owner-spaces.int-spec` publish refusal (I); search and detail exclude drafts (I)                                                                         | T003, T020, T023, T028, T034                         |
+| FR-009                                            | `owner-scoping.int-spec` sweep (I) plus the per-route cases in each owner API task; legacy `GET /api/spaces` returns published only (I)                                                                   | T003, T008, T020, T021, T025, T047, T051, T056, T062 |
+| FR-010                                            | `slots.spec` (U); `owner-pricing.int-spec` (I)                                                                                                                                                            | T006, T027                                           |
+| FR-011                                            | `pricing-calendar-constraints` (DB); `money.spec` (U); `owner-pricing.int-spec` (I)                                                                                                                       | T004, T007, T027                                     |
+| FR-012                                            | `money.spec` (U); `listings-detail.int-spec` (I); `pass-options.test` (C)                                                                                                                                 | T007, T028, T031                                     |
+| FR-013                                            | `seat-hold-constraints` price CHECKs (DB); `owner-pricing.int-spec` and `pass-bookings.int-spec` (I)                                                                                                      | T005, T027, T036                                     |
+| FR-014, FR-015                                    | `listings-search.int-spec` (I); `listing-results.test`, `listing-search-form.test` (C)                                                                                                                    | T034, T039                                           |
+| FR-016                                            | `listings-seats.int-spec` (I); `pass-picker.test`, `listing-seat-list.test` (C)                                                                                                                           | T035, T040                                           |
+| FR-017                                            | `pass-period.spec` (U); `listings-seats.int-spec`, `pass-bookings.int-spec` hold rows equal the occurrence list (I)                                                                                       | T006, T035, T036                                     |
+| FR-018                                            | `seat-hold-constraints` (DB); `pass-bookings.int-spec` 20 x 5 (I); `booking-races.int-spec` (I); `occupancy.int-spec` opposite-order creates (I); `occupancy-races.int-spec` (I)                          | T005, T036, T044, T049                               |
+| FR-019                                            | `seat-hold-constraints` (DB); `pass-bookings.int-spec` same user, two seats, overlapping periods (I)                                                                                                      | T005, T036                                           |
+| FR-020                                            | `booking-rules.spec` (U); `pass-bookings.int-spec`: slot started, over 30 days, unpublished (422 `space-not-published`), draft (404), own space (I); `book-pass.test` (C)                                 | T007, T036, T041                                     |
+| FR-021                                            | `booking-emails.spec` (U); `pass-bookings.int-spec` queue rejecting or never settling still books within the 2 s bound (I); producer fail-fast (U)                                                        | T037, T069                                           |
+| FR-022, FR-023                                    | `occupancy.int-spec` (I); `mark-occupied-dialog.test` (C); note length 200 (I)                                                                                                                            | T047, T048                                           |
+| FR-024                                            | `pricing-calendar-constraints` (DB); `calendars.int-spec` (I); `calendar-form.test` (C)                                                                                                                   | T004, T051, T052                                     |
+| FR-025                                            | `calendars.int-spec` outside-count, no hold or booking touched (I); `calendar-form.test` (C)                                                                                                              | T051, T052                                           |
+| FR-026                                            | `my-bookings.int-spec` (I); `my-bookings.test` (C)                                                                                                                                                        | T055, T057                                           |
+| FR-027                                            | `owner-bookings.int-spec` (I); `owner-bookings.test` (C)                                                                                                                                                  | T056, T058                                           |
+| FR-028                                            | `my-bookings.int-spec`, `owner-bookings.int-spec`, `owner-scoping` sweep (I)                                                                                                                              | T055, T056, T025                                     |
+| FR-029                                            | `layout.int-spec` (I); `model.test` (U); `layout-editor.test` (C)                                                                                                                                         | T062, T064, T065                                     |
+| FR-030                                            | `model.test`, `layout-editor.test`, `layout-item-form.test` (U, C); keyboard-only run (E)                                                                                                                 | T061, T064, T065, T067                               |
+| FR-031                                            | `listing-plan.test` (C); `layout.spec` renter books from the plan (E)                                                                                                                                     | T066, T067                                           |
+| FR-032                                            | each frontend task's component tests assert loading, empty, error, success (C); axe on the routes in section 6 (A)                                                                                        | T010, T018, T029, T046, T061, every UI task          |
+| FR-033                                            | `slots.spec` and `zoned-time` (U); `listings-seats.int-spec`, `my-bookings.int-spec` bodies carry local time and zone (I); `booking-emails.spec` (U); `my-bookings.test`, `listing-seat-list.test` (C)    | T006, T035, T037, T040, T057                         |
+| SC-001                                            | owner journey to publish, timed (R, section 5.4); `owner-listing.spec` records its own time                                                                                                               | T025, T070                                           |
+| SC-002                                            | renter keyboard-only dashboard to booking, timed (R, E)                                                                                                                                                   | T044, T070                                           |
+| SC-003, SC-004                                    | `marketplace.perf-spec`, method in section 5.1 to 5.3                                                                                                                                                     | T044                                                 |
+| SC-005                                            | DB level (T005), API level 20 x 5 (T036), mixed slots (T044), opposite-order marks (T047), booking vs mark (T049); method in section 5.5                                                                  | T005, T036, T044, T049                               |
+| SC-006                                            | `pass-bookings.int-spec` polls Mailpit, asserts both messages within 60 s of the 201 (I); both emails also asserted for each winning booking in the T036 and T044 race rounds (I); `search-book.spec` (E) | T037                                                 |
+| SC-007                                            | axe on every route in section 6                                                                                                                                                                           | T016, T025, T032, T044, T049, T053, T059, T067       |
+| Edge: night crosses midnight                      | `slots.spec` end on the next date, last night of a weekly pass ends the morning after day 7 (U); `listings-seats.int-spec` `lastEndsAt` (I)                                                               | T006, T035                                           |
+| Edge: day and night differ; 24 h blocks both      | `seat-hold-constraints` (DB); `listings-seats.int-spec` (I); `booking-races.int-spec` mixed slots (I)                                                                                                     | T005, T035, T044                                     |
+| Edge: touching slots                              | `seat-hold-constraints` touching ranges allowed (DB); `slots.spec` adjacent slots touch (U)                                                                                                               | T005, T006                                           |
+| Edge: DST (11 or 13 h day)                        | `slots.spec` spring and autumn in `Europe/London` and a 2-hour shift zone (U); `booking-emails.spec` (U); `seat_hold_booking_max_length` (DB)                                                             | T005, T006, T037                                     |
+| Edge: switch to fixed hours                       | `owner-pricing.int-spec` existing night booking unchanged, new bookings use the working slot (I); `pricing.spec` (E)                                                                                      | T027, T032                                           |
+| Edge: delete seat or cubicle with future bookings | `owner-seats.int-spec` 409, whole cubicle delete refused if any seat has one (I); `seat-manager.test` (C)                                                                                                 | T021, T024                                           |
+| Edge: city with no spaces                         | `listings-search.int-spec` empty page (I); `listing-results.test` empty state suggests the country (C); `search-book.spec` (E)                                                                            | T034, T039, T044                                     |
+| Edge: owner books own space                       | `booking-rules.spec` (U); `listings-detail.int-spec` `isOwnSpace` (I); `pass-bookings.int-spec` 422 (I); `book-pass.test` (C)                                                                             | T007, T028, T036, T041                               |
+| Edge: no seat free for the whole pass             | `listings-search-availability.int-spec` space left out (I); `listing-seat-list.test` "no seat is free for the whole period" (C)                                                                           | T038, T040                                           |
 
 ## 5. Race, performance and timing methods
 
 ### 5.1 Data volume (SC-003 and SC-004)
 
-Built by `marketplace-perf.int-spec.ts` in `beforeAll` with bulk SQL (`INSERT … SELECT generate_series`), not through the
+Built by `marketplace.perf-spec.ts` in `beforeAll` with bulk SQL (`INSERT … SELECT generate_series`), not through the
 API, then `ANALYZE` on every touched table so the planner sees realistic statistics. The volume is created once per run
-and removed in `afterAll`. The spec file is excluded from the default `test` run and runs under a dedicated script, so
+and removed in `afterAll`. The file uses the suffix `.perf-spec.ts` because `apps/api/vitest.config.ts` includes `test/**/*.int-spec.ts`; it has its own vitest
+config or project and runs under a dedicated script, so
 `bin/pnpm test` stays fast (T044 adds the script).
 
 | Entity                | Volume                                                                                                                                                                                                                                                                         |
@@ -172,8 +173,16 @@ and removed in `afterAll`. The spec file is excluded from the default `test` run
 | Slots and prices      | Every space offers day, night and 24 h (60%) or "Working hours" (40%), with day, week and month prices on each enabled slot                                                                                                                                                    |
 | Utilities             | 3 to 6 of the 11 standard utilities per space, so the all-of filter has selective and unselective cases                                                                                                                                                                        |
 | Seats                 | 20 per space (20,000 seats), plus the **target space** below                                                                                                                                                                                                                   |
-| Background holds      | At least **100,000** `seat_hold` rows across the 1,000 spaces (daily and monthly passes over today minus 30 days to today plus 60 days)                                                                                                                                        |
+| Background holds      | At least **100,000** `seat_hold` rows across the 1,000 spaces, in the order and shape below (daily and monthly passes over today minus 30 days to today plus 60 days)                                                                                                          |
+| Renter pool           | **2,000** renters. `seat_hold_user_no_overlap` forbids one renter holding overlapping periods, so each renter's passes are laid end to end without overlap (about 50 holds each) and no renter exceeds one active pass at a time                                               |
 | Target space (SC-004) | One published space with **200 seats**, an own calendar on 20 of them, and **a month of holds**: every seat has bookings and occupancy marks covering about 60% of the next 30 days, in all slots, so the monthly-pass envelope overlaps at least 30 holds per seat on average |
+
+**Generation order** (every row must satisfy the DB constraints, which are the same ones T005 tests): the volume is built in bulk
+SQL, header first. For each pass, insert the `booking` header with its seat, user, pass and slot (so `booking_pass_length` and
+`booking_hold_key_unique` hold), then its `seat_hold` rows with the same `booking_id`, `seat_id` and `user_id` (so
+`seat_hold_booking_fk` holds, with `active` equal to the header's `holds_active`). Each occupancy mark is one `occupancy_mark`
+row with exactly one `seat_hold` row (`seat_hold_occupancy_mark_fk`). If the bulk SQL proves too fragile, build it by looping the
+T005 fixtures `insertPassBooking` and `insertHold` inside one transaction per space instead; the volumes above do not change.
 
 ### 5.2 Method (p95)
 
@@ -184,28 +193,27 @@ and removed in `afterAll`. The spec file is excluded from the default `test` run
 - **Repetitions**: **50 measured requests per class**. Timing with `performance.now()` around the full request including
   JSON parse. Search classes rotate through 50 distinct filter combinations so the cache cannot make them identical.
 - **p95**: nearest rank on the 50 sorted durations, index `ceil(0.95 x 50) = 48` (the 48th smallest). Record p50, p95 and max.
-- **Gate**: p95 < 1000 ms for each class, in **3 consecutive runs** on the same container stack (the first run on a cold
-  database is allowed to be recorded and discarded). A class fails if any of the 3 runs fails. Nothing else may be
+- **Gate**: p95 < 1000 ms for each class, in **3 gated runs** on the same container stack, preceded by **1 discarded warm-up run** (cold database, recorded only). A class fails if any of the 3 gated runs fails. Nothing else may be
   running (no parallel Vitest workers on this file, no e2e).
 - **Search classes** (SC-003): (a) country only, (b) country + city, (c) country + city + area, (d) with 2 utilities,
   (e) with pass and slot, (f) with a start date (T038 availability evaluation). Each class p95 < 1000 ms; they are not averaged.
   Result pages are the default 20 items with a cursor.
 - **Availability class** (SC-004): `GET /api/listings/{spaceId}/seats` for the target space, monthly pass, each of the 3 slots,
-  50 requests with start dates spread over the next 28 days.
+  **50 requests per slot (150 in total)** with start dates spread over the next 28 days, and p95 computed per slot.
 
 ### 5.3 `EXPLAIN` evidence
 
 For the seat-availability hold query on the target space (the exact SQL the service runs, taken from the service by
 exporting the query builder, never retyped), run
-`EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)` once after the data is loaded and record the full plan in this file under Results.
-The test also asserts on the plan text:
+`EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)` once after the data is loaded and record the plan in this file under Results.
+The test parses the JSON and asserts on the plan nodes:
 
 - it contains an index or bitmap scan on `seat_hold_seat_no_overlap` (the GiST index), and
 - it does not contain `Seq Scan on seat_hold`, and
-- `Rows Removed by Filter` on `seat_hold` is below 1,000 (ADR-0009 section 7: the `seat_id = ANY($ids)` form filtered 133,600 rows, so this threshold separates the two forms), and
-- execution time is under 100 ms (the T001 spike measured about 20 ms; this is headroom, not a gate for SC-004).
+- the sum over `seat_hold` nodes of `Rows Removed by Filter` x `Actual Loops` (the figure is per loop, so nested-loop probes must be multiplied) is below 1,000 (ADR-0009 section 7: the `seat_id = ANY($ids)` form filtered 133,600 rows, so this threshold separates the two forms), and
+- execution time is **recorded only, not asserted** (the T001 spike measured about 20 ms; SC-004 is gated by the p95 in 5.2).
 
-Also record `EXPLAIN` for the search prefilter (country, city, area keys, `published`) and assert it uses `space_search_idx` (T003), not a sequential scan of `space`. The plan text goes in the T044 PR description as well (its AC).
+Also run `EXPLAIN` for each search class in 5.2. Only class (c), country + city + area, asserts that the plan uses `space_search_idx` (T003); the plans of the other classes are recorded without assertions, because the planner may legitimately choose another path for a broad or unselective filter. The plan text goes in the T044 PR description as well (its AC).
 
 ### 5.4 Timed journeys (SC-001, SC-002)
 
@@ -231,7 +239,7 @@ Also record `EXPLAIN` for the search prefilter (country, city, area keys, `publi
   Valid outcomes are exactly: one 24 h `201` and no other `201`, **or** one day `201` and one night `201` and no 24 h `201`.
   Everything else is `409 seat-unavailable`. Assert from the DB, not only from statuses.
 - **Booking vs mark (T049)**: 10 booking requests and 10 occupancy-mark requests on the same seat and overlapping dates,
-  5 rounds, exactly one winner overall, the loser's problem body is `seat-unavailable` or `OccupancyConflictProblem`,
+  5 rounds, exactly one winner overall, the loser's problem body is `booking:seat-unavailable` (a losing booking) or `occupancy:conflicts-with-bookings` / `occupancy:already-occupied` (a losing mark),
   never a 500. Marks lock seats before inserting (ADR-0009 section 9), so also assert no `40P01` escapes as a 500.
 - **Repetition for flakiness**: T070 reruns every race spec 3 more times. A single flaky round is a failure, not a retry.
 
@@ -287,10 +295,12 @@ review finding.
 
 These add tests under tasks QA already owns. They are not new tasks.
 
-1. **Stale cookie must not redirect** (ui/01 section 4, T015): e2e in `accounts-nav.spec.ts` (T016). Sign in, then invalidate
-   the session server side (delete the session row through the test helper, or sign out in a second context so the
-   cookie survives in the first), then visit `/sign-up` and `/sign-in`. Expected: the page renders and **no redirect loop**,
-   and the shell shows its 401 sign-in state when opened. Positive pair: a valid session visiting `/sign-up` lands on
+1. **Stale cookie must not redirect** (ui/01 section 4, T015): e2e in `accounts-nav.spec.ts` (T016), using only the browser and the
+   public API (no DB helper from the e2e container). Setup, either way: (a) sign in in context A, copy A's `storageState` into
+   context B, then sign out in B, which revokes the session so A's cookie is now stale; or (b) sign in twice (contexts A and B)
+   and call Better Auth's revoke-other-sessions from B, which invalidates A's cookie. Then, in A, visit `/sign-up` and `/sign-in`.
+   Expected: each page renders and there is **no redirect loop**; opening `/dashboard` in A shows the shell's 401 "Your session
+   has ended" state (axe runs on it, section 6). Positive pair: a valid session visiting `/sign-up` lands on
    `/dashboard`, and `/sign-in?next=/find` lands on `/find`, while `/sign-in?next=//example.com` lands on `/dashboard`
    (reuses the open-redirect cases in `sign-in-redirect.spec.ts`).
 2. **Signed-out sweep** (FR-005): one e2e table over every route in section 6 asserting a redirect to `/sign-in?next=<route>`
@@ -298,8 +308,11 @@ These add tests under tasks QA already owns. They are not new tasks.
    proxy matcher); T070 re-runs it over every route in section 6.
 3. **T016 and neutral dashboard card**: T016 must not assert "You have no upcoming bookings" until T057 lands. It asserts the
    neutral card (T014) and the "Find a space" link. T059 owns the final empty-state text.
-4. **Wrong role in the browser**: a renter opening `/owner/spaces/new` shows the courtesy gate or the 403 copy "You don't have access to this.", not a blank page (ui/01
-   sections 3 and 7); an owner opening `/owner/spaces/<other owner's id>` shows the not-found state.
+4. **Wrong role in the browser** (T025, ui/01 section 3.1): a renter opening `/owner/spaces/new` sees exactly "This page is for space
+   owners.", the page's children are **not mounted** (no space form in the DOM), and **no `/api/owner/*` request is fired**
+   (a `page.on('request')` listener records none). The 403 copy "You don't have access to this." (ui/01 section 7) is a
+   separate case: it is shown when the API itself answers 403. An owner opening `/owner/spaces/<another owner's id>` shows the
+   not-found copy "We couldn't find that.".
 5. **Hourly retirement** (T008, T042, T043): `POST /api/bookings` returns 404 (route removed); legacy `GET /api/spaces` returns
    published only (T008), then 404 after T043; `/book` redirects to `/find`; the OpenAPI document no longer lists the removed
    operations (`openapi.json` diff check).
@@ -308,17 +321,17 @@ These add tests under tasks QA already owns. They are not new tasks.
 
 ## 8. Commands and gates (per QA task and T070)
 
-| Check                        | Command                                                                | Gate                                                   |
-| ---------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------ |
-| Dependencies                 | `docker compose up -d postgres redis mailpit`                          | healthy                                                |
-| Lint, typecheck              | `bin/pnpm lint` and `bin/pnpm typecheck`                               | clean, `--max-warnings=0`                              |
-| Unit, component, integration | `bin/pnpm test`                                                        | all pass                                               |
-| Coverage                     | `bin/pnpm test:coverage`                                               | package floors; changed lines at least 80%             |
-| Build                        | `bin/pnpm build`                                                       | succeeds, lists every route in section 6               |
-| Contract current             | `bin/pnpm gen:api` then `git diff --exit-code apps/api/openapi.json`   | no diff                                                |
-| E2E and axe                  | `docker compose --profile e2e run --rm e2e` (full stack up and seeded) | all pass; T070 requires 5 consecutive runs, no retries |
-| Performance                  | the perf script added by T044                                          | section 5.2 gate, 3 consecutive runs                   |
-| Security                     | `bin/security`, `bin/gitleaks dir .`                                   | no finding                                             |
+| Check                        | Command                                                                | Gate                                                          |
+| ---------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------- |
+| Dependencies                 | `docker compose up -d postgres redis mailpit`                          | healthy                                                       |
+| Lint, typecheck              | `bin/pnpm lint` and `bin/pnpm typecheck`                               | clean, `--max-warnings=0`                                     |
+| Unit, component, integration | `bin/pnpm test`                                                        | all pass                                                      |
+| Coverage                     | `bin/pnpm test:coverage`                                               | package floors; changed lines at least 80%                    |
+| Build                        | `bin/pnpm build`                                                       | succeeds, lists every route in section 6                      |
+| Contract current             | `bin/pnpm gen:api` then `git diff --exit-code apps/api/openapi.json`   | no diff                                                       |
+| E2E and axe                  | `docker compose --profile e2e run --rm e2e` (full stack up and seeded) | all pass; T070 requires 5 consecutive runs with `--retries=0` |
+| Performance                  | the perf script added by T044                                          | section 5.2 gate, 3 consecutive runs                          |
+| Security                     | `bin/security`, `bin/gitleaks dir .`                                   | no finding                                                    |
 
 ## 9. Results
 
@@ -338,7 +351,7 @@ round counts, and the SC-001 and SC-002 times).
 3. **`/sign-in` has no axe owner in tasks.md.** It is not in the feature's web tree but T015 changes it. Planned in T016 (section 6).
    **Resolved (task-manager):** added to T016's axe AC.
 4. **SC-003 and SC-004 need a perf script outside the default `bin/pnpm test`** (1,000 spaces and 100,000 holds make the normal run
-   slow and the shared test DB noisy). T044 lists `marketplace-perf.int-spec.ts` but no script or CI job for it. Does CI run it (devops),
+   slow and the shared test DB noisy). T044 lists `marketplace.perf-spec.ts` but no script or CI job for it. Does CI run it (devops),
    or is it a manual QA gate recorded in the PR? The plan assumes a dedicated script run by QA, and 3 recorded runs in T070.
    **Resolved (task-manager):** a dedicated script run by QA (3 recorded runs), excluded from the default `bin/pnpm test`
    (T044 and T070 ACs). Whether CI runs it (nightly or manual) is a devops follow-up in tasks.md Notes.
