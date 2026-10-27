@@ -520,7 +520,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 
 - [ ] T036 [US4] Add `POST /api/listings/{spaceId}/bookings` to `apps/api/src/bookings/` (schemas, service, controller, `bookings.service.spec.ts`) with `apps/api/test/pass-bookings.int-spec.ts`; regenerate `apps/api/openapi.json`
   - **Owner**: backend-dev · **Branch**: `feat/002-create-pass-booking-api` · **Size**: M · **Depends on**: T008, T035 · **Status**: todo
-  - **Added (T008 review)**: inside the lock's `work`, select the seat joined to `space.status = 'published'` with `seat.removed_at IS NULL` before inserting; a seat of a draft space gets the same 404 as an unknown seat (int test). T008 removed `BookingsModule`, the `Caller` type and the `clockProvider` wiring: create a new module. Rebuild the bounded enqueue (2 s, errors swallowed, error log with the booking id only) with its unit tests (with T037); the 001 tests were deleted with the service.
+  - **Added (T008 review)**: inside the lock's `work`, re-read the seat (`FOR SHARE`) joined to its space with `seat.removed_at IS NULL`: an unknown, removed or other-space seat, or a seat of a `draft` space, gets the same 404 as a random UUID; an `unpublished` space gets 422 `booking-rule:space-not-published` (contracts/bookings.md, FR-020), so an unpublish that commits between the rule check and the insert is still refused (int test). T008 removed `BookingsModule`, the `Caller` type and the `clockProvider` wiring: create a new module.
   - **Added (T004 review)**: when the space has no shared calendar, every start day is closed (fail closed): `startDayOpen` and the pass-period dates never assume an open calendar.
   - **Scope**: contracts/bookings.md (processing steps 1–4 and 6; emails are T037). Transaction that starts with `SET LOCAL lock_timeout = '5s'` and `lockSeats` (ADR-0009 section 9), then seat `FOR SHARE`, header + holds in chronological order, error mapping from `DrizzleQueryError.cause` by constraint name, `40P01` retries the whole transaction (max 3, `warn` log per retry), injected `Clock`. Unit tests of the mapping and retry first.
   - **Acceptance criteria**:
@@ -537,7 +537,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 
 - [ ] T037 [P] [US4] Send renter and owner booking emails: `apps/api/src/bookings/booking-emails.ts` (+ `.spec.ts`), wire into the create service, extend `apps/api/test/pass-bookings.int-spec.ts`
   - **Owner**: backend-dev · **Branch**: `feat/002-booking-emails` · **Size**: S · **Depends on**: T036 · **Status**: todo
-  - **Added (T008 review)**: the mail builder strips CR and LF from the subject as defence in depth (owner-controlled space name and seat label). Rebuild the bounded enqueue with T036 (see there).
+  - **Added (T008 review)**: the mail builder strips CR and LF from the subject as defence in depth (owner-controlled space name and seat label). This task owns rebuilding the bounded enqueue (2 s, errors swallowed, error log with the booking id only) and its unit tests; the 001 tests were deleted with `BookingsService` in T008.
   - **Added (T008 review)**: Given the renter or owner email is enqueued twice with the same job id, Then one job exists (ADR-0008 section 5).
   - **Scope**: contracts/booking-emails.md; research R-14. Replaces `booking-confirmation.mail.ts`.
   - **Acceptance criteria**:
@@ -630,7 +630,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 
 - [ ] T047 [US5] Add occupancy to `apps/api/src/owner-operations/` (`GET`/`POST …/occupancy`, `POST …/occupancy/{markId}/end`) and fill `OwnerSeat.today` in `apps/api/src/owner-spaces/`, with `apps/api/test/occupancy.int-spec.ts`; regenerate `apps/api/openapi.json`
   - **Owner**: backend-dev · **Branch**: `feat/002-occupancy-api` · **Size**: M · **Depends on**: T006, T021 · **Status**: todo
-  - **Added (T008 review)**: inside the lock's `work`, select each seat joined to `space.status = 'published'` with `seat.removed_at IS NULL` before inserting; a seat of a draft space gets the same 404 as an unknown seat (int test).
+  - **Added (T008 review)**: inside the lock's `work`, re-read each seat with `seat.removed_at IS NULL`, `seat.space_id = :spaceId` and `space.owner_id = caller`; any miss gets 404 (int test). Occupancy is allowed on draft and unpublished spaces the caller owns, as contracts/owner-operations.md states (unpublishing leaves bookings and marks untouched).
   - **Scope**: contracts/owner-operations.md "Occupancy"; research R-11 (`dayBoundary` from T006; all seats in one transaction, holds inserted in `(seat_id, starts_at)` order; `40P01` retries the whole transaction, at most 3 attempts, with the booking create's helper; on `23P01` roll back, then build `OccupancyConflictProblem.conflicts` from the overlapping holds). Mark status comes from its hold (ADR-0009 section 3). **OQ-5** for vacate.
   - **Boundary assumptions (T006 security review)**: see T007.
   - **Acceptance criteria**:
