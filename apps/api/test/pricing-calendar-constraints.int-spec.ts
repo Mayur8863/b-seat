@@ -117,6 +117,10 @@ describe('pricing and calendar constraints (database)', () => {
       });
     });
 
+    it.each([1, 127])('accepts the weekdays bound %i', async (weekdays) => {
+      await expect(calendar({ weekdays })).resolves.toBeDefined();
+    });
+
     it('refuses a seat calendar whose space is not the seat space', async () => {
       const [seat] = await createSeats(db, spaceId, 1);
       if (!seat) throw new Error('no seat');
@@ -131,6 +135,12 @@ describe('pricing and calendar constraints (database)', () => {
   describe('space.shift_change_at', () => {
     const shift = (time: string) =>
       db.execute(sql`UPDATE space SET shift_change_at = ${time}::time WHERE id = ${spaceId}`);
+
+    it('allows no shift change at all (fixed-hours spaces)', async () => {
+      await expect(
+        db.execute(sql`UPDATE space SET shift_change_at = NULL WHERE id = ${spaceId}`),
+      ).resolves.toBeDefined();
+    });
 
     it('must be before noon (R-4)', async () => {
       await shift('11:59');
