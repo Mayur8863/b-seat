@@ -1,6 +1,6 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 import { PinoLogger } from 'nestjs-pino';
 
 import { ProblemException } from '../common/errors/problem.exception.js';
@@ -142,13 +142,25 @@ export class BookingsService {
     }
   }
 
-  /** One autocommit INSERT per attempt, so a retry after a deadlock is safe. */
+  /**
+   * One short transaction per attempt, so a retry after a deadlock is safe. It first takes a
+   * transaction-scoped advisory lock on the seat: concurrent inserts for the same seat queue
+   * here instead of colliding inside the exclusion-constraint check, where Postgres resolves
+   * the collision as a deadlock only after `deadlock_timeout` (1 s) and 20+ racers exhaust
+   * the retries (HTTP 500). The constraints still decide the outcome; the lock only orders
+   * the attempts. Different seats do not contend.
+   */
   private async insertWithRetry(values: typeof booking.$inferInsert) {
     for (let attempt = 1; ; attempt += 1) {
       try {
-        const [row] = await this.db.insert(booking).values(values).returning();
-        if (!row) throw new Error('booking insert returned no row');
-        return row;
+        return await this.db.transaction(async (tx) => {
+          await tx.execute(
+            sql`select pg_advisory_xact_lock(hashtextextended(${values.seatId}::text, 0))`,
+          );
+          const [row] = await tx.insert(booking).values(values).returning();
+          if (!row) throw new Error('booking insert returned no row');
+          return row;
+        });
       } catch (err) {
         const outcome = classifyInsertError(err);
         if (outcome === 'retry' && attempt < MAX_INSERT_ATTEMPTS) continue;

@@ -968,6 +968,7 @@ Level 12: T071
   - **Excluded** from the ~400 lines (machine-generated, reviewed by diff tooling and CI checks): `apps/api/openapi.json`, `apps/api/drizzle/meta/**` (snapshots and `_journal.json`), `pnpm-lock.yaml`, and `packages/api-client/src/generated/**` (gitignored anyway).
   - **Counted**: everything hand-written, including tests, fixtures and every migration `.sql` file (generated or custom). Migration SQL is reviewed line by line.
   - The PR description states both numbers (`git diff --stat` with and without the exclusions).
+- **Follow-up (001 booking race flake, fixed on `fix/001-booking-race-flake`):** concurrent booking inserts deadlocked inside the exclusion-constraint check (`40P01`, each costs `deadlock_timeout` 1 s) and 3 retries ran out under load (500/timeouts). `BookingsService.insertWithRetry` now runs each attempt in a transaction that takes `pg_advisory_xact_lock(hashtextextended(seat_id::text, 0))` first. T005 moves/extends the exclusion constraints and any new booking-insert path (pass bookings, holds) must keep taking that seat lock before inserting.
 - Tests first for business logic (T005, T006, T007, T036, T047, T055, T064). The PR shows the failing-test commit.
 - No new runtime dependency is planned. Any new dependency needs a justification in the PR and must be raised with the task-manager.
 - Migrations: `0000`–`0002` are never edited; new migrations are generated first and `--custom` second (data-model.md).

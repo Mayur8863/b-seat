@@ -74,7 +74,11 @@ function fakeDb(selects: unknown[][], inserts: Settle[]) {
   const insert = vi.fn(() =>
     query(inserts.shift() ?? (() => Promise.reject(new Error('extra insert')))),
   );
-  return { db: { select, insert } as unknown as Database, select, insert };
+  // The insert runs in a transaction that first takes the per-seat advisory lock.
+  const execute = vi.fn(() => Promise.resolve());
+  const tx = { insert, execute };
+  const transaction = vi.fn((fn: (t: typeof tx) => Promise<unknown>) => fn(tx));
+  return { db: { select, insert, transaction } as unknown as Database, select, insert, execute };
 }
 
 function fakeLogger() {
@@ -125,7 +129,7 @@ describe('BookingsService.create', () => {
   });
 
   it('inserts an active booking for the caller and returns local and UTC times (AC 2.1)', async () => {
-    const { db, insert } = fakeDb([[SEAT_ROW]], [() => Promise.resolve([INSERTED])]);
+    const { db, insert, execute } = fakeDb([[SEAT_ROW]], [() => Promise.resolve([INSERTED])]);
 
     const booking = await makeService(db, { logger }).create(CALLER, INPUT);
 
@@ -144,6 +148,7 @@ describe('BookingsService.create', () => {
       cancelledAt: null,
     });
     expect(insert).toHaveBeenCalledTimes(1);
+    expect(execute).toHaveBeenCalledTimes(1); // the seat lock, taken before the insert
     expect(JSON.stringify(booking)).not.toContain(CALLER.id);
     expect(logger.info).toHaveBeenCalledWith(
       { bookingId: BOOKING_ID, seatId: SEAT_ID },

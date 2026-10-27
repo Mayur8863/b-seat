@@ -8,12 +8,14 @@ import request from 'supertest';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { type BookingRule, ruleViolation } from '../src/bookings/booking-rules.js';
+import { BookingsService } from '../src/bookings/bookings.service.js';
 import { BookingSchema } from '../src/bookings/bookings.schemas.js';
 import type { Database } from '../src/db/db.js';
 import { booking } from '../src/db/schema/index.js';
 import { MailService } from '../src/mail/mail.service.js';
 import { MAIL_QUEUE } from '../src/mail/mail.types.js';
 import {
+  createOwner,
   createSeats,
   createSpace,
   insertBooking,
@@ -299,6 +301,36 @@ describe('POST /api/bookings', () => {
       expect(active).toHaveLength(1);
     }
   }, 60_000);
+  it('never answers 5xx when 60 callers race for one seat: deadlocks are serialised, not retried away (FR-005)', async () => {
+    const service = app.get(BookingsService);
+    const callers = await Promise.all(
+      Array.from({ length: 60 }, async (_, i) => {
+        const email = `storm-${i}@example.com`;
+        const { id } = await createOwner(db, { email, accountType: 'renter' });
+        return { id, name: `Storm ${i}`, email };
+      }),
+    );
+    const seat = seatAt(0);
+
+    for (let round = 0; round < 3; round += 1) {
+      const startTime = `${String(8 + round * 2).padStart(2, '0')}:00`;
+      const endTime = `${String(9 + round * 2).padStart(2, '0')}:00`;
+      const outcomes = await Promise.allSettled(
+        callers.map((c) =>
+          service.create(c, { seatId: seat.id, date: tomorrow, startTime, endTime }),
+        ),
+      );
+
+      const rejected: unknown[] = outcomes.flatMap((o) =>
+        o.status === 'rejected' ? [o.reason as unknown] : [],
+      );
+      expect(outcomes.filter((o) => o.status === 'fulfilled')).toHaveLength(1);
+      for (const reason of rejected) {
+        expect(reason).toMatchObject({ status: 409 });
+      }
+    }
+  }, 60_000);
+
   describe('confirmation email (T010, FR-008)', () => {
     afterEach(() => {
       vi.restoreAllMocks();

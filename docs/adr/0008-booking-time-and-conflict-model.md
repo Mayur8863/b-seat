@@ -88,6 +88,11 @@ contract (`openapi.json`, the generated client) or the stored data:
   then either fails with `23P01` (the winner committed) or succeeds (the other one was the victim).
   Without it, SC-002 ("19 refused") would sometimes see a 500.
 
+  **Amendment (fix/001-booking-race-flake):** the retry alone was not enough. With 20+ racers each
+  deadlock costs `deadlock_timeout` (1 s) and the victims collide again, exhausting 3 attempts (500) or
+  stalling. Each attempt is now a short transaction that first takes `pg_advisory_xact_lock` on the seat,
+  so same-seat inserts queue instead of deadlocking; the retry remains for cross-seat user-overlap deadlocks.
+
 - **Migrations.** drizzle-kit generates the tables, FKs, uniques, CHECKs, enum and btree indexes. The
   exclusion constraints go in a **custom migration** created with
   `bin/pnpm --filter @bseat/api db:generate --custom --name booking_exclusions` **after** the table
