@@ -94,3 +94,62 @@ describe('migration 0004_listings on top of 001 data', () => {
     ]);
   });
 });
+
+describe('migration 0007_shared_calendar_backfill on top of existing spaces', () => {
+  let scratch: ScratchDatabase;
+  const utcSpace = '33333333-3333-4333-8333-333333333333';
+  const aucklandSpace = '44444444-4444-4444-8444-444444444444';
+  const laSpace = '55555555-5555-4555-8555-555555555555';
+
+  beforeAll(async () => {
+    scratch = await createScratchDatabase();
+    await scratch.migrateTo('0005_renter_preferences');
+    // 23:30 UTC on 7 Jan is already 8 Jan in Auckland and still 7 Jan in Los Angeles.
+    const createdAt = '2030-01-07 23:30+00';
+    for (const [id, zone] of [
+      [utcSpace, 'UTC'],
+      [aucklandSpace, 'Pacific/Auckland'],
+      [laSpace, 'America/Los_Angeles'],
+    ] as const) {
+      await scratch.pool.query(
+        `INSERT INTO space (id, name, time_zone, created_at) VALUES ($1, 'Old', $2, $3)`,
+        [id, zone, createdAt],
+      );
+    }
+    await scratch.migrateToLatest();
+  }, 60_000);
+
+  afterAll(async () => {
+    await scratch.drop();
+  });
+
+  it('gives each space one shared calendar starting on its local creation date', async () => {
+    const { rows } = await scratch.pool.query<{
+      space_id: string;
+      seat_id: string | null;
+      start_date: string;
+      end_date: string | null;
+      weekdays: number;
+    }>(
+      `SELECT space_id, seat_id, start_date::text, end_date::text, weekdays
+       FROM availability_calendar ORDER BY space_id`,
+    );
+    expect(rows).toEqual([
+      {
+        space_id: utcSpace,
+        seat_id: null,
+        start_date: '2030-01-07',
+        end_date: null,
+        weekdays: 127,
+      },
+      {
+        space_id: aucklandSpace,
+        seat_id: null,
+        start_date: '2030-01-08',
+        end_date: null,
+        weekdays: 127,
+      },
+      { space_id: laSpace, seat_id: null, start_date: '2030-01-07', end_date: null, weekdays: 127 },
+    ]);
+  });
+});

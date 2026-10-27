@@ -43,6 +43,20 @@
       "when": 1793094196546,
       "tag": "0005_renter_preferences",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793095971505,
+      "tag": "0006_pricing_calendar",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793095977991,
+      "tag": "0007_shared_calendar_backfill",
+      "breakpoints": true
     }
   ]
 }

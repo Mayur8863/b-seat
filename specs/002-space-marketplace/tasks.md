@@ -33,7 +33,7 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 | T001 | ADR-0009, ADR-0010 and plan approval                         | architect      | none                   | M    | done   | `docs/002-marketplace-adrs`           |
 | T002 | Account role: Better Auth field, migration, role guard       | backend-dev    | T001                   | M    | done   | `feat/002-account-role`               |
 | T003 | Listing schema: space columns, cubicle, seat changes         | backend-dev    | T001                   | M    | done   | `feat/002-listing-schema`             |
-| T004 | Pricing and calendar schema, shared calendar backfill        | backend-dev    | T003                   | M    | todo   | `feat/002-pricing-calendar-schema`    |
+| T004 | Pricing and calendar schema, shared calendar backfill        | backend-dev    | T003                   | M    | review | `feat/002-pricing-calendar-schema`    |
 | T005 | Pass booking header, seat holds, occupancy marks, exclusions | backend-dev    | T003, T008             | M    | todo   | `feat/002-seat-hold-schema`           |
 | T006 | Slot, calendar and pass-period engine (pure, TDD)            | backend-dev    | T001                   | M    | done   | `feat/002-slot-engine`                |
 | T007 | Money, problem types and pass booking rules (pure, TDD)      | backend-dev    | T006                   | M    | todo   | `feat/002-pass-rules`                 |
@@ -153,7 +153,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given the migrations, When `db:generate` runs again, Then no new migration is produced.
 
 - [ ] T004 Add `apps/api/src/db/schema/pricing.ts` (`space_slot`, `pass_price`) and `apps/api/src/db/schema/calendar.ts` (`availability_calendar`), migrations `pricing_calendar` (generated) and `shared_calendar_backfill` (custom), tests `apps/api/test/pricing-calendar-constraints.int-spec.ts`
-  - **Owner**: backend-dev · **Branch**: `feat/002-pricing-calendar-schema` · **Size**: M · **Depends on**: T003 · **Status**: todo
+  - **Owner**: backend-dev · **Branch**: `feat/002-pricing-calendar-schema` · **Size**: M · **Depends on**: T003 · **Status**: review
   - **Scope**: data-model.md verbatim: PK `(space_id, slot)`; PK `(space_id, slot, pass)`; `amount numeric(12,2)` with `pass_price_positive` `amount > 0`; `weekdays smallint DEFAULT 127` with `availability_calendar_weekdays` `BETWEEN 1 AND 127`; `availability_calendar_range`; partial unique `availability_calendar_shared_unique (space_id) WHERE seat_id IS NULL`; `availability_calendar_seat_unique (seat_id)`; composite FK `(seat_id, space_id)`. Custom backfill: one shared calendar per existing space, `start_date = (created_at AT TIME ZONE time_zone)::date`.
   - **Added (T006 review)**: the migration also adds CHECK `shift_change_at < '12:00'` on `space` (R-4).
   - **Acceptance criteria**:

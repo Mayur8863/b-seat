@@ -73,6 +73,8 @@ export const space = pgTable(
       'space_opening_hours_valid',
       sql`${t.openingMode} IS NULL OR (${t.openingMode} = 'always_open' AND ${t.shiftChangeAt} IS NOT NULL) OR (${t.openingMode} = 'fixed_hours' AND ${t.opensAt} IS NOT NULL AND ${t.closesAt} IS NOT NULL AND ${t.closesAt} > ${t.opensAt})`,
     ),
+    // Keeps night (T+12h) on the same local day as day, so the slot engine stays simple (R-4).
+    check('space_shift_change_before_noon', sql`${t.shiftChangeAt} < '12:00'`),
     check('space_custom_utilities_max', sql`cardinality(${t.customUtilities}) <= 5`),
     // Standard list size (OQ-8). Per-element lengths (1-40) are Zod's; the total bounds row size.
     // 11 = STANDARD_UTILITIES.length (src/reference/utilities.ts); keep in sync.
