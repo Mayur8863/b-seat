@@ -518,6 +518,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 
 - [ ] T036 [US4] Add `POST /api/listings/{spaceId}/bookings` to `apps/api/src/bookings/` (schemas, service, controller, `bookings.service.spec.ts`) with `apps/api/test/pass-bookings.int-spec.ts`; regenerate `apps/api/openapi.json`
   - **Owner**: backend-dev · **Branch**: `feat/002-create-pass-booking-api` · **Size**: M · **Depends on**: T008, T035 · **Status**: todo
+  - **Added (T004 review)**: when the space has no shared calendar, every start day is closed (fail closed): `startDayOpen` and the pass-period dates never assume an open calendar.
   - **Scope**: contracts/bookings.md (processing steps 1–4 and 6; emails are T037). Transaction that starts with `SET LOCAL lock_timeout = '5s'` and `lockSeats` (ADR-0009 section 9), then seat `FOR SHARE`, header + holds in chronological order, error mapping from `DrizzleQueryError.cause` by constraint name, `40P01` retries the whole transaction (max 3, `warn` log per retry), injected `Clock`. Unit tests of the mapping and retry first.
   - **Acceptance criteria**:
     - Given a free seat, When a renter books `pass=week, slot=day, startDate=next Monday`, Then 201 `Booking` with 7 `days`, the price and currency snapshot, and availability shows the seat `taken` for that week (AC 4.5, FR-017, FR-013).
@@ -668,6 +669,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 
 - [ ] T051 [US6] Add calendars to `apps/api/src/owner-operations/` (`GET …/calendars`, `PUT …/calendars/shared`, `PUT`/`DELETE …/seats/{seatId}/calendar`) and `OwnerSeat.calendar`, with `apps/api/test/calendars.int-spec.ts`; regenerate `apps/api/openapi.json`
   - **Owner**: backend-dev · **Branch**: `feat/002-calendar-api` · **Size**: M · **Depends on**: T006, T021 · **Status**: todo
+  - **Added (T004 review)**: a space without a shared calendar is never treated as open: `GET …/calendars` does not invent one, and `DELETE …/seats/{seatId}/calendar` reverts the seat to the space's shared calendar (fail closed if it is missing).
   - **Acceptance criteria**:
     - Given a new space, When `GET …/calendars`, Then shared = from creation date, no end, all 7 days, and no seat has its own (AC 6.1, FR-024).
     - Given the shared calendar set to Mon–Fri, 1 Nov–31 Dec, When a renter requests seat availability starting on a Saturday, Then seats on the shared calendar are `closed` (AC 6.2).
@@ -702,7 +704,6 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 
 - [ ] T055 [US7] Add `GET /api/bookings` and `POST /api/bookings/{bookingId}/cancel` to `apps/api/src/bookings/` with `apps/api/test/my-bookings.int-spec.ts`; regenerate `apps/api/openapi.json`
   - **Owner**: backend-dev · **Branch**: `feat/002-my-bookings-api` · **Size**: M · **Depends on**: T036 · **Status**: todo
-  - **Added (T004 review)**: the availability engine treats a missing shared calendar as closed (fail closed), never open.
   - **Scope**: contracts/bookings.md. Cancel is the single scoped `UPDATE booking`; `seat_hold_booking_fk` cascades the holds to inactive (AQ-7, ADR-0009 section 3), so the service never updates `seat_hold`. Legacy hourly rows are not listed (**OQ-3**).
   - **Boundary assumptions (T006 security review)**: see T007.
   - **Acceptance criteria**:
