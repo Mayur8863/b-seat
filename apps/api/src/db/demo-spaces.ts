@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { eq, isNull } from 'drizzle-orm';
 
 import { isValidTimeZone } from '../common/time/zoned-time.js';
 import type { Database } from './db.js';
@@ -66,11 +66,13 @@ export async function seedSpaces(
 
   await db.transaction(async (tx) => {
     for (const { seats: seatList, ...values } of spaces) {
-      await tx.insert(space).values(values).onConflictDoNothing({ target: space.name });
-      const [row] = await tx
+      // space.name is no longer unique (OQ-11), so look the demo space up before inserting.
+      let [row] = await tx
         .select({ id: space.id })
         .from(space)
-        .where(eq(space.name, values.name));
+        .where(eq(space.name, values.name))
+        .limit(1);
+      if (!row) [row] = await tx.insert(space).values(values).returning({ id: space.id });
       if (!row) throw new Error(`seed: space "${values.name}" was not created`);
       if (seatList.length === 0) continue;
       await tx
@@ -78,7 +80,10 @@ export async function seedSpaces(
         .values(
           seatList.map((s) => ({ spaceId: row.id, label: s.label, features: s.features ?? [] })),
         )
-        .onConflictDoNothing({ target: [seat.spaceId, seat.label] });
+        .onConflictDoNothing({
+          target: [seat.spaceId, seat.label],
+          where: isNull(seat.removedAt),
+        });
     }
   });
 }

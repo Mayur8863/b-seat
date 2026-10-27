@@ -6,7 +6,7 @@ import { ProblemException } from '../common/errors/problem.exception.js';
 import { toInstant } from '../common/time/zoned-time.js';
 import type { Database } from '../db/db.js';
 import { DB } from '../db/db.module.js';
-import { booking, seat, space } from '../db/schema/index.js';
+import { booking, legacyLocation, seat, space } from '../db/schema/index.js';
 import type { AvailabilityQueryInput, SpaceAvailability, SpaceList } from './spaces.schemas.js';
 
 /** A local window as UTC instants, `[startsAt, endsAt)`. */
@@ -43,7 +43,7 @@ export class SpacesService {
       .select({
         id: space.id,
         name: space.name,
-        location: space.location,
+        location: legacyLocation,
         timeZone: space.timeZone,
         seatCount: count(seat.id),
       })
@@ -59,7 +59,7 @@ export class SpacesService {
       .select({
         id: space.id,
         name: space.name,
-        location: space.location,
+        location: legacyLocation,
         timeZone: space.timeZone,
       })
       .from(space)

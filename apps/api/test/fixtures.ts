@@ -1,9 +1,11 @@
+import { randomUUID } from 'node:crypto';
+
 import type { NestExpressApplication } from '@nestjs/platform-express';
 
 import { toInstant, toLocal } from '../src/common/time/zoned-time.js';
 import type { Database } from '../src/db/db.js';
 import { DB } from '../src/db/db.module.js';
-import { booking, seat, space } from '../src/db/schema/index.js';
+import { booking, cubicle, seat, space, user } from '../src/db/schema/index.js';
 import { signedInAgent } from './helpers.js';
 
 /** Direct-insert fixtures for integration tests (the seed is not used; resetDb truncates). */
@@ -11,6 +13,8 @@ import { signedInAgent } from './helpers.js';
 export type SpaceRow = typeof space.$inferSelect;
 export type SeatRow = typeof seat.$inferSelect;
 export type BookingRow = typeof booking.$inferSelect;
+export type CubicleRow = typeof cubicle.$inferSelect;
+export type UserRow = typeof user.$inferSelect;
 
 export function testDb(app: NestExpressApplication): Database {
   return app.get<Database>(DB);
@@ -33,6 +37,60 @@ export async function createSpace(
     })
     .returning();
   if (!row) throw new Error('createSpace: insert returned no row');
+  return row;
+}
+
+/** Inserts an owner account row directly (no session); use `signedInAgent` when a cookie is needed. */
+export async function createOwner(
+  db: Database,
+  values: Partial<typeof user.$inferInsert> = {},
+): Promise<UserRow> {
+  const id = randomUUID();
+  const [row] = await db
+    .insert(user)
+    .values({
+      id,
+      name: 'Owner',
+      email: `owner-${id}@example.com`,
+      accountType: 'owner',
+      ...values,
+    })
+    .returning();
+  if (!row) throw new Error('createOwner: insert returned no row');
+  return row;
+}
+
+/** A complete owned listing (every `space_owned_complete` field set); draft unless overridden. */
+export async function createListing(
+  db: Database,
+  ownerId: string,
+  values: Partial<typeof space.$inferInsert> = {},
+): Promise<SpaceRow> {
+  return createSpace(db, {
+    ownerId,
+    description: 'A bright shared office.',
+    country: 'IN',
+    city: 'Pune',
+    area: 'Baner',
+    streetAddress: '1 Test Road',
+    currency: 'INR',
+    openingMode: 'fixed_hours',
+    opensAt: '09:00',
+    closesAt: '18:00',
+    ...values,
+  });
+}
+
+export async function createCubicle(
+  db: Database,
+  spaceId: string,
+  values: Partial<typeof cubicle.$inferInsert> = {},
+): Promise<CubicleRow> {
+  const [row] = await db
+    .insert(cubicle)
+    .values({ spaceId, name: 'Bay 1', ...values })
+    .returning();
+  if (!row) throw new Error('createCubicle: insert returned no row');
   return row;
 }
 

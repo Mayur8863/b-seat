@@ -32,7 +32,7 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 | ---- | ------------------------------------------------------------ | -------------- | ---------------------- | ---- | ------ | ------------------------------------- |
 | T001 | ADR-0009, ADR-0010 and plan approval                         | architect      | none                   | M    | done   | `docs/002-marketplace-adrs`           |
 | T002 | Account role: Better Auth field, migration, role guard       | backend-dev    | T001                   | M    | done   | `feat/002-account-role`               |
-| T003 | Listing schema: space columns, cubicle, seat changes         | backend-dev    | T001                   | M    | todo   | `feat/002-listing-schema`             |
+| T003 | Listing schema: space columns, cubicle, seat changes         | backend-dev    | T001                   | M    | review | `feat/002-listing-schema`             |
 | T004 | Pricing and calendar schema, shared calendar backfill        | backend-dev    | T003                   | M    | todo   | `feat/002-pricing-calendar-schema`    |
 | T005 | Pass booking header, seat holds, occupancy marks, exclusions | backend-dev    | T003, T008             | M    | todo   | `feat/002-seat-hold-schema`           |
 | T006 | Slot, calendar and pass-period engine (pure, TDD)            | backend-dev    | T001                   | M    | todo   | `feat/002-slot-engine`                |
@@ -138,7 +138,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given `bin/pnpm gen:api`, When run, Then `Me` includes `accountType` and `openapi.json` is committed (Constitution III).
 
 - [ ] T003 [P] Extend the listing schema in `apps/api/src/db/schema/space.ts` (space columns, `cubicle`, seat changes), migration `listings`, fixtures in `apps/api/test/fixtures.ts`, tests `apps/api/test/listing-constraints.int-spec.ts`
-  - **Owner**: backend-dev · **Branch**: `feat/002-listing-schema` · **Size**: M · **Depends on**: T001 · **Status**: todo
+  - **Owner**: backend-dev · **Branch**: `feat/002-listing-schema` · **Size**: M · **Depends on**: T001 · **Status**: review
   - **Scope**: data-model.md "space (changed)", "cubicle", "seat (changed)" verbatim, including: `owner_id` FK `ON DELETE RESTRICT` (nullable for legacy rows); `status space_status DEFAULT 'draft'`; generated `city_key`/`area_key` `GENERATED ALWAYS AS (lower(btrim(…))) STORED`; CHECKs `space_opening_hours_valid` (fixed hours: `closes_at > opens_at`, **OQ-7**), `space_owned_complete`, `space_published_has_owner`, `space_custom_utilities_max` (`cardinality(custom_utilities) <= 5`), description 1–2000, city/area 1–100, street address 1–200, `country ~ '^[A-Z]{2}$'`, `currency ~ '^[A-Z]{3}$'`; drop `space_name_unique` (**OQ-11**); `location` nullable; `seat_space_id_label_active_unique (space_id, label) WHERE removed_at IS NULL` replaces `seat_space_id_label_unique`; `seat_id_space_id_unique`, `cubicle_id_space_id_unique`; composite FK `(cubicle_id, space_id)`; `cubicle.removed_at` with `cubicle_space_id_name_active_unique (space_id, name) WHERE removed_at IS NULL`. Indexes as listed. Never edit `0000`–`0002`. Constraint tests first; fixtures `createOwner`, `createListing`, `createCubicle`.
   - **Acceptance criteria**:
     - Given an existing 001 space row, When the migration runs, Then it succeeds and the row has `status = 'draft'` and `owner_id IS NULL` (expand, research R-7).

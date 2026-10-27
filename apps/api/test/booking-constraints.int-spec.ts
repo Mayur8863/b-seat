@@ -248,7 +248,7 @@ describe('booking constraints (database)', () => {
       const failure = await pgFailure(
         db.insert(seat).values({ spaceId: london.id, label: s1.label }),
       );
-      expect(failure).toEqual({ code: '23505', constraint: 'seat_space_id_label_unique' });
+      expect(failure).toEqual({ code: '23505', constraint: 'seat_space_id_label_active_unique' });
 
       const other = await createSpace(db);
       await db.insert(seat).values({ spaceId: other.id, label: s1.label });
@@ -256,11 +256,6 @@ describe('booking constraints (database)', () => {
 
     it('defaults seat features to an empty array', () => {
       expect(s1.features).toEqual([]);
-    });
-
-    it('refuses a duplicate space name (23505)', async () => {
-      const failure = await pgFailure(createSpace(db, { name: london.name }));
-      expect(failure).toEqual({ code: '23505', constraint: 'space_name_unique' });
     });
 
     it.each([

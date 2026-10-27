@@ -9,7 +9,7 @@ import { toLocal } from '../common/time/zoned-time.js';
 import type { Env } from '../config/env.js';
 import type { Database } from '../db/db.js';
 import { DB } from '../db/db.module.js';
-import { booking, seat, space } from '../db/schema/index.js';
+import { booking, legacyLocation, seat, space } from '../db/schema/index.js';
 import { MailService } from '../mail/mail.service.js';
 import { resolveWindow } from '../spaces/spaces.service.js';
 import { buildBookingConfirmation, confirmationJobId } from './booking-confirmation.mail.js';
@@ -89,7 +89,7 @@ export class BookingsService {
         space: {
           id: space.id,
           name: space.name,
-          location: space.location,
+          location: legacyLocation,
           timeZone: space.timeZone,
         },
       })
