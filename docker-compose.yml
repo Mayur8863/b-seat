@@ -95,6 +95,9 @@ services:
     environment:
       <<: *node-env
       NODE_ENV: development
+      # Password for the seeded demo owner/renter accounts. Only this one-off
+      # service gets it (not api/web). Dev-only default; never set in production.
+      SEED_DEMO_PASSWORD: ${SEED_DEMO_PASSWORD:-dev-only-demo-password-1}
     command: ['bash', '-c', 'pnpm db:migrate && pnpm db:seed']
     depends_on:
       install: { condition: service_completed_successfully }

@@ -100,6 +100,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Build toolbox image
         run: docker compose build install
+      - name: Generate a throwaway demo-account password for the seed
+        run: |
+          pw="ci-$(openssl rand -hex 16)"
+          echo "::add-mask::$pw"
+          echo "SEED_DEMO_PASSWORD=$pw" >> "$GITHUB_ENV"
       - name: Start the full stack
         run: docker compose up -d --wait
       - name: Playwright (Chromium + mobile) with axe WCAG 2.1 AA

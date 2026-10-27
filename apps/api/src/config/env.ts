@@ -24,6 +24,13 @@ export const EnvSchema = z.object({
   BETTER_AUTH_URL: z.url(),
   TRUSTED_ORIGINS: commaList.default(['http://localhost:3000']),
   NEXT_PUBLIC_APP_URL: z.url().default('http://localhost:3000'),
+
+  // Read by the seed script only; optional so the API itself boots without it
+  // (production never sets it).
+  SEED_DEMO_PASSWORD: z
+    .string()
+    .min(8, 'SEED_DEMO_PASSWORD must be at least 8 characters')
+    .optional(),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

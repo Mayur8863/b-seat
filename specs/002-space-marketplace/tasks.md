@@ -41,7 +41,7 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 | T009 | Seed: demo owner and renter, priced listings, calendars      | backend-dev    | T002, T004, T012       | M    | todo   | `feat/002-seed-marketplace`           |
 | T010 | UI spec: index, shell, nav, sign-up, dashboards              | ui-ux-designer | T001                   | M    | todo   | `docs/002-ui-shell-accounts`          |
 | T011 | Test plan and traceability skeleton                          | qa-engineer    | T001                   | S    | todo   | `test/002-test-plan`                  |
-| T012 | Wire `SEED_DEMO_PASSWORD` into compose and CI                | devops         | T001                   | S    | todo   | `chore/002-seed-env`                  |
+| T012 | Wire `SEED_DEMO_PASSWORD` into compose and CI                | devops         | T001                   | S    | review | `chore/002-seed-env`                  |
 | T013 | Renter preferences API                                       | backend-dev    | T002                   | S    | todo   | `feat/002-renter-preferences-api`     |
 | T014 | Signed-in shell, role-aware nav, role dashboards             | frontend-dev   | T002, T010             | M    | todo   | `feat/002-app-nav`                    |
 | T015 | Sign-up role choice and optional preferences                 | frontend-dev   | T002, T013, T014, T019 | M    | todo   | `feat/002-sign-up-role`               |
@@ -247,7 +247,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given SC-007, When read, Then every route in plan.md's web tree is listed for axe, including the layout editor in its editing state.
 
 - [ ] T012 [P] Add `SEED_DEMO_PASSWORD` to `.env.example` (with a comment), the compose `migrate` service and the CI e2e job
-  - **Owner**: devops · **Branch**: `chore/002-seed-env` · **Size**: S · **Depends on**: T001 · **Status**: todo
+  - **Owner**: devops · **Branch**: `chore/002-seed-env` · **Size**: S · **Depends on**: T001 · **Status**: review
   - **Scope**: `docker-compose.yml` has unrelated uncommitted local changes on the planning machine; work from the base branch's committed file. The CI value is a CI secret or a generated value, never a real password; gitleaks stays green.
   - **Acceptance criteria**:
     - Given a fresh clone with `.env` copied from `.env.example`, When `docker compose up` runs, Then the `migrate` service receives `SEED_DEMO_PASSWORD` (verified once T009 lands: the seed succeeds).
