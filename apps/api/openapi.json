@@ -37,6 +37,42 @@
         ]
       }
     },
+    "/api/reference": {
+      "get": {
+        "operationId": "Reference_get",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Reference"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ],
+        "tags": [
+          "reference"
+        ]
+      }
+    },
     "/api/spaces": {
       "get": {
         "operationId": "Spaces_list",
@@ -371,6 +407,86 @@
           "status"
         ],
         "additionalProperties": false
+      },
+      "Reference": {
+        "type": "object",
+        "properties": {
+          "countries": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string",
+                  "pattern": "^[A-Z]{2}$"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "timeZones": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "description": "IANA time zone, e.g. Europe/London"
+                  },
+                  "description": "Suggested zones; the first is the default"
+                }
+              },
+              "required": [
+                "code",
+                "name",
+                "timeZones"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "currencies": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string",
+                  "pattern": "^[A-Z]{3}$"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "code",
+                "name"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "utilities": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "wifi",
+                "air_conditioning",
+                "power_backup",
+                "parking",
+                "meeting_room",
+                "tea_coffee",
+                "printer",
+                "lockers",
+                "security_24h",
+                "cafeteria",
+                "accessible_entrance"
+              ]
+            }
+          }
+        },
+        "required": [
+          "countries",
+          "currencies",
+          "utilities"
+        ],
+        "additionalProperties": false,
+        "description": "Static lists used by listing and preference forms"
       },
       "SpaceList": {
         "type": "object",

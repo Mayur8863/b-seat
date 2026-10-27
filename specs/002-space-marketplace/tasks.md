@@ -48,7 +48,7 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 | T016 | QA US1: accounts and navigation e2e, axe                     | qa-engineer    | T011, T014, T015       | S    | todo   | `test/002-us1-accounts-e2e`           |
 | T017 | Docs US1                                                     | docs-writer    | T016                   | S    | todo   | `docs/002-us1-accounts`               |
 | T018 | UI spec: owner listing, seats, slots and prices              | ui-ux-designer | T010                   | M    | todo   | `docs/002-ui-owner-listing`           |
-| T019 | Reference data API (countries, currencies, utilities)        | backend-dev    | T001                   | S    | todo   | `feat/002-reference-api`              |
+| T019 | Reference data API (countries, currencies, utilities)        | backend-dev    | T001                   | S    | review | `feat/002-reference-api`              |
 | T020 | Owner spaces API: CRUD, publish, unpublish                   | backend-dev    | T002, T004, T019       | M    | todo   | `feat/002-owner-spaces-api`           |
 | T021 | Seats and cubicles API                                       | backend-dev    | T005, T020             | M    | todo   | `feat/002-seats-cubicles-api`         |
 | T022 | Space details form and create page                           | frontend-dev   | T014, T018, T019, T020 | M    | todo   | `feat/002-space-form`                 |
@@ -324,7 +324,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given the price grid and the bulk seat form, When read, Then keyboard order, labels, error association and the money format are defined (SC-007, AC 3.4).
 
 - [ ] T019 [P] [US2] Add the reference module `apps/api/src/reference/` (`GET /api/reference`, `countries.ts` ISO list) with unit and integration tests; regenerate `apps/api/openapi.json`
-  - **Owner**: backend-dev · **Branch**: `feat/002-reference-api` · **Size**: S · **Depends on**: T001 · **Status**: todo
+  - **Owner**: backend-dev · **Branch**: `feat/002-reference-api` · **Size**: S · **Depends on**: T001 · **Status**: review
   - **Scope**: research R-13; contracts/accounts.md. Standard utilities per **OQ-8**. Export the validators (`isCountryCode`, `isCurrencyCode`) for T020 and T013.
   - **Acceptance criteria**:
     - Given a signed-in user, When `GET /api/reference`, Then `countries` includes `{ code: "IN", name: "India" }` with `Asia/Kolkata` in `timeZones`, and `{ code: "GB" }` with `Europe/London` (AC 2.1 "time zone suggested from the country").

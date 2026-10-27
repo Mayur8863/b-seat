@@ -17,6 +17,7 @@ import { DbModule } from './db/db.module.js';
 import { HealthController } from './health/health.controller.js';
 import { MailModule } from './mail/mail.module.js';
 import { MeController } from './me/me.controller.js';
+import { ReferenceController } from './reference/reference.controller.js';
 import { REDIS, RedisModule } from './redis/redis.module.js';
 import { SpacesModule } from './spaces/spaces.module.js';
 
@@ -57,7 +58,7 @@ import { SpacesModule } from './spaces/spaces.module.js';
     SpacesModule,
     BookingsModule,
   ],
-  controllers: [HealthController, MeController],
+  controllers: [HealthController, MeController, ReferenceController],
   providers: [
     { provide: APP_PIPE, useValue: validationPipe },
     { provide: APP_FILTER, useClass: ProblemFilter },

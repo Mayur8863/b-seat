@@ -75,6 +75,7 @@ export const space = pgTable(
     ),
     check('space_custom_utilities_max', sql`cardinality(${t.customUtilities}) <= 5`),
     // Standard list size (OQ-8). Per-element lengths (1-40) are Zod's; the total bounds row size.
+    // 11 = STANDARD_UTILITIES.length (src/reference/utilities.ts); keep in sync.
     check('space_utilities_max', sql`cardinality(${t.utilities}) <= 11`),
     check(
       'space_custom_utilities_length',
