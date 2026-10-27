@@ -3,7 +3,8 @@
  * Property names must match Better Auth's field names; DB columns are
  * snake_case via drizzle `casing`. Change only together with the auth config.
  */
-import { boolean, index, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import { boolean, check, index, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
 
 const timestamps = {
   createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
@@ -13,14 +14,21 @@ const timestamps = {
     .$onUpdate(() => new Date()),
 };
 
-export const user = pgTable('user', {
-  id: text().primaryKey(),
-  name: text().notNull(),
-  email: text().notNull().unique(),
-  emailVerified: boolean().notNull().default(false),
-  image: text(),
-  ...timestamps,
-});
+export const user = pgTable(
+  'user',
+  {
+    id: text().primaryKey(),
+    name: text().notNull(),
+    email: text().notNull().unique(),
+    emailVerified: boolean().notNull().default(false),
+    image: text(),
+    // Better Auth additional field (ADR-0010). Not `role`: the admin plugin owns that key.
+    // The default makes accounts that predate the marketplace renters (FR-003).
+    accountType: text().notNull().default('renter'),
+    ...timestamps,
+  },
+  (t) => [check('user_account_type_valid', sql`${t.accountType} IN ('owner','renter')`)],
+);
 
 export const session = pgTable(
   'session',

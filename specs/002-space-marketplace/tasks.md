@@ -31,7 +31,7 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 | ID   | Title                                                        | Owner          | Depends on             | Size | Status | Branch                                |
 | ---- | ------------------------------------------------------------ | -------------- | ---------------------- | ---- | ------ | ------------------------------------- |
 | T001 | ADR-0009, ADR-0010 and plan approval                         | architect      | none                   | M    | done   | `docs/002-marketplace-adrs`           |
-| T002 | Account role: Better Auth field, migration, role guard       | backend-dev    | T001                   | M    | todo   | `feat/002-account-role`               |
+| T002 | Account role: Better Auth field, migration, role guard       | backend-dev    | T001                   | M    | review | `feat/002-account-role`               |
 | T003 | Listing schema: space columns, cubicle, seat changes         | backend-dev    | T001                   | M    | todo   | `feat/002-listing-schema`             |
 | T004 | Pricing and calendar schema, shared calendar backfill        | backend-dev    | T003                   | M    | todo   | `feat/002-pricing-calendar-schema`    |
 | T005 | Pass booking header, seat holds, occupancy marks, exclusions | backend-dev    | T003, T008             | M    | todo   | `feat/002-seat-hold-schema`           |
@@ -125,7 +125,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 (T002, T003) rebase and **re-run** `db:generate` rather than hand-merging the drizzle journal or snapshots.
 
 - [ ] T002 [P] Add the account role: `apps/api/src/db/schema/auth.ts` (`accountType`), migration `user_account_type`, `apps/api/src/auth/auth.ts` (additional field + immutability hook), `apps/api/src/auth/roles.guard.ts` (+ `.spec.ts`), `apps/api/src/me/me.controller.ts` (`accountType`), `apps/api/test/helpers.ts` (`signedInAgent(app, user, accountType = 'renter')`), `apps/api/test/roles.int-spec.ts`; regenerate `apps/api/openapi.json`
-  - **Owner**: backend-dev · **Branch**: `feat/002-account-role` · **Size**: M · **Depends on**: T001 · **Status**: todo
+  - **Owner**: backend-dev · **Branch**: `feat/002-account-role` · **Size**: M · **Depends on**: T001 · **Status**: review
   - **Scope**: research R-1, ADR-0010 and contracts/accounts.md. The field is **`accountType`** (not `role`; ADR-0010). Column verbatim: `account_type text NOT NULL DEFAULT 'renter'`, CHECK `user_account_type_valid`: `account_type IN ('owner','renter')`. Better Auth: `user.additionalFields.accountType = { type: ['owner','renter'], required: true, input: true, validator: { input: z.enum(['owner','renter']) } }` with **no `defaultValue`**, and `databaseHooks.user.update.before` that **throws** `APIError('BAD_REQUEST')` when the data contains `accountType` (never `return false`; ADR-0010 section 2). `RolesGuard` + `@RequireRole()` decorator reading `session.user.accountType`, 403 via the existing mapping. Web `auth-client.ts` gets `inferAdditionalFields` only if typecheck needs it here; otherwise T015 adds it. Tests first.
   - **Acceptance criteria**:
     - Given a sign-up body without `accountType`, When posted to `/api/auth/sign-up/email`, Then 400 with code `MISSING_FIELD`; Given `accountType: "admin"`, Then 400 with code `VALIDATION_ERROR`; in both cases no `user` row exists (FR-001, AC 1.1, ADR-0010).

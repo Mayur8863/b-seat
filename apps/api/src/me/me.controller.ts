@@ -12,6 +12,7 @@ export const MeSchema = z
     name: z.string(),
     email: z.email(),
     emailVerified: z.boolean(),
+    accountType: z.enum(['owner', 'renter']),
   })
   .meta({ id: 'Me', description: 'The signed-in user' });
 
@@ -26,7 +27,7 @@ export class MeController {
   @ApiOkResponse({ standardSchema: MeSchema })
   @ApiUnauthorizedResponse({ standardSchema: ProblemSchema })
   get(@CurrentSession() session: AuthSession): Me {
-    const { id, name, email, emailVerified } = session.user;
-    return { id, name, email, emailVerified };
+    const { id, name, email, emailVerified, accountType } = session.user;
+    return { id, name, email, emailVerified, accountType };
   }
 }

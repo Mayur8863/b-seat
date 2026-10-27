@@ -8,6 +8,7 @@ import { MailService } from '../mail/mail.service.js';
 import { createAuth } from './auth.js';
 import { AUTH } from './auth.tokens.js';
 import { AuthGuard } from './auth.guard.js';
+import { RolesGuard } from './roles.guard.js';
 
 @Global()
 @Module({
@@ -28,7 +29,8 @@ import { AuthGuard } from './auth.guard.js';
         }),
     },
     AuthGuard,
+    RolesGuard,
   ],
-  exports: [AUTH, AuthGuard],
+  exports: [AUTH, AuthGuard, RolesGuard],
 })
 export class AuthModule {}

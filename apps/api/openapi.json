@@ -301,13 +301,21 @@
           },
           "emailVerified": {
             "type": "boolean"
+          },
+          "accountType": {
+            "type": "string",
+            "enum": [
+              "owner",
+              "renter"
+            ]
           }
         },
         "required": [
           "id",
           "name",
           "email",
-          "emailVerified"
+          "emailVerified",
+          "accountType"
         ],
         "additionalProperties": false,
         "description": "The signed-in user"

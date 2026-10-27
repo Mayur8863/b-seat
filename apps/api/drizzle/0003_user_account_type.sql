@@ -1,0 +1,2 @@
+ALTER TABLE "user" ADD COLUMN "account_type" text DEFAULT 'renter' NOT NULL;--> statement-breakpoint
+ALTER TABLE "user" ADD CONSTRAINT "user_account_type_valid" CHECK ("user"."account_type" IN ('owner','renter'));

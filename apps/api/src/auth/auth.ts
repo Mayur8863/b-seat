@@ -1,5 +1,7 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import { APIError } from 'better-auth/api';
+import { z } from 'zod';
 
 import type { Env } from '../config/env.js';
 import type { Database } from '../db/db.js';
@@ -53,6 +55,30 @@ export function createAuth({ db, env, sendMail }: AuthDeps) {
           subject: 'Verify your BSeat email',
           text: `Welcome to BSeat! Verify your email: ${url}`,
         });
+      },
+    },
+    user: {
+      additionalFields: {
+        accountType: {
+          type: ['owner', 'renter'],
+          required: true,
+          input: true,
+          validator: { input: z.enum(['owner', 'renter']) },
+          // No defaultValue on purpose: a JS default would satisfy `required` and skip the choice.
+        },
+      },
+    },
+    databaseHooks: {
+      user: {
+        update: {
+          // Must throw: returning false only aborts the write while update-user still reports success (ADR-0010).
+          before: (data) => {
+            if (data.accountType !== undefined) {
+              throw new APIError('BAD_REQUEST', { message: 'accountType cannot be changed' });
+            }
+            return Promise.resolve();
+          },
+        },
       },
     },
     rateLimit: { enabled: env.NODE_ENV === 'production' },

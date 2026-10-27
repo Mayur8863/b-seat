@@ -24,12 +24,17 @@ export async function resetDb(app: NestExpressApplication): Promise<void> {
   await pool.query(`truncate ${tables} restart identity cascade`);
 }
 
-/** Signs up a user and returns an agent that carries the session cookie. */
+/** Signs up a user (a renter unless told otherwise) and returns an agent that carries the session cookie. */
 export async function signedInAgent(
   app: NestExpressApplication,
   user = { name: 'Test User', email: 'test@example.com', password: 'correct-horse-battery' },
+  accountType: 'owner' | 'renter' = 'renter',
 ) {
   const agent = request.agent(app.getHttpServer());
-  await agent.post('/api/auth/sign-up/email').set('origin', ORIGIN).send(user).expect(200);
+  await agent
+    .post('/api/auth/sign-up/email')
+    .set('origin', ORIGIN)
+    .send({ ...user, accountType })
+    .expect(200);
   return agent;
 }

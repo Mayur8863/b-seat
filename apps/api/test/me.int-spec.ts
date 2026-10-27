@@ -25,6 +25,7 @@ describe('GET /api/me', () => {
       name: 'Ada',
       email: 'ada@example.com',
       emailVerified: false,
+      accountType: 'renter',
     });
   });
 

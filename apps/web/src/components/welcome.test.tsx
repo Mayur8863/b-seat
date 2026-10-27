@@ -11,7 +11,13 @@ import { Welcome } from './welcome';
 describe('Welcome', () => {
   it('shows a loading state, then greets the user', async () => {
     server.use(
-      getMeGetMockHandler({ id: 'u1', name: 'Ada', email: 'ada@example.com', emailVerified: true }),
+      getMeGetMockHandler({
+        id: 'u1',
+        name: 'Ada',
+        email: 'ada@example.com',
+        emailVerified: true,
+        accountType: 'renter',
+      }),
     );
     renderWithQuery(<Welcome />);
 
