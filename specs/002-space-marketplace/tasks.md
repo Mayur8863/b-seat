@@ -295,6 +295,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given "I need a space" with country IN and city Pune, When sign-up succeeds, Then preferences are saved and the user lands on `/dashboard` as a renter (AC 1.2).
     - Given "I own a space", When sign-up succeeds, Then no preferences step shows and the owner dashboard renders (AC 1.1, AC 1.4 entry).
     - Given a renter on the dashboard, When they edit preferences, Then the success state shows and `GET /api/me` reflects them (FR-002).
+    - Given a signed-in user (server-validated session), When opening `/sign-up` Then redirect to `/dashboard`, and `/sign-in?next=…` redirects to `safeNext(next)`; a stale cookie does not redirect (ui/01 section 4).
 
 - [ ] T016 [US1] QA: `apps/web/e2e/accounts-nav.spec.ts` (journeys + axe); set T002, T013, T014 and T015 to `done` when green
   - **Owner**: qa-engineer · **Branch**: `test/002-us1-accounts-e2e` · **Size**: S · **Depends on**: T011, T014, T015 · **Status**: todo

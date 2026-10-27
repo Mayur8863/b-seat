@@ -10,9 +10,9 @@ Reuse from `@bseat/ui`: Alert, Badge, Button, Card, Input, Label, NativeSelect, 
 `XIcon`, `Loader2Icon`, `CircleCheckIcon`, `SearchIcon`, `CalendarIcon`, `PlusIcon`. The mobile menu is a disclosure
 (section 2.3), not a dialog, so no `sheet` is needed.
 
-**Touch targets (44 px, house rule for mobile).** shadcn's default Button is `h-9` (36 px). On these screens add
+**Touch targets (44 px, house rule for mobile).** shadcn's default Button is `h-8` (32 px), `lg` is `h-9` (36 px). On these screens add
 `max-sm:min-h-11` to every Button and nav link (the `sm` and up height is unchanged). The menu toggle is
-`Button variant="outline" size="icon-lg"` if the installed `button.tsx` has it, otherwise `size="icon" className="size-11"`.
+`Button variant="outline" size="icon" className="size-11"` (`icon-lg` is only `size-9`, 36 px, so it is not used).
 Radio tiles are `min-h-16`.
 
 ## 2. Signed-in shell (`app/(app)/layout.tsx`, `components/app-nav.tsx`)
@@ -39,7 +39,7 @@ A link renders only once its route exists (`typedRoutes`), so "Added by" says wh
 | ----- | ------------ | -------------------------------- | ----------------------------------- | -------------------------------------------- | ------------------------------------------- |
 | both  | Dashboard    | `/dashboard`                     | `/dashboard`                        | `/owner/spaces/…` except `/owner/spaces/new` | T014                                        |
 | owner | List a space | `/owner/spaces/new`              | `/owner/spaces/new`                 | none                                         | T022 (the `new` page ships there)           |
-| both  | Find a space | `/book` until T042, then `/find` | `/find`, and `/book` until T042     | `/spaces/…` (listing page)                   | T014 (to `/book`); T039 switches to `/find` |
+| both  | Find a space | `/book` until T039, then `/find` | `/find`, and `/book` until T042     | `/spaces/…` (listing page)                   | T014 (to `/book`); T039 switches to `/find` |
 | both  | My bookings  | `/bookings`                      | `/bookings`                         | `/bookings/…`                                | T057                                        |
 
 - Renter nav: Dashboard, Find a space, My bookings. Owner nav (OQ-9: owners may also book): Dashboard, List a space,
@@ -59,7 +59,7 @@ A link renders only once its route exists (`typedRoutes`), so "Added by" says wh
 
 Mobile disclosure: closed on first render; toggling moves no focus. **Escape** closes it and returns focus to the
 toggle. **Clicking a link closes it** (and the route changes). Panel DOM order is right after the toggle, so Tab goes
-toggle, links, Sign out, then the page. The shell is a client component (it reads `useMeGet`).
+toggle, links, Sign out, then the page. `app/(app)/layout.tsx` stays a Server Component; only `AppNav` and the shell notices (2.5) are client components (they read `useMeGet`).
 
 ### 2.4 Link states
 
@@ -73,13 +73,13 @@ toggle, links, Sign out, then the page. The shell is a client component (it read
 
 ### 2.5 Shell data states (`useMeGet`)
 
-| State           | Behaviour (all inside `<header>`)                                                                                                                                                                                                                                                                                      |
-| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Loading         | Brand, three `Skeleton h-8 w-24` placeholders in the nav, nav `aria-busy="true"`, sr-only polite "Loading navigation…". The page still renders. Pages that need the role show their own skeleton (5.3, section 3.1).                                                                                                   |
-| Error (not 401) | Nav shows brand, **Dashboard** link and Sign out; no role links (never guess a role). Below the row, full-width `Alert variant="destructive"` (`role="alert"`): title "We couldn't load your account", description "Check your connection and try again.", `Button variant="outline" size="sm"` "Try again" (refetch). |
-| Error 401       | Brand only (no Sign out, no Dashboard). `Alert variant="destructive"` (`role="alert"`): title "Your session has ended", description "Sign in again to continue." with link "Sign in" to `/sign-in?next={current path}` built with `safeNext` (same copy as 001 ui.md section 6 `http-401`).                            |
-| Empty           | n/a                                                                                                                                                                                                                                                                                                                    |
-| Success         | Role links per 2.2. An account that predates this feature is a renter and sees the renter nav with no notice (FR-003, AC 1.6).                                                                                                                                                                                         |
+| State           | Behaviour (all inside `<header>`)                                                                                                                                                                                                                                                                                                         |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Loading         | Brand, three `Skeleton h-8 w-24` placeholders in the nav, nav `aria-busy="true"`, sr-only polite "Loading navigation…". The page still renders. Pages that need the role show their own skeleton (5.3, section 3.1).                                                                                                                      |
+| Error (not 401) | Nav shows brand, **Dashboard** link and Sign out; no role links (never guess a role). Below the row, full-width `Alert variant="destructive"` (`role="alert"`): title "We couldn't load your account", description "Check your connection and try again.", `Button variant="outline" size="sm"` "Try again" (refetch).                    |
+| Error 401       | Brand only (no Sign out, no Dashboard; intentionally, so "Sign in" is the only exit). `Alert variant="destructive"` (`role="alert"`): title "Your session has ended", description "Sign in again to continue." with link "Sign in" to `/sign-in?next={current path}` built with `safeNext` (same copy as 001 ui.md section 6 `http-401`). |
+| Empty           | n/a                                                                                                                                                                                                                                                                                                                                       |
+| Success         | Role links per 2.2. An account that predates this feature is a renter and sees the renter nav with no notice (FR-003, AC 1.6).                                                                                                                                                                                                            |
 
 ## 3. Owner pages
 
@@ -89,12 +89,12 @@ Client component. Reads `accountType` from `useMeGet` and **does not mount `chil
 calls (and no 403 fetches) fire. Every branch renders its own `<main id="main">` with an `<h1>`, except the owner branch
 (children supply theirs).
 
-| State   | Content                                                                                                                                                |
-| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Loading | `main` with `Skeleton h-8 w-64` (placeholder h1) and `Skeleton h-40 rounded-xl`, `aria-busy="true"`, sr-only polite "Loading…"; `h1` sr-only "Loading" |
-| Renter  | h1 "This page is for space owners." and `Button asChild` "Go to dashboard" (`/dashboard`). Nothing about any space.                                    |
-| Error   | h1 "We couldn't check your account" (the shell Alert from 2.5 explains and offers Try again/Sign in); no children                                      |
-| Owner   | `{children}`                                                                                                                                           |
+| State   | Content                                                                                                                                                                                                      |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Loading | `main` with `Skeleton h-8 w-64` (placeholder h1) and `Skeleton h-40 rounded-xl`, `aria-busy="true"`, sr-only polite "Loading…"; `h1` sr-only "Loading"                                                       |
+| Renter  | h1 "This page is for space owners." and `Button asChild` "Go to dashboard" (`/dashboard`). Nothing about any space. On `/owner/spaces/new` the page's own metadata title shows above this copy (acceptable). |
+| Error   | h1 "We couldn't check your account" (the shell Alert from 2.5 explains and offers Try again/Sign in); no children                                                                                            |
+| Owner   | `{children}`                                                                                                                                                                                                 |
 
 The API still answers 403 to a renter; the gate is a courtesy, not the control.
 
@@ -104,14 +104,14 @@ The API still answers 403 to a renter; the gate is a courtesy, not the control.
 management">`. (The space name and status badge, and that layout's loading, error and 404 states, are specified in
 `ui/02-owner-listing.md` (T018); this spec fixes only the sub-nav.)
 
-| Label        | Route (under `/owner/spaces/[spaceId]`) | Page task |
-| ------------ | --------------------------------------- | --------- |
-| Details      | `/`                                     | T022      |
-| Seats        | `/seats`                                | T024      |
-| Pricing      | `/pricing`                              | T030      |
-| Availability | `/availability`                         | T052      |
-| Bookings     | `/bookings`                             | T058      |
-| Layout       | `/layout`                               | T065      |
+| Label             | Route (under `/owner/spaces/[spaceId]`) | Page task |
+| ----------------- | --------------------------------------- | --------- |
+| Details           | `/`                                     | T022      |
+| Seats             | `/seats`                                | T024      |
+| Passes and prices | `/pricing`                              | T030      |
+| Availability      | `/availability`                         | T052      |
+| Bookings          | `/bookings`                             | T058      |
+| Layout            | `/layout`                               | T065      |
 
 Each task adds only its own link. Current item: `aria-current="page"` (exact match), `border-b-2 border-primary` and
 `font-medium` (text stays `foreground`). Below `md`: one horizontally scrollable row (`flex overflow-x-auto gap-1`,
@@ -122,8 +122,11 @@ order: main nav, sub-nav, page.
 
 The `(auth)` layout is `max-w-sm` and centred. Every control below is single column at every breakpoint.
 
-**Signed-in visitors**: a signed-in user who opens `/sign-up` is redirected to `/dashboard` (the page checks the session;
-T015 adds it). Nothing else on the sign-up page assumes a reload lands on the dashboard.
+**Signed-in visitors**: a signed-in user who opens `/sign-up` is redirected to `/dashboard`, and one who opens `/sign-in`
+to `safeNext(next)` (default `/dashboard`). Both use a **server-validated session** (`authClient.useSession()` or
+`getSession()` returning a user). Never use the proxy's `getSessionCookie` check for this: a stale cookie would redirect
+here while the shell shows the 401 "Sign in" link, looping. T015 adds both redirects. Nothing else on these pages
+assumes a reload lands on the dashboard.
 
 ### 4.1 Step 1: "Create your account"
 
@@ -160,11 +163,11 @@ Server errors (never show raw `error.message`; map by Better Auth `code`):
 The result depends on whether a session came back (`data.token`; production requires email verification, so
 `token === null` there, `auth.ts`).
 
-| Outcome                  | Next screen                                                                                                                                                                                                                                                                                                                                                                                             |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Owner, session           | `/dashboard`                                                                                                                                                                                                                                                                                                                                                                                            |
-| Renter, session          | step 2 (4.3)                                                                                                                                                                                                                                                                                                                                                                                            |
-| Any role, **no session** | **"Check your email" success state** in place of the form. h1 "Check your email" (`tabIndex={-1}`, receives focus), text "We sent a link to {email}. Open it to confirm your account, then sign in." For a renter add muted "After you sign in, you can add your preferred location from your dashboard." and `Button asChild` "Go to sign in". No preferences step (there is no session to save with). |
+| Outcome                  | Next screen                                                                                                                                                                                                                                                                                                                                                                                                         |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Owner, session           | `/dashboard`                                                                                                                                                                                                                                                                                                                                                                                                        |
+| Renter, session          | step 2 (4.3)                                                                                                                                                                                                                                                                                                                                                                                                        |
+| Any role, **no session** | **"Check your email" success state** in place of the form. h1 "Check your email" (`tabIndex={-1}`, receives focus), text "We sent a link to {email}. Open it to confirm your account, then sign in." For a renter add muted "After you sign in, you can add your preferred location from your dashboard." Every role gets `Button asChild` "Go to sign in". No preferences step (there is no session to save with). |
 
 ### 4.3 Step 2: preferences (renter with a session, optional)
 
@@ -221,7 +224,7 @@ Order: h1, greeting, then a header row with **h2 "My spaces"** and `Button asChi
 
 Space card (`Card`, built by T023): name as **h3** `text-base font-medium` (not a link); "{area}, {city}"; `Badge`
 "Published" or "Draft"; a `<ul aria-labelledby="{h3 id}">` (`flex flex-wrap gap-2`) with one `Button variant="outline"
-size="sm" asChild` link per management page, the same set as 3.2: Details, Seats, Pricing, Availability, Bookings, Layout
+size="sm" asChild` link per management page, the same set as 3.2: Details, Seats, Passes and prices, Availability, Bookings, Layout
 (links appear as their pages ship). To keep names distinct, each link text is followed by sr-only " for {space name}"
 ("Seats for Hub One"). One tab stop per target, and no `<nav>` per card. Grid: 1 column mobile, `md:grid-cols-2`.
 
@@ -305,7 +308,7 @@ Layout: one column on mobile; from `md` Country, City and Area in `grid-cols-3`,
   3 Jul, 08:00 BST"; `Europe/Paris` gives "Tue 3 Nov, 08:00 CET". **Ambiguous** means the short name starts with `GMT+` or
   `GMT-` (the zone has no real abbreviation, for example `Asia/Kolkata` "GMT+5:30", `America/New_York` in winter "GMT-5"):
   then append the IANA id in muted text, for example "Tue 3 Nov, 07:00 GMT+5:30" followed by "Asia/Kolkata". Ranges show the
-  zone once, at the end. Date only: the same options without time fields. Times outside a space context show the viewer's
+  zone once, at the end. Date only: the same options without time fields and **without a zone label** (a pure date has no clock time to disambiguate), adding `year: 'numeric'` when the year differs from the current year and always on confirmations. Checked: 2026-11-03 in `Asia/Kolkata` gives "Tue 3 Nov" (no year) and "Tue, 3 Nov 2026" (with year; `en-GB` inserts the comma). Times outside a space context show the viewer's
   zone, labelled the same way. Tests cover several zones and a DST day.
 
 - **Money**: API `{ amount, currency }` formatted with `Intl.NumberFormat('en', { style: 'currency', currency,
@@ -346,7 +349,7 @@ path}` via `safeNext`** (the same Alert as 2.5 and 001); 403 "You don't have acc
   shell's button.
 - `apps/web/src/components/welcome.tsx`: shows raw `error.message` (violates section 7). Replace it with the greeting line
   and the 5.1 states, or retire it.
-- `apps/web/src/app/(auth)/sign-up/page.tsx`: drop the `accountType: 'renter'` bridge; `sign-up/page.test.tsx` and
+- `apps/web/src/app/(auth)/sign-in/page.tsx` and `sign-up/page.tsx`: add the server-validated signed-in redirects (section 4); in sign-up drop the `accountType: 'renter'` bridge; `sign-up/page.test.tsx` and
   `auth-form.test.tsx` need the role field and the "Check your email" case.
 - `apps/web/src/app/(app)/book/page.tsx` and its test: drop the back link and cross-link (2.1).
 - `apps/web/src/proxy.ts`: matcher per T014.
