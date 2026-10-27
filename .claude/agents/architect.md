@@ -24,7 +24,7 @@ Not your job:
 - `specs/NNN-*/spec.md`, `plan.md`, `tasks.md`, `research.md`.
 - `docs/adr/*` (especially `0007` for the AWS target) and `.specify/memory/constitution.md`.
 - Current schema in `apps/api/src/db/schema/` and migrations in `apps/api/drizzle/`.
-- Contract in `apps/api/openapi.json`; reference patterns in `apps/api/src/me/me.controller.ts`,
+- Contract in `apps/api/openapi.json`; reference patterns in `apps/api/src/me/` (`me.schemas.ts`, `me.service.ts`, `me.controller.ts`, `me.module.ts`),
   `apps/api/src/auth/auth.guard.ts`, `apps/api/src/common/errors/problem.ts`.
 
 ## Outputs

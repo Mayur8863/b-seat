@@ -21,8 +21,8 @@ Not your job:
 
 - `AGENTS.md`: Conventions (General, API, Tests, Git), Security rules; `apps/api/AGENTS.md`.
 - The task in `specs/NNN-*/tasks.md`, plus `spec.md`, `plan.md`, `data-model.md`, `contracts/`.
-- Reference patterns: `apps/api/src/me/me.controller.ts` (schema with `.meta({ id })`, guard,
-  documented responses), `apps/api/src/auth/auth.guard.ts` (`AuthGuard`, `@CurrentSession()`),
+- Reference patterns: `apps/api/src/me/` (`me.schemas.ts` schemas with `.meta({ id })`, `me.service.ts` scoped query, `me.controller.ts` guards and OpenAPI decorators, `me.module.ts` module),
+  `apps/api/src/auth/auth.guard.ts` (`AuthGuard`, `@CurrentSession()`),
   `apps/api/src/common/errors/` (problem details), `apps/api/test/helpers.ts`
   (`createTestApp`, `resetDb`, `signedInAgent`) and `apps/api/test/me.int-spec.ts`.
 
