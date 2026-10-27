@@ -242,7 +242,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given mobile, tablet and desktop, When read, Then layout, contrast notes (semantic tokens only) and live regions are defined (SC-007).
 
 - [ ] T011 [P] Write `specs/002-space-marketplace/test-plan.md`: test levels per story, data setup, race and performance methods, axe coverage list, and the traceability skeleton
-  - **Owner**: qa-engineer · **Branch**: `test/002-test-plan` · **Size**: S · **Depends on**: T001 · **Status**: review
+  - **Owner**: qa-engineer · **Branch**: `test/002-test-plan` · **Size**: S · **Depends on**: T001 · **Status**: review (re-opened for review fixes — done: M1, minors 1-2; next: minors 3-11, nits)
   - **Acceptance criteria**:
     - Given the spec, When the test plan is read, Then every AC, FR, SC and edge case has a planned test level and an owning task (Constitution II).
     - Given SC-003, SC-004 and SC-005, When read, Then the data volumes, repetition counts, p95 method and `EXPLAIN` evidence are defined.
@@ -306,7 +306,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given a valid session, When opening `/sign-up`, Then it lands on `/dashboard`; `/sign-in?next=/find` lands on `/find` and `/sign-in?next=//example.com` on `/dashboard` (T015, ui/01 section 4).
     - Given a stale cookie (session invalidated server side), When opening `/sign-up` and `/sign-in`, Then each page renders with no redirect and no redirect loop (T015, ui/01 section 4).
     - Given no session cookie, When each protected route in T014's proxy matcher is opened, Then it redirects to `/sign-in?next=<route>` (FR-005; T070 re-runs this sweep over every route).
-    - Given `/sign-up` (step 1 with a role error, step 2 preferences, "Check your email"), `/sign-in` (default, field error), the renter and owner dashboards (loading, empty, error), the preferences form and the mobile menu open, When axe runs with WCAG 2.1 AA tags, Then zero violations (SC-007, ui/01 section 8).
+    - Given `/sign-up` (step 1 with a role error, step 2 preferences, "Check your email"), `/sign-in` (default, field error), the renter and owner dashboards (loading, empty, error), the preferences form and the mobile menu open, When axe runs with WCAG 2.1 AA tags, Then zero violations (SC-007, ui/01 section 8). Only "Check your email" (a `page.route` response `{ token: null, user }` for `**/api/auth/sign-up/email`) and the dashboard loading and error states (delayed or 500 `**/api/me`) may use HTTP interception, because the live stack cannot produce them (test-plan.md section 6); every other state uses real interaction.
     - Given a pre-existing account created through a direct DB insert, When it signs in, Then the renter nav shows (AC 1.6).
 
 - [ ] T017 [US1] Docs: README "Accounts and roles" section, `docs/runbooks/local-development.md` (demo accounts, `SEED_DEMO_PASSWORD`), changeset check for `@bseat/api` and `@bseat/web`
