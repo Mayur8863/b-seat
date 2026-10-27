@@ -189,6 +189,21 @@ describe('demo marketplace seed (FR-012, OQ-11)', () => {
     expect(pune?.description).toBe('Edited by the owner.');
   });
 
+  it('gives cubicles once to a space the first seed version claimed without any', async () => {
+    await seedAll();
+    const db = testDb(app);
+    await db.update(seat).set({ cubicleId: null });
+    await db.delete(cubicle);
+    await seedAll();
+    expect((await snapshot()).seats.every((s) => s.cubicleId !== null)).toBe(true);
+
+    // Once a cubicle row exists (even removed), later runs leave seats alone.
+    await db.update(cubicle).set({ removedAt: new Date() });
+    await db.update(seat).set({ cubicleId: null });
+    await seedAll();
+    expect((await snapshot()).seats.every((s) => s.cubicleId === null)).toBe(true);
+  });
+
   it('recreates a missing shared calendar for a space the owner already holds', async () => {
     await seedAll();
     const db = testDb(app);

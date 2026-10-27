@@ -176,6 +176,17 @@ export async function seedSpaces(
       claimed = false;
     }
 
+    // A space claimed by the first seed version has seats but never had a cubicle row (even a
+    // removed one marks an owner's choice), so it is repaired once.
+    const [anyCubicle] = claimed
+      ? []
+      : await db
+          .select({ id: cubicle.id })
+          .from(cubicle)
+          .where(eq(cubicle.spaceId, spaceId))
+          .limit(1);
+    const needsCubicles = claimed || !anyCubicle;
+
     if (claimed) {
       await db
         .insert(spaceSlot)
@@ -185,7 +196,9 @@ export async function seedSpaces(
         .insert(passPrice)
         .values(prices.map((p) => ({ spaceId, ...p })))
         .onConflictDoNothing();
+    }
 
+    if (needsCubicles) {
       const cubicleNames = [...new Set(seatList.flatMap((s) => (s.cubicle ? [s.cubicle] : [])))];
       if (cubicleNames.length > 0) {
         await db
@@ -202,7 +215,24 @@ export async function seedSpaces(
         .where(and(eq(cubicle.spaceId, spaceId), isNull(cubicle.removedAt)));
       const cubicleId = new Map(cubicles.map((c) => [c.name, c.id]));
 
-      if (seatList.length > 0) {
+      if (!claimed) {
+        // Repair only: never insert, so a seat the owner removed stays removed.
+        for (const s of seatList) {
+          const id = s.cubicle ? cubicleId.get(s.cubicle) : undefined;
+          if (!id) continue;
+          await db
+            .update(seat)
+            .set({ cubicleId: id })
+            .where(
+              and(
+                eq(seat.spaceId, spaceId),
+                eq(seat.label, s.label),
+                isNull(seat.removedAt),
+                isNull(seat.cubicleId),
+              ),
+            );
+        }
+      } else if (seatList.length > 0) {
         await db
           .insert(seat)
           .values(
