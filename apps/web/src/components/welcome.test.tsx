@@ -17,6 +17,7 @@ describe('Welcome', () => {
         email: 'ada@example.com',
         emailVerified: true,
         accountType: 'renter',
+        preferences: null,
       }),
     );
     renderWithQuery(<Welcome />);
