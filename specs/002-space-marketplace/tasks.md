@@ -37,7 +37,7 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 | T005 | Pass booking header, seat holds, occupancy marks, exclusions | backend-dev    | T003, T008             | M    | todo   | `feat/002-seat-hold-schema`           |
 | T006 | Slot, calendar and pass-period engine (pure, TDD)            | backend-dev    | T001                   | M    | done   | `feat/002-slot-engine`                |
 | T007 | Money, problem types and pass booking rules (pure, TDD)      | backend-dev    | T006                   | M    | todo   | `feat/002-pass-rules`                 |
-| T008 | Retire hourly create; legacy space reads published-only      | backend-dev    | T003                   | S    | todo   | `chore/002-retire-hourly-create`      |
+| T008 | Retire hourly create; legacy space reads published-only      | backend-dev    | T003                   | S    | done   | `chore/002-retire-hourly-create`      |
 | T009 | Seed: demo owner and renter, priced listings, calendars      | backend-dev    | T002, T004, T012       | M    | todo   | `feat/002-seed-marketplace`           |
 | T010 | UI spec: index, shell, nav, sign-up, dashboards              | ui-ux-designer | T001                   | M    | done   | `docs/002-ui-shell-accounts`          |
 | T011 | Test plan and traceability skeleton                          | qa-engineer    | T001                   | S    | done   | `test/002-test-plan`                  |
@@ -213,8 +213,8 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given several broken rules, When evaluated, Then only the first in the documented order is returned.
     - Given a `ProblemException` with `extensions: { labels: ['A-1'], type: 'x', status: 200 }`, When the filter renders it, Then the body has `labels: ['A-1']` and the exception's own `type` and `status` (extensions cannot override standard members; unit test of `ProblemFilter`).
 
-- [ ] T008 Retire the hourly create and make legacy space reads published-only: remove `POST /api/bookings` from `apps/api/src/bookings/bookings.controller.ts` and `bookings.service.ts` (keep `booking-conflicts.ts`, `booking-confirmation.mail.ts`), filter `status = 'published'` in `apps/api/src/spaces/spaces.service.ts`, update `apps/api/test/bookings.int-spec.ts` and `spaces.int-spec.ts`; regenerate `apps/api/openapi.json`
-  - **Owner**: backend-dev · **Branch**: `chore/002-retire-hourly-create` · **Size**: S · **Depends on**: T003 · **Status**: review
+- [x] T008 Retire the hourly create and make legacy space reads published-only: remove `POST /api/bookings` from `apps/api/src/bookings/bookings.controller.ts` and `bookings.service.ts` (keep `booking-conflicts.ts`, `booking-confirmation.mail.ts`), filter `status = 'published'` in `apps/api/src/spaces/spaces.service.ts`, update `apps/api/test/bookings.int-spec.ts` and `spaces.int-spec.ts`; regenerate `apps/api/openapi.json`
+  - **Owner**: backend-dev · **Branch**: `chore/002-retire-hourly-create` · **Size**: S · **Depends on**: T003 · **Status**: done
   - **Carry-over (T003 review)**: legacy reads filter `status = 'published'`, and T008 must merge before any owner create route (T020), because owned drafts must never reach the legacy list.
   - **Scope**: research R-7 step 2 (AQ-8). No web code calls `useBookingsCreate` today; confirm with a grep in the PR. Hourly integration tests that only exercised the removed route are deleted; their coverage of `classifyInsertError` and the deadlock retry stays in unit tests. Must merge **before** T005.
   - **Acceptance criteria**:
