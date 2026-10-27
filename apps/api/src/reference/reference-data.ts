@@ -133,8 +133,8 @@ function buildCountries(): Country[] {
 
 /*
  * Currencies that `Intl.supportedValuesOf('currency')` lists but that are not current legal
- * tender: IMF/test/metal codes and recently superseded currencies. Real tender XAF, XOF, XCD,
- * XPF (and XCG, ZWG, SLE) stay.
+ * tender: IMF/test/metal codes and recently superseded currencies (ANG by XCG in 2025, BGN by EUR
+ * on 2026-01-01). Real tender XAF, XOF, XCD, XPF (and XCG, ZWG, SLE) stay.
  */
 const NON_TENDER_CURRENCIES: ReadonlySet<string> = new Set([
   'XDR',
@@ -154,6 +154,8 @@ const NON_TENDER_CURRENCIES: ReadonlySet<string> = new Set([
   'SLL',
   'CUC',
   'ZWL',
+  'ANG',
+  'BGN',
 ]);
 
 function buildCurrencies(): Currency[] {

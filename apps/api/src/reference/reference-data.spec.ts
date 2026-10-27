@@ -105,7 +105,20 @@ describe('currencies and validators', () => {
     for (const code of ['XAF', 'XOF', 'XCD', 'XPF', 'ZWG', 'EUR']) {
       expect(isCurrencyCode(code)).toBe(true);
     }
-    for (const code of ['HRK', 'XDR', 'XXX', 'DEM', 'XAU', 'SLL', 'CUC', 'ZWL', 'inr', 'ZZZ']) {
+    for (const code of [
+      'HRK',
+      'XDR',
+      'XXX',
+      'DEM',
+      'XAU',
+      'SLL',
+      'CUC',
+      'ZWL',
+      'ANG',
+      'BGN',
+      'inr',
+      'ZZZ',
+    ]) {
       expect(isCurrencyCode(code)).toBe(false);
     }
   });
@@ -149,7 +162,7 @@ describe('data sanity', () => {
   it('country and currency code sets match the snapshot (review diffs on ICU/Node upgrades)', () => {
     expect(COUNTRIES.map((c) => c.code).sort()).toEqual([...ISO_COUNTRY_CODES].sort());
     expect(CURRENCIES.map((c) => c.code).join(' ')).toMatchInlineSnapshot(
-      `"AED AFN ALL AMD ANG AOA ARS AUD AWG AZN BAM BBD BDT BGN BHD BIF BMD BND BOB BRL BSD BTN BWP BYN BZD CAD CDF CHF CLP CNY COP CRC CUP CVE CZK DJF DKK DOP DZD EGP ERN ETB EUR FJD FKP GBP GEL GHS GIP GMD GNF GTQ GYD HKD HNL HTG HUF IDR ILS INR IQD IRR ISK JMD JOD JPY KES KGS KHR KMF KPW KRW KWD KYD KZT LAK LBP LKR LRD LSL LYD MAD MDL MGA MKD MMK MNT MOP MRU MUR MVR MWK MXN MYR MZN NAD NGN NIO NOK NPR NZD OMR PAB PEN PGK PHP PKR PLN PYG QAR RON RSD RUB RWF SAR SBD SCR SDG SEK SGD SHP SLE SOS SRD SSP STN SVC SYP SZL THB TJS TMT TND TOP TRY TTD TWD TZS UAH UGX USD UYU UZS VES VND VUV WST XAF XCD XCG XOF XPF YER ZAR ZMW ZWG"`,
+      `"AED AFN ALL AMD AOA ARS AUD AWG AZN BAM BBD BDT BHD BIF BMD BND BOB BRL BSD BTN BWP BYN BZD CAD CDF CHF CLP CNY COP CRC CUP CVE CZK DJF DKK DOP DZD EGP ERN ETB EUR FJD FKP GBP GEL GHS GIP GMD GNF GTQ GYD HKD HNL HTG HUF IDR ILS INR IQD IRR ISK JMD JOD JPY KES KGS KHR KMF KPW KRW KWD KYD KZT LAK LBP LKR LRD LSL LYD MAD MDL MGA MKD MMK MNT MOP MRU MUR MVR MWK MXN MYR MZN NAD NGN NIO NOK NPR NZD OMR PAB PEN PGK PHP PKR PLN PYG QAR RON RSD RUB RWF SAR SBD SCR SDG SEK SGD SHP SLE SOS SRD SSP STN SVC SYP SZL THB TJS TMT TND TOP TRY TTD TWD TZS UAH UGX USD UYU UZS VES VND VUV WST XAF XCD XCG XOF XPF YER ZAR ZMW ZWG"`,
     );
   });
 });

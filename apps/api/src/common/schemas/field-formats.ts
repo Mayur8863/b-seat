@@ -1,6 +1,10 @@
 import { z } from 'zod';
 
-import { isCountryCode, isCurrencyCode } from '../../reference/reference-data.js';
+import {
+  isCountryCode,
+  isCurrencyCode,
+  isOfferedTimeZone,
+} from '../../reference/reference-data.js';
 import { STANDARD_UTILITIES } from '../../reference/utilities.js';
 
 /*
@@ -19,6 +23,13 @@ export const LocalTime = z
 export const Instant = z.iso.datetime().describe('UTC instant (ISO 8601)');
 
 export const TimeZone = z.string().describe('IANA time zone, e.g. Europe/London');
+
+/** Input form of TimeZone: only zones BSeat offers, so stored ids stay canonical and comparable. */
+export const OfferedTimeZone = z
+  .string()
+  .max(64)
+  .refine(isOfferedTimeZone, 'Unknown or unsupported time zone')
+  .describe('IANA time zone offered by GET /api/reference, e.g. Europe/London');
 
 export const CountryCode = z
   .string()
