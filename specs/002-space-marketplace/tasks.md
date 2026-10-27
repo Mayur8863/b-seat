@@ -42,7 +42,7 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 | T010 | UI spec: index, shell, nav, sign-up, dashboards              | ui-ux-designer | T001                   | M    | done   | `docs/002-ui-shell-accounts`          |
 | T011 | Test plan and traceability skeleton                          | qa-engineer    | T001                   | S    | done   | `test/002-test-plan`                  |
 | T012 | Wire `SEED_DEMO_PASSWORD` into compose and CI                | devops         | T001                   | S    | done   | `chore/002-seed-env`                  |
-| T013 | Renter preferences API                                       | backend-dev    | T002                   | S    | review | `feat/002-renter-preferences-api`     |
+| T013 | Renter preferences API                                       | backend-dev    | T002                   | S    | done   | `feat/002-renter-preferences-api`     |
 | T014 | Signed-in shell, role-aware nav, role dashboards             | frontend-dev   | T002, T010             | M    | todo   | `feat/002-app-nav`                    |
 | T015 | Sign-up role choice and optional preferences                 | frontend-dev   | T002, T013, T014, T019 | M    | todo   | `feat/002-sign-up-role`               |
 | T016 | QA US1: accounts and navigation e2e, axe                     | qa-engineer    | T011, T014, T015       | M    | todo   | `test/002-us1-accounts-e2e`           |
@@ -265,7 +265,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 **Independent test**: Sign up once as an owner and once as a renter; each lands on its dashboard; every page they can use is reachable by clicking.
 
 - [x] T013 [US1] Add renter preferences: `apps/api/src/db/schema/preference.ts`, migration `renter_preferences`, `PUT /api/me/preferences` and `preferences` in `Me` (`apps/api/src/me/`), `apps/api/test/me.int-spec.ts`; regenerate `apps/api/openapi.json`
-  - **Owner**: backend-dev · **Branch**: `feat/002-renter-preferences-api` · **Size**: S · **Depends on**: T002 · **Status**: review
+  - **Owner**: backend-dev · **Branch**: `feat/002-renter-preferences-api` · **Size**: S · **Depends on**: T002 · **Status**: done
   - **Scope**: research R-2; contracts/accounts.md. Columns and CHECKs per data-model.md "renter_preference". Owners get 403.
   - **Added (T019 review)**: reuse `CountryCode` from `common/schemas/field-formats.ts`. City and area also use `PlainText` (no control or bidi override characters).
   - **Acceptance criteria**:

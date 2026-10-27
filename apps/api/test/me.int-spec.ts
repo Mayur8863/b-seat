@@ -113,6 +113,10 @@ describe('PUT /api/me/preferences', () => {
     ['101-char city', { country: null, city: 'a'.repeat(101), area: null }],
     ['blank city', { country: null, city: '   ', area: null }],
     ['control character in city', { country: null, city: 'a\u0000', area: null }],
+    [
+      'leading tab and trailing newline in city (not trimmed)',
+      { country: null, city: '\tPune\n', area: null },
+    ],
     ['bidi override in area', { country: null, city: null, area: 'a\u202eb' }],
     ['101-char area', { country: null, city: null, area: 'a'.repeat(101) }],
     ['missing field', { country: 'IN', city: 'Pune' }],
