@@ -30,7 +30,7 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 
 | ID   | Title                                                        | Owner          | Depends on             | Size | Status | Branch                                |
 | ---- | ------------------------------------------------------------ | -------------- | ---------------------- | ---- | ------ | ------------------------------------- |
-| T001 | ADR-0009, ADR-0010 and plan approval                         | architect      | none                   | M    | review | `docs/002-marketplace-adrs`           |
+| T001 | ADR-0009, ADR-0010 and plan approval                         | architect      | none                   | M    | done   | `docs/002-marketplace-adrs`           |
 | T002 | Account role: Better Auth field, migration, role guard       | backend-dev    | T001                   | M    | todo   | `feat/002-account-role`               |
 | T003 | Listing schema: space columns, cubicle, seat changes         | backend-dev    | T001                   | M    | todo   | `feat/002-listing-schema`             |
 | T004 | Pricing and calendar schema, shared calendar backfill        | backend-dev    | T003                   | M    | todo   | `feat/002-pricing-calendar-schema`    |
@@ -106,8 +106,8 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 
 ## Phase 1: Design approval
 
-- [ ] T001 Write `docs/adr/0009-pass-bookings-seat-holds-and-slots.md` and `docs/adr/0010-account-roles-and-owner-authorization.md`, update `docs/adr/README.md`, and record the verdict at the top of `specs/002-space-marketplace/plan.md`
-  - **Owner**: architect · **Branch**: `docs/002-marketplace-adrs` · **Size**: M · **Depends on**: none · **Status**: review (architect verdict recorded 2026-10-27: Approved; amendments A1–A15 listed in plan.md)
+- [x] T001 Write `docs/adr/0009-pass-bookings-seat-holds-and-slots.md` and `docs/adr/0010-account-roles-and-owner-authorization.md`, update `docs/adr/README.md`, and record the verdict at the top of `specs/002-space-marketplace/plan.md`
+  - **Owner**: architect · **Branch**: `docs/002-marketplace-adrs` · **Size**: M · **Depends on**: none · **Status**: done (QA verified 2026-10-27; architect verdict recorded 2026-10-27: Approved; amendments A1–A15 listed in plan.md)
   - **Scope**: Review plan.md, research.md (R-1, R-3, R-4, R-6, R-7, R-11), data-model.md and contracts/. Decide AQ-1 to AQ-8. Amend this folder directly where a decision changes it (as in 001 T001), and list the amendments under the verdict. Product questions OQ-1 to OQ-12 go to a human; the architect may comment on them.
   - **Acceptance criteria**:
     - Given the design artifacts, When the review ends, Then plan.md's verdict line reads `Approved by architect (<date>)`, or `Changes required` with a numbered list (Constitution I).
