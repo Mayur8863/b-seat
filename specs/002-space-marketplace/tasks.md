@@ -233,7 +233,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - (T012 security review) Given `SEED_DEMO_PASSWORD` is unset or shorter than 8 characters, When the seed runs, Then it validates with its own Zod schema (the seed does not call `loadEnv`), exits non-zero naming the variable, and never prints the value; for any run, stdout and stderr never contain the password (asserted in `seed.int-spec.ts`).
 
 - [ ] T010 [P] Write `specs/002-space-marketplace/ui.md` (index of the area specs) and `specs/002-space-marketplace/ui/01-shell-accounts.md`
-  - **Owner**: ui-ux-designer · **Branch**: `docs/002-ui-shell-accounts` · **Size**: M · **Depends on**: T001 · **Status**: in-progress — done: tasks.md reverted to review-loop; next: rewrite ui/01-shell-accounts.md (M1-M7, minors), then ui.md
+  - **Owner**: ui-ux-designer · **Branch**: `docs/002-ui-shell-accounts` · **Size**: M · **Depends on**: T001 · **Status**: review
   - **Scope**: Signed-in shell and main nav per role (desktop and mobile; **OQ-9**), management sub-nav pattern for owner pages, sign-up role choice ("I own a space" / "I need a space"), optional preferences step, renter and owner dashboards (empty states, next-booking summary slot for T057), preferences editing on the dashboard, shared copy conventions (local times labelled with the zone, money format, slot and pass names), and the problem-copy mapping approach. Reuse `@bseat/ui` (001 ui.md components); name any shadcn component to add.
   - **Acceptance criteria**:
     - Given each screen, When read, Then default, hover, focus, disabled, loading, empty, error and success states are specified (FR-032).
