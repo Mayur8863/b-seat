@@ -1,9 +1,11 @@
-import { and, asc, eq, isNull, or } from 'drizzle-orm';
+import { and, asc, eq, isNull, or, sql } from 'drizzle-orm';
 
-import { isValidTimeZone } from '../common/time/zoned-time.js';
+import { isValidTimeZone, toLocal } from '../common/time/zoned-time.js';
 import type { SlotKind } from '../marketplace/slots.js';
 import type { PassType } from '../marketplace/pass-period.js';
-import type { Database } from './db.js';
+import type { StandardUtility } from '../reference/utilities.js';
+import type { DbExecutor } from './db.js';
+import { SeedError } from './seed-error.js';
 import {
   availabilityCalendar,
   cubicle,
@@ -26,7 +28,7 @@ interface SeedListing {
   opensAt?: string;
   closesAt?: string;
   shiftChangeAt?: string;
-  utilities: string[];
+  utilities: StandardUtility[];
   /** Enabled slot kinds. */
   slots: SlotKind[];
   /** `amount` is a numeric string, never a float. */
@@ -92,7 +94,7 @@ export const DEMO_SPACES: readonly SeedSpace[] = [
     name: 'Pune Hub',
     location: 'Pune, India',
     timeZone: 'Asia/Kolkata',
-    description: 'A weekday coworking floor in Baner, open 09:00 to 18:00.',
+    description: 'A coworking floor in Baner, open 09:00 to 18:00.',
     country: 'IN',
     city: 'Pune',
     area: 'Baner',
@@ -112,107 +114,128 @@ export const DEMO_SPACES: readonly SeedSpace[] = [
   },
 ];
 
-/**
- * Makes each demo space a published listing of `ownerId`, keyed by `space.name` among the demo
- * owner's spaces and unowned (001) ones, so it is safe to run on every `docker compose up`.
- *
- * A space the demo owner already holds is left alone, except that its shared calendar is ensured:
- * the owner may have edited it, and re-adding seats would resurrect ones they removed (T003).
- * Every zone is checked before anything is written.
- */
-export async function seedSpaces(
-  db: Database,
-  ownerId: string,
-  spaces: readonly SeedSpace[] = DEMO_SPACES,
-): Promise<void> {
+/** Throws before anything is written if a demo zone is not an IANA zone. */
+export function assertSeedSpaces(spaces: readonly SeedSpace[]): void {
   const invalid = spaces.filter((s) => !isValidTimeZone(s.timeZone));
   if (invalid.length > 0) {
     const names = invalid.map((s) => `"${s.timeZone}" (${s.name})`).join(', ');
-    throw new Error(`seed: invalid IANA time zone ${names}`);
+    throw new SeedError(`seed: invalid IANA time zone ${names}`);
   }
+}
 
-  await db.transaction(async (tx) => {
-    for (const demo of spaces) {
-      const { seats: seatList, slots, prices, name, location, timeZone, ...listing } = demo;
-      // space.name is not unique (OQ-11), so look the demo space up before inserting.
-      const candidates = await tx
-        .select({ id: space.id, ownerId: space.ownerId })
-        .from(space)
-        .where(and(eq(space.name, name), or(isNull(space.ownerId), eq(space.ownerId, ownerId))))
-        .orderBy(asc(space.createdAt), asc(space.id));
-      let row = candidates.find((c) => c.ownerId === ownerId) ?? candidates[0];
-      if (!row) {
-        [row] = await tx
-          .insert(space)
-          .values({ name, location, timeZone })
-          .returning({ id: space.id, ownerId: space.ownerId });
+/**
+ * Makes each demo space a published listing of `ownerId`, keyed by `space.name` among the demo
+ * owner's spaces and unowned (001) ones, so it is safe to run on every `docker compose up`.
+ * Renaming a demo space means the next run creates a new one under the old name.
+ *
+ * Claiming an unowned 001 space completes it in place: seats it already has keep their ids and
+ * only gain a cubicle. A space the demo owner already holds is left alone, except that its shared
+ * calendar is ensured: the owner may have edited it, and re-adding seats would resurrect ones
+ * they removed (T003). Call inside a transaction (see runSeed) so a failure writes nothing.
+ */
+export async function seedSpaces(
+  db: DbExecutor,
+  ownerId: string,
+  spaces: readonly SeedSpace[] = DEMO_SPACES,
+): Promise<void> {
+  assertSeedSpaces(spaces);
+
+  for (const demo of spaces) {
+    const { seats: seatList, slots, prices, name, location, timeZone, ...listing } = demo;
+    // space.name is not unique (OQ-11), so look the demo space up before inserting.
+    const candidates = await db
+      .select({ id: space.id, ownerId: space.ownerId })
+      .from(space)
+      .where(and(eq(space.name, name), or(isNull(space.ownerId), eq(space.ownerId, ownerId))))
+      .orderBy(asc(space.createdAt), asc(space.id));
+    const found = candidates.find((c) => c.ownerId === ownerId) ?? candidates[0];
+    // One statement sets the owner and every listing field, as space_owned_complete requires.
+    const complete = { ...listing, ownerId, status: 'published' as const };
+
+    let spaceId: string;
+    let claimed: boolean;
+    if (!found) {
+      const [row] = await db
+        .insert(space)
+        .values({ name, location, timeZone, ...complete })
+        .returning({ id: space.id });
+      if (!row) throw new SeedError(`seed: space "${name}" was not created`);
+      spaceId = row.id;
+      claimed = true;
+    } else if (found.ownerId === null) {
+      const rows = await db
+        .update(space)
+        .set({ ...complete, updatedAt: new Date() })
+        .where(and(eq(space.id, found.id), isNull(space.ownerId)))
+        .returning({ id: space.id });
+      if (rows.length === 0) throw new SeedError(`seed: space "${name}" was claimed concurrently`);
+      spaceId = found.id;
+      claimed = true;
+    } else {
+      spaceId = found.id;
+      claimed = false;
+    }
+
+    if (claimed) {
+      await db
+        .insert(spaceSlot)
+        .values(slots.map((slot) => ({ spaceId, slot, enabled: true })))
+        .onConflictDoNothing();
+      await db
+        .insert(passPrice)
+        .values(prices.map((p) => ({ spaceId, ...p })))
+        .onConflictDoNothing();
+
+      const cubicleNames = [...new Set(seatList.flatMap((s) => (s.cubicle ? [s.cubicle] : [])))];
+      if (cubicleNames.length > 0) {
+        await db
+          .insert(cubicle)
+          .values(cubicleNames.map((n) => ({ spaceId, name: n })))
+          .onConflictDoNothing({
+            target: [cubicle.spaceId, cubicle.name],
+            where: isNull(cubicle.removedAt),
+          });
       }
-      if (!row) throw new Error(`seed: space "${name}" was not created`);
-      const spaceId = row.id;
+      const cubicles = await db
+        .select({ id: cubicle.id, name: cubicle.name })
+        .from(cubicle)
+        .where(and(eq(cubicle.spaceId, spaceId), isNull(cubicle.removedAt)));
+      const cubicleId = new Map(cubicles.map((c) => [c.name, c.id]));
 
-      if (row.ownerId === null) {
-        // One statement sets the owner and every listing field, as space_owned_complete requires.
-        await tx
-          .update(space)
-          .set({ ...listing, ownerId, status: 'published', updatedAt: new Date() })
-          .where(and(eq(space.id, spaceId), isNull(space.ownerId)));
-
-        await tx
-          .insert(spaceSlot)
-          .values(slots.map((slot) => ({ spaceId, slot, enabled: true })))
-          .onConflictDoNothing();
-        await tx
-          .insert(passPrice)
-          .values(prices.map((p) => ({ spaceId, ...p })))
-          .onConflictDoNothing();
-
-        const cubicleNames = [...new Set(seatList.flatMap((s) => (s.cubicle ? [s.cubicle] : [])))];
-        if (cubicleNames.length > 0) {
-          await tx
-            .insert(cubicle)
-            .values(cubicleNames.map((n) => ({ spaceId, name: n })))
-            .onConflictDoNothing({
-              target: [cubicle.spaceId, cubicle.name],
-              where: isNull(cubicle.removedAt),
-            });
-        }
-        const cubicles = await tx
-          .select({ id: cubicle.id, name: cubicle.name })
-          .from(cubicle)
-          .where(and(eq(cubicle.spaceId, spaceId), isNull(cubicle.removedAt)));
-        const cubicleId = new Map(cubicles.map((c) => [c.name, c.id]));
-
-        if (seatList.length > 0) {
-          await tx
-            .insert(seat)
-            .values(
-              seatList.map((s) => ({
-                spaceId,
-                label: s.label,
-                features: s.features ?? [],
-                cubicleId: s.cubicle ? (cubicleId.get(s.cubicle) ?? null) : null,
-              })),
-            )
-            .onConflictDoNothing({
-              target: [seat.spaceId, seat.label],
-              where: isNull(seat.removedAt),
-            });
-        }
-      }
-
-      // A fresh `db:seed` creates spaces after the 0007 backfill ran, so it creates the calendar.
-      const [calendar] = await tx
-        .select({ id: availabilityCalendar.id })
-        .from(availabilityCalendar)
-        .where(and(eq(availabilityCalendar.spaceId, spaceId), isNull(availabilityCalendar.seatId)))
-        .limit(1);
-      if (!calendar) {
-        await tx.insert(availabilityCalendar).values({
-          spaceId,
-          startDate: new Date().toISOString().slice(0, 10),
-          weekdays: 127,
-        });
+      if (seatList.length > 0) {
+        await db
+          .insert(seat)
+          .values(
+            seatList.map((s) => ({
+              spaceId,
+              label: s.label,
+              features: s.features ?? [],
+              cubicleId: s.cubicle ? (cubicleId.get(s.cubicle) ?? null) : null,
+            })),
+          )
+          // Existing 001 seats keep their ids and only gain the cubicle they lack.
+          .onConflictDoUpdate({
+            target: [seat.spaceId, seat.label],
+            targetWhere: isNull(seat.removedAt),
+            set: { cubicleId: sql`excluded.cubicle_id` },
+            setWhere: isNull(seat.cubicleId),
+          });
       }
     }
-  });
+
+    // A fresh `db:seed` creates spaces after the 0007 backfill ran, so it creates the calendar.
+    const [calendar] = await db
+      .select({ id: availabilityCalendar.id })
+      .from(availabilityCalendar)
+      .where(and(eq(availabilityCalendar.spaceId, spaceId), isNull(availabilityCalendar.seatId)))
+      .limit(1);
+    if (!calendar) {
+      await db.insert(availabilityCalendar).values({
+        spaceId,
+        // The space's local date, as the 0007 backfill uses.
+        startDate: toLocal(new Date(), timeZone).date,
+        weekdays: 127,
+      });
+    }
+  }
 }

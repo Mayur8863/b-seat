@@ -4,6 +4,7 @@ import { APIError } from 'better-auth/api';
 import { z } from 'zod';
 
 import type { Env } from '../config/env.js';
+import { MIN_PASSWORD_LENGTH } from '../config/seed-password.js';
 import type { Database } from '../db/db.js';
 import * as schema from '../db/schema/index.js';
 import type { MailJob } from '../mail/mail.types.js';
@@ -38,7 +39,7 @@ export function createAuth({ db, env, sendMail }: AuthDeps) {
     }),
     emailAndPassword: {
       enabled: true,
-      minPasswordLength: 12,
+      minPasswordLength: MIN_PASSWORD_LENGTH,
       requireEmailVerification: env.NODE_ENV === 'production',
       sendResetPassword: async ({ user, url }) => {
         await sendMail({

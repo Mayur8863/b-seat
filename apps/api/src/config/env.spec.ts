@@ -31,9 +31,9 @@ describe('loadEnv', () => {
     expect(loadEnv(valid).SEED_DEMO_PASSWORD).toBeUndefined();
   });
 
-  it('accepts SEED_DEMO_PASSWORD of 8+ characters', () => {
-    expect(loadEnv({ ...valid, SEED_DEMO_PASSWORD: '12345678' }).SEED_DEMO_PASSWORD).toBe(
-      '12345678',
+  it('accepts SEED_DEMO_PASSWORD of 12+ characters', () => {
+    expect(loadEnv({ ...valid, SEED_DEMO_PASSWORD: '123456789012' }).SEED_DEMO_PASSWORD).toBe(
+      '123456789012',
     );
   });
 
@@ -43,13 +43,13 @@ describe('loadEnv', () => {
 
   it('refuses SEED_DEMO_PASSWORD in production', () => {
     expect(() =>
-      loadEnv({ ...valid, NODE_ENV: 'production', SEED_DEMO_PASSWORD: '12345678' }),
+      loadEnv({ ...valid, NODE_ENV: 'production', SEED_DEMO_PASSWORD: '123456789012' }),
     ).toThrow(/SEED_DEMO_PASSWORD must not be set in production/);
   });
 
-  it('rejects a SEED_DEMO_PASSWORD shorter than 8 characters, naming the variable', () => {
-    expect(() => loadEnv({ ...valid, SEED_DEMO_PASSWORD: 'short' })).toThrow(
-      /SEED_DEMO_PASSWORD must be at least 8 characters/,
+  it('rejects a SEED_DEMO_PASSWORD shorter than 12 characters, naming the variable', () => {
+    expect(() => loadEnv({ ...valid, SEED_DEMO_PASSWORD: 'elevenchars' })).toThrow(
+      /SEED_DEMO_PASSWORD must be at least 12 characters/,
     );
   });
 });

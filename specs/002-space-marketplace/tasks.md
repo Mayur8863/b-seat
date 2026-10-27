@@ -38,7 +38,7 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 | T006 | Slot, calendar and pass-period engine (pure, TDD)            | backend-dev    | T001                   | M    | done   | `feat/002-slot-engine`                |
 | T007 | Money, problem types and pass booking rules (pure, TDD)      | backend-dev    | T006                   | M    | todo   | `feat/002-pass-rules`                 |
 | T008 | Retire hourly create; legacy space reads published-only      | backend-dev    | T003                   | S    | done   | `chore/002-retire-hourly-create`      |
-| T009 | Seed: demo owner and renter, priced listings, calendars      | backend-dev    | T002, T004, T012       | M    | done   | `feat/002-seed-marketplace`           |
+| T009 | Seed: demo owner and renter, priced listings, calendars      | backend-dev    | T002, T004, T012       | M    | review | `feat/002-seed-marketplace`           |
 | T010 | UI spec: index, shell, nav, sign-up, dashboards              | ui-ux-designer | T001                   | M    | done   | `docs/002-ui-shell-accounts`          |
 | T011 | Test plan and traceability skeleton                          | qa-engineer    | T001                   | S    | done   | `test/002-test-plan`                  |
 | T012 | Wire `SEED_DEMO_PASSWORD` into compose and CI                | devops         | T001                   | S    | done   | `chore/002-seed-env`                  |
@@ -225,8 +225,8 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given `bin/pnpm gen:api`, When run, Then `Bookings_create`, `CreateBookingInput` and the old `Booking` schema are gone from `openapi.json`, and `bin/pnpm --filter @bseat/web typecheck` still passes.
 
 - [x] T009 Seed demo marketplace data in `apps/api/src/db/demo-spaces.ts` and `apps/api/src/db/seed.ts`, tests in `apps/api/test/seed.int-spec.ts`
-  - **Owner**: backend-dev · **Branch**: `feat/002-seed-marketplace` · **Size**: M · **Depends on**: T002, T004, T012 · **Status**: done (QA: e2e gate for T008+T009 passed)
-  - **Carry-over (T003 review)**: decide whether the seed recreates soft-removed demo seats (its seat upsert now targets active labels only).
+  - **Owner**: backend-dev · **Branch**: `feat/002-seed-marketplace` · **Size**: M · **Depends on**: T002, T004, T012 · **Status**: review — done: QA, security and code review fixes (M1, m1-m6, s-m1..m5, nits) applied, check green, dev seed re-run; next: QA re-check
+  - **Carry-over (T003 review)**: decided: the seed never recreates soft-removed demo seats. It seeds seats only when it claims or creates a space; a space the demo owner already holds is left alone (except its shared calendar), so removed seats and owner edits survive every run.
   - **Added (T004 review)**: every seeded space has exactly one shared calendar, and the seed test asserts it.
   - **Scope**: Idempotent. Create `owner@bseat.local` (owner) and `renter@bseat.local` (renter, preferences IN / Pune once T013 exists; skip the preference row if the table is absent) with the password from `SEED_DEMO_PASSWORD` (Better Auth password hashing, no plain text stored; fail with a clear message if unset). Claim the 001 demo spaces for the owner (by name where `owner_id IS NULL`; **OQ-11**) in one `UPDATE` per space that sets `owner_id` and every listing field together (`space_owned_complete`), complete them (London HQ: GB, London, Westminster, `Europe/London`, GBP, always open, shift 07:00, day/night/full_day enabled, day and monthly prices with a 24-hour saving; Pune Hub: IN, Pune, Baner, `Asia/Kolkata`, INR, fixed 09:00–18:00, working-hours day/week/month prices), one or two cubicles each, and publish. Seat bookings and occupancy are not seeded (e2e creates its own).
   - **Acceptance criteria**:
@@ -234,7 +234,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given the seed, When `GET /api/listings?country=GB&city=london` is called by the renter (after T034), Then London HQ is returned; before T034, a direct query shows both spaces are `published` with every listing field set.
     - Given `SEED_DEMO_PASSWORD` is unset, When the seed runs, Then it exits non-zero naming the variable, and nothing is half-written.
     - (T012 security review) Given `NODE_ENV=production` (the API image default), When `node dist/db/seed.js` runs, Then it exits non-zero with a clear message before opening a DB pool or writing anything, whether or not `SEED_DEMO_PASSWORD` is set, with no override flag.
-    - (T012 security review) Given `SEED_DEMO_PASSWORD` is unset or shorter than 8 characters, When the seed runs, Then it validates with its own Zod schema (the seed does not call `loadEnv`), exits non-zero naming the variable, and never prints the value; for any run, stdout and stderr never contain the password (asserted in `seed.int-spec.ts`).
+    - (T012 security review) Given `SEED_DEMO_PASSWORD` is unset or shorter than 8 characters, When the seed runs, Then it validates with its own Zod schema (the seed does not call `loadEnv`; minimum 12 characters, like Better Auth), exits non-zero naming the variable, and never prints the value; for any run, stdout and stderr never contain the password (asserted in `seed.int-spec.ts`).
 
 - [x] T010 [P] Write `specs/002-space-marketplace/ui.md` (index of the area specs) and `specs/002-space-marketplace/ui/01-shell-accounts.md`
   - **Owner**: ui-ux-designer · **Branch**: `docs/002-ui-shell-accounts` · **Size**: M · **Depends on**: T001 · **Status**: done

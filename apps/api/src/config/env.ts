@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { seedDemoPasswordField } from './seed-password.js';
+
 const commaList = z.string().transform((s) =>
   s
     .split(',')
@@ -30,10 +32,7 @@ export const EnvSchema = z
 
     // Read by the seed script only; optional so the API itself boots without it. A blank
     // value (e.g. `SEED_DEMO_PASSWORD=` in .env) counts as unset.
-    SEED_DEMO_PASSWORD: z.preprocess(
-      (v) => (v === '' ? undefined : v),
-      z.string().min(8, 'SEED_DEMO_PASSWORD must be at least 8 characters').optional(),
-    ),
+    SEED_DEMO_PASSWORD: seedDemoPasswordField,
   })
   // Demo accounts must never exist in production, so its presence there is a misconfiguration.
   .refine((env) => env.NODE_ENV !== 'production' || env.SEED_DEMO_PASSWORD === undefined, {

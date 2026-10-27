@@ -19,3 +19,6 @@ export function createPool(connectionString: string, limits: pg.PoolConfig = {})
 export function createDb(pool: pg.Pool): Database {
   return drizzle({ client: pool, schema, casing: 'snake_case' });
 }
+
+/** What the seed needs: a `Database` or one of its transactions. */
+export type DbExecutor = Pick<Database, 'select' | 'insert' | 'update' | 'delete'>;

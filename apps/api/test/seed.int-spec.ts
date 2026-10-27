@@ -1,5 +1,7 @@
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { asc, eq, isNull } from 'drizzle-orm';
+import pg from 'pg';
+import request from 'supertest';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { DEMO_OWNER_EMAIL, DEMO_RENTER_EMAIL, seedAccounts } from '../src/db/demo-accounts.js';
@@ -11,6 +13,7 @@ import {
   passPrice,
   renterPreference,
   seat,
+  session,
   space,
   spaceSlot,
   user,
@@ -18,9 +21,10 @@ import {
 import { runSeed, type SeedConnection } from '../src/db/seed-run.js';
 import { createListing, createOwner, testDb } from './fixtures.js';
 import { createTestApp, ORIGIN, resetDb } from './helpers.js';
-import request from 'supertest';
+import { PG_POOL } from '../src/db/db.module.js';
 
 const PASSWORD = 'demo-password-123';
+const OTHER_PASSWORD = 'another-demo-password-9';
 
 describe('demo marketplace seed (FR-012, OQ-11)', () => {
   let app: NestExpressApplication;
@@ -153,14 +157,20 @@ describe('demo marketplace seed (FR-012, OQ-11)', () => {
     expect(accounts.every((a) => a.password !== null && !a.password.includes(PASSWORD))).toBe(true);
   });
 
-  it('claims and completes the 001 demo spaces in place instead of duplicating them', async () => {
+  it('claims and completes the 001 demo spaces in place, giving existing seats a cubicle', async () => {
     await insertLegacyDemo();
-    const before = await testDb(app).select({ id: space.id }).from(space).orderBy(asc(space.id));
+    const db = testDb(app);
+    const before = await db.select({ id: space.id }).from(space).orderBy(asc(space.id));
+    const legacySeats = await db.select({ id: seat.id, label: seat.label }).from(seat);
     await seedAll();
     const { spaces, seats } = await snapshot();
     expect(spaces.map((s) => s.id).sort()).toEqual(before.map((b) => b.id).sort());
     expect(spaces.every((s) => s.status === 'published' && s.ownerId !== null)).toBe(true);
     expect(seats).toHaveLength(20);
+    expect(seats.every((s) => s.cubicleId !== null)).toBe(true);
+    for (const legacy of legacySeats) {
+      expect(seats.find((s) => s.label === legacy.label)?.id).toBe(legacy.id);
+    }
   });
 
   it('does not resurrect a seat the owner removed, nor reset an edited listing', async () => {
@@ -200,6 +210,52 @@ describe('demo marketplace seed (FR-012, OQ-11)', () => {
     expect(await db.select().from(seat).where(eq(seat.spaceId, owned.id))).toHaveLength(0);
   });
 
+  it('refuses a demo email held by an account of the wrong type, changing nothing', async () => {
+    const db = testDb(app);
+    await createOwner(db, { email: DEMO_OWNER_EMAIL, accountType: 'renter' });
+    await expect(seedAccounts(db, PASSWORD)).rejects.toThrow(/owner@bseat\.local.*renter/);
+    expect(await db.select().from(account)).toHaveLength(0);
+  });
+
+  it('creates a missing credential row and rewrites only the credential password', async () => {
+    await seedAll();
+    const db = testDb(app);
+    const [owner] = await db.select().from(user).where(eq(user.email, DEMO_OWNER_EMAIL));
+    if (!owner) throw new Error('no owner');
+    await db.delete(account).where(eq(account.userId, owner.id));
+    await db.insert(account).values({
+      id: 'social-1',
+      accountId: 'x',
+      providerId: 'github',
+      userId: owner.id,
+      password: 'untouched',
+    });
+    await seedAccounts(db, PASSWORD);
+    const rows = await db.select().from(account).where(eq(account.userId, owner.id));
+    expect(rows.find((r) => r.providerId === 'github')?.password).toBe('untouched');
+    expect(rows.find((r) => r.providerId === 'credential')?.password).toBeTruthy();
+  });
+
+  function signIn(password: string) {
+    return request(app.getHttpServer())
+      .post('/api/auth/sign-in/email')
+      .set('origin', ORIGIN)
+      .send({ email: DEMO_OWNER_EMAIL, password });
+  }
+
+  it('revokes sessions only when the password changes', async () => {
+    await seedAll();
+    await signIn(PASSWORD).expect(200);
+    const db = testDb(app);
+    await seedAll();
+    expect(await db.select().from(session)).toHaveLength(1);
+
+    await seedAccounts(db, OTHER_PASSWORD);
+    expect(await db.select().from(session)).toHaveLength(0);
+    await signIn(OTHER_PASSWORD).expect(200);
+    await signIn(PASSWORD).expect(401);
+  });
+
   it('rejects an invalid time zone, naming it, before writing anything', async () => {
     const db = testDb(app);
     const { ownerId } = await seedAccounts(db, PASSWORD);
@@ -223,12 +279,20 @@ describe('runSeed guards', () => {
       { ...base, NODE_ENV: 'production' },
       { DATABASE_URL: 'postgres://x', NODE_ENV: 'production' },
     ]) {
-      await expect(runSeed(env, connect)).rejects.toThrow(/production/);
+      await expect(runSeed(env, connect)).rejects.toThrow(/NODE_ENV/);
     }
     expect(connect).not.toHaveBeenCalled();
   });
 
-  it.each([undefined, '', 'short'])(
+  it.each(['prod', 'staging', 'Production', 'production ', ''])(
+    'refuses NODE_ENV=%j before opening a pool',
+    async (nodeEnv) => {
+      await expect(runSeed({ ...base, NODE_ENV: nodeEnv }, connect)).rejects.toThrow(/NODE_ENV/);
+      expect(connect).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([undefined, '', 'short', 'elevenchars'])(
     'rejects SEED_DEMO_PASSWORD=%j naming it, without the value',
     async (pw) => {
       const err = await runSeed({ ...base, SEED_DEMO_PASSWORD: pw }, connect).catch(
@@ -241,6 +305,26 @@ describe('runSeed guards', () => {
       expect(connect).not.toHaveBeenCalled();
     },
   );
+
+  it('rolls the accounts back when the space seed fails', async () => {
+    const app = await createTestApp();
+    const pool = app.get<pg.Pool>(PG_POOL);
+    try {
+      await resetDb(app);
+      await pool.query(`create function seed_test_fail() returns trigger language plpgsql
+        as $$ begin raise exception 'seed test failure'; end $$`);
+      await pool.query(`create trigger seed_test_fail before insert on availability_calendar
+        for each row execute function seed_test_fail()`);
+      connect.mockReturnValue({ db: testDb(app), close: () => Promise.resolve() });
+      await expect(runSeed(base, connect)).rejects.toThrow();
+      expect(await testDb(app).select().from(user)).toHaveLength(0);
+      expect(await testDb(app).select().from(space)).toHaveLength(0);
+    } finally {
+      await pool.query('drop trigger if exists seed_test_fail on availability_calendar');
+      await pool.query('drop function if exists seed_test_fail()');
+      await app.close();
+    }
+  });
 
   it('seeds through the connection and never prints the password', async () => {
     const out: string[] = [];
