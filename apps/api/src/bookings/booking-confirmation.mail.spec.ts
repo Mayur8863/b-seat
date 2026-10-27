@@ -1,30 +1,25 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildBookingConfirmation, confirmationJobId } from './booking-confirmation.mail.js';
-import type { Booking } from './bookings.schemas.js';
+import {
+  type BookingConfirmationSource,
+  buildBookingConfirmation,
+  confirmationJobId,
+} from './booking-confirmation.mail.js';
 
 const USER = { name: 'Ada Lovelace', email: 'ada@example.com' };
 const APP_URL = 'http://localhost:3000';
 
-function londonBooking(startsAt: string, endsAt: string): Booking {
+function londonBooking(startsAt: string, endsAt: string): BookingConfirmationSource {
   return {
     id: '0b6c7d1e-0000-4000-8000-000000000003',
-    status: 'active',
-    // Deliberately wrong local fields: the email must derive local times from the instants.
-    date: '1999-01-01',
-    startTime: '00:00',
-    endTime: '00:15',
     timeZone: 'Europe/London',
     startsAt,
     endsAt,
-    seat: { id: '0b6c7d1e-0000-4000-8000-000000000001', label: 'A-03' },
+    seat: { label: 'A-03' },
     space: {
-      id: '0b6c7d1e-0000-4000-8000-000000000002',
       name: 'London HQ',
       location: 'London, United Kingdom',
     },
-    createdAt: '2026-01-01T10:00:00.000Z',
-    cancelledAt: null,
   };
 }
 

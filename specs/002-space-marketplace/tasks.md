@@ -214,7 +214,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given a `ProblemException` with `extensions: { labels: ['A-1'], type: 'x', status: 200 }`, When the filter renders it, Then the body has `labels: ['A-1']` and the exception's own `type` and `status` (extensions cannot override standard members; unit test of `ProblemFilter`).
 
 - [ ] T008 Retire the hourly create and make legacy space reads published-only: remove `POST /api/bookings` from `apps/api/src/bookings/bookings.controller.ts` and `bookings.service.ts` (keep `booking-conflicts.ts`, `booking-confirmation.mail.ts`), filter `status = 'published'` in `apps/api/src/spaces/spaces.service.ts`, update `apps/api/test/bookings.int-spec.ts` and `spaces.int-spec.ts`; regenerate `apps/api/openapi.json`
-  - **Owner**: backend-dev · **Branch**: `chore/002-retire-hourly-create` · **Size**: S · **Depends on**: T003 · **Status**: todo
+  - **Owner**: backend-dev · **Branch**: `chore/002-retire-hourly-create` · **Size**: S · **Depends on**: T003 · **Status**: review
   - **Carry-over (T003 review)**: legacy reads filter `status = 'published'`, and T008 must merge before any owner create route (T020), because owned drafts must never reach the legacy list.
   - **Scope**: research R-7 step 2 (AQ-8). No web code calls `useBookingsCreate` today; confirm with a grep in the PR. Hourly integration tests that only exercised the removed route are deleted; their coverage of `classifyInsertError` and the deadlock retry stays in unit tests. Must merge **before** T005.
   - **Acceptance criteria**:

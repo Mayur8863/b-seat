@@ -81,6 +81,18 @@ export async function createListing(
   });
 }
 
+/**
+ * A published listing with its own owner: the only kind the legacy 001 reads (`GET /api/spaces`,
+ * availability) show since T008. Use `createSpace` for a draft or ownerless space.
+ */
+export async function createPublishedSpace(
+  db: Database,
+  values: Partial<typeof space.$inferInsert> = {},
+): Promise<SpaceRow> {
+  const owner = await createOwner(db);
+  return createListing(db, owner.id, { status: 'published', ...values });
+}
+
 export async function createCubicle(
   db: Database,
   spaceId: string,

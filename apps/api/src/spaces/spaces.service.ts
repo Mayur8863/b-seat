@@ -33,7 +33,7 @@ export function resolveWindow(query: AvailabilityQueryInput, timeZone: string): 
 
 /**
  * Spaces are shared reference data: any signed-in user may read them, so these queries are
- * not scoped to the caller. Availability never exposes who holds a booking (FR-011).
+ * not scoped to the caller. Only published spaces are visible (FR-009): a draft is a 404. Availability never exposes who holds a booking (FR-011).
  */
 @Injectable()
 export class SpacesService {
@@ -50,6 +50,7 @@ export class SpacesService {
       })
       .from(space)
       .leftJoin(seat, and(eq(seat.spaceId, space.id), isNull(seat.removedAt)))
+      .where(eq(space.status, 'published'))
       .groupBy(space.id)
       .orderBy(asc(space.name), asc(space.id));
     return { items };
@@ -64,7 +65,7 @@ export class SpacesService {
         timeZone: space.timeZone,
       })
       .from(space)
-      .where(eq(space.id, spaceId));
+      .where(and(eq(space.id, spaceId), eq(space.status, 'published')));
     if (!found) throw new NotFoundException('Space not found');
 
     const { startsAt, endsAt } = resolveWindow(query, found.timeZone);

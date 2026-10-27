@@ -6,7 +6,14 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { seat } from '../src/db/schema/index.js';
 import { toInstant, toLocal } from '../src/common/time/zoned-time.js';
 import { SpaceAvailabilitySchema } from '../src/spaces/spaces.schemas.js';
-import { createSeats, createSpace, insertBooking, testDb } from './fixtures.js';
+import {
+  createListing,
+  createOwner,
+  createPublishedSpace,
+  createSeats,
+  insertBooking,
+  testDb,
+} from './fixtures.js';
 import { createTestApp, resetDb, signedInAgent } from './helpers.js';
 
 type Agent = Awaited<ReturnType<typeof signedInAgent>>;
@@ -43,17 +50,20 @@ describe('spaces API', () => {
   describe('GET /api/spaces', () => {
     it('lists every space ordered by name with its seat count (AC 1.1, FR-002)', async () => {
       const db = testDb(app);
-      const pune = await createSpace(db, {
+      const pune = await createPublishedSpace(db, {
         name: 'Pune Hub',
         location: 'Pune, India',
         timeZone: 'Asia/Kolkata',
       });
-      const london = await createSpace(db, {
+      const london = await createPublishedSpace(db, {
         name: 'London HQ',
         location: 'London, United Kingdom',
         timeZone: 'Europe/London',
       });
-      const empty = await createSpace(db, { name: 'Zurich Annex', timeZone: 'Europe/Zurich' });
+      const empty = await createPublishedSpace(db, {
+        name: 'Zurich Annex',
+        timeZone: 'Europe/Zurich',
+      });
       await createSeats(db, pune.id, 8);
       await createSeats(db, london.id, 12);
 
@@ -86,6 +96,25 @@ describe('spaces API', () => {
       });
     });
 
+    it('lists only published spaces: drafts and unpublished ones are hidden (FR-009, T008)', async () => {
+      const db = testDb(app);
+      const owner = await createOwner(db);
+      const published = await createPublishedSpace(db, { name: 'Live Hub' });
+      const draft = await createListing(db, owner.id, { name: 'Draft Hub' });
+      const retired = await createListing(db, owner.id, {
+        name: 'Retired Hub',
+        status: 'unpublished',
+      });
+      await createSeats(db, draft.id, 2);
+      await createSeats(db, retired.id, 2);
+
+      const res = await agent.get('/api/spaces').expect(200);
+
+      expect((res.body as { items: { id: string }[] }).items.map((i) => i.id)).toEqual([
+        published.id,
+      ]);
+    });
+
     it('returns an empty list when there are no spaces', async () => {
       const res = await agent.get('/api/spaces').expect(200);
       expect(res.body).toEqual({ items: [] });
@@ -101,8 +130,11 @@ describe('spaces API', () => {
   describe('soft-removed seats (R-15)', () => {
     it('are excluded from the seat count and the availability list, and the space still lists', async () => {
       const db = testDb(app);
-      const sp = await createSpace(db, { name: 'London HQ', timeZone: 'Europe/London' });
-      const bare = await createSpace(db, { name: 'Bare Annex', timeZone: 'Europe/London' });
+      const sp = await createPublishedSpace(db, { name: 'London HQ', timeZone: 'Europe/London' });
+      const bare = await createPublishedSpace(db, {
+        name: 'Bare Annex',
+        timeZone: 'Europe/London',
+      });
       const seats = await createSeats(db, sp.id, 3);
       const [gone] = await createSeats(db, bare.id, 1);
       if (!seats[1] || !gone) throw new Error('expected seats');
@@ -134,7 +166,7 @@ describe('spaces API', () => {
 
     async function londonWithBooking(status: 'active' | 'cancelled' = 'active') {
       const db = testDb(app);
-      const space = await createSpace(db, {
+      const space = await createPublishedSpace(db, {
         name: 'London HQ',
         location: 'London, United Kingdom',
         timeZone: TZ,
@@ -214,7 +246,7 @@ describe('spaces API', () => {
     it('evaluates the window in the space time zone (edge "time zones")', async () => {
       const db = testDb(app);
       const kolkata = 'Asia/Kolkata';
-      const space = await createSpace(db, { name: 'Pune Hub', timeZone: kolkata });
+      const space = await createPublishedSpace(db, { name: 'Pune Hub', timeZone: kolkata });
       const [seat] = await createSeats(db, space.id, 2);
       if (!seat) throw new Error('expected seats');
       const date = tomorrow(kolkata);
@@ -239,7 +271,7 @@ describe('spaces API', () => {
 
     it('lets a rule-breaking window be viewed (edge "rule-breaking windows")', async () => {
       const db = testDb(app);
-      const space = await createSpace(db, { timeZone: TZ });
+      const space = await createPublishedSpace(db, { timeZone: TZ });
       await createSeats(db, space.id, 1);
 
       const res = await agent
@@ -264,6 +296,22 @@ describe('spaces API', () => {
       expect(raw).not.toContain('test@example.com');
       for (const seat of res.body.seats as Record<string, unknown>[]) {
         expect(Object.keys(seat).sort()).toEqual(['features', 'id', 'label', 'status']);
+      }
+    });
+
+    it('is 404 for a draft or unpublished space, as for an unknown one (FR-009, T008)', async () => {
+      const db = testDb(app);
+      const owner = await createOwner(db);
+      const draft = await createListing(db, owner.id);
+      const retired = await createListing(db, owner.id, { status: 'unpublished' });
+      await createSeats(db, draft.id, 1);
+
+      for (const id of [draft.id, retired.id]) {
+        const res = await agent
+          .get(`/api/spaces/${id}/availability`)
+          .query({ date: '2026-10-23', startTime: '10:00', endTime: '11:00' })
+          .expect(404);
+        expect(res.body).toMatchObject({ type: 'urn:bseat:problem:http-404', status: 404 });
       }
     });
 
@@ -297,7 +345,7 @@ describe('spaces API', () => {
       ],
     ])('is 400 validation for %s', async (_, id, query) => {
       const db = testDb(app);
-      const space = await createSpace(db);
+      const space = await createPublishedSpace(db);
       const spaceId = id === 'valid' ? space.id : id;
 
       const res = await agent.get(`/api/spaces/${spaceId}/availability`).query(query).expect(400);
@@ -309,7 +357,7 @@ describe('spaces API', () => {
 
     it('is 422 invalid-local-time when the window ends in a DST gap (edge DST)', async () => {
       const db = testDb(app);
-      const space = await createSpace(db, { name: 'London HQ', timeZone: TZ });
+      const space = await createPublishedSpace(db, { name: 'London HQ', timeZone: TZ });
 
       const res = await agent
         .get(`/api/spaces/${space.id}/availability`)
@@ -326,7 +374,7 @@ describe('spaces API', () => {
 
     it('is 401 problem+json without a session (AC 1.4, FR-001)', async () => {
       const db = testDb(app);
-      const space = await createSpace(db);
+      const space = await createPublishedSpace(db);
 
       const res = await request(app.getHttpServer())
         .get(`/api/spaces/${space.id}/availability`)

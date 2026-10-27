@@ -1,6 +1,15 @@
 import { toLocal } from '../common/time/zoned-time.js';
 import type { MailJob } from '../mail/mail.types.js';
-import type { Booking } from './bookings.schemas.js';
+
+/** What the confirmation needs of a booking; the pass booking response (T036) satisfies it too. */
+export interface BookingConfirmationSource {
+  id: string;
+  startsAt: string;
+  endsAt: string;
+  timeZone: string;
+  seat: { label: string };
+  space: { name: string; location: string };
+}
 
 /** The mail queue job id: BullMQ drops a second job with the same id (no `:`, BullMQ 6 rejects it). */
 export function confirmationJobId(bookingId: string): string {
@@ -15,7 +24,7 @@ const weekday = new Intl.DateTimeFormat('en-GB', { weekday: 'long', timeZone: 'U
  * derived from the instants. Plain text only, so `user.name` needs no escaping.
  */
 export function buildBookingConfirmation(
-  booking: Booking,
+  booking: BookingConfirmationSource,
   user: { name: string; email: string },
   appUrl: string,
 ): MailJob {

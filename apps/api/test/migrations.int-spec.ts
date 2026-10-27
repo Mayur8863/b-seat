@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
+import { NotFoundException } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -75,26 +76,13 @@ describe('migration 0004_listings on top of 001 data', () => {
     expect(bookings.rows).toEqual([{ status: 'active' }]);
   });
 
-  it('still serves the 001 space list and availability reads', async () => {
+  it('hides the legacy draft space from the 001 reads until it is published (T008, FR-009)', async () => {
     const service = new SpacesService(scratch.db);
-    const list = await service.list();
-    expect(list.items).toEqual([
-      expect.objectContaining({
-        id: spaceId,
-        name: 'Legacy Hub',
-        location: 'London',
-        seatCount: 1,
-      }),
-    ]);
+    expect((await service.list()).items).toEqual([]);
 
-    const availability = await service.availability(spaceId, {
-      date: '2030-01-07',
-      startTime: '09:30',
-      endTime: '10:30',
-    });
-    expect(availability.seats).toEqual([
-      expect.objectContaining({ label: 'A-1', status: 'taken' }),
-    ]);
+    await expect(
+      service.availability(spaceId, { date: '2030-01-07', startTime: '09:30', endTime: '10:30' }),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 });
 
