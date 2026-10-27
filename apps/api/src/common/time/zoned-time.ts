@@ -139,3 +139,28 @@ export function isValidTimeZone(timeZone: string): boolean {
     return false;
   }
 }
+
+/**
+ * Like `toInstant`, but never refuses: for owner-set boundaries (ADR-0009 section 4, amends
+ * ADR-0008 section 1). A time in a DST gap or overlap takes the offset in force before the
+ * transition, so a gap resolves to the instant after the gap and an overlap to the earlier
+ * instant. Throws RangeError for malformed input.
+ */
+export function toInstantCompatible(date: string, time: string, timeZone: string): Date {
+  const strict = toInstant(date, time, timeZone);
+  if (strict.kind === 'ok') return strict.instant;
+  const wall = wallClockAsUtc(date, time);
+  return new Date(wall - offsetAt(wall - DAY_MS, timeZone));
+}
+
+/** Adds calendar days to a `YYYY-MM-DD` date (pure date arithmetic, no zone involved). */
+export function addDays(date: string, days: number): string {
+  const ms = wallClockAsUtc(date, '00:00') + days * DAY_MS;
+  return new Date(ms).toISOString().slice(0, 10);
+}
+
+/** ISO weekday of a local date: Monday = 1 ... Sunday = 7. */
+export function isoWeekday(date: string): number {
+  const day = new Date(wallClockAsUtc(date, '00:00')).getUTCDay();
+  return day === 0 ? 7 : day;
+}

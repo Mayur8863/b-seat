@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { isValidTimeZone, toInstant, toLocal } from './zoned-time.js';
+import {
+  addDays,
+  isoWeekday,
+  isValidTimeZone,
+  toInstant,
+  toInstantCompatible,
+  toLocal,
+} from './zoned-time.js';
 
 const LONDON = 'Europe/London';
 const KOLKATA = 'Asia/Kolkata';
@@ -129,5 +136,51 @@ describe('isValidTimeZone', () => {
 
   it.each(['Mars/Base', '', 'Europe/Londres', 'not a zone'])('rejects %j', (zone) => {
     expect(isValidTimeZone(zone)).toBe(false);
+  });
+});
+
+describe('toInstantCompatible', () => {
+  it('resolves a London gap to the instant after the gap', () => {
+    expect(toInstantCompatible('2026-03-29', '01:30', LONDON).toISOString()).toBe(
+      '2026-03-29T01:30:00.000Z',
+    );
+  });
+
+  it('resolves a London overlap to the earlier instant', () => {
+    expect(toInstantCompatible('2026-10-25', '01:30', LONDON).toISOString()).toBe(
+      '2026-10-25T00:30:00.000Z',
+    );
+  });
+
+  it.each(['Europe/London', 'America/New_York'])(
+    'equals toInstant for every wall-clock that exists once (%s)',
+    (zone) => {
+      for (let h = 0; h < 366 * 24; h += 1) {
+        const stamp = new Date(Date.UTC(2026, 0, 1) + h * 3_600_000).toISOString();
+        const date = stamp.slice(0, 10);
+        const time = stamp.slice(11, 16);
+        const strict = toInstant(date, time, zone);
+        if (strict.kind === 'ok') {
+          expect(toInstantCompatible(date, time, zone).getTime()).toBe(strict.instant.getTime());
+        }
+      }
+    },
+  );
+
+  it('rejects malformed input', () => {
+    expect(() => toInstantCompatible('2026-02-30', '09:00', LONDON)).toThrow(RangeError);
+  });
+});
+
+describe('addDays and isoWeekday', () => {
+  it('adds days across month, year and leap boundaries', () => {
+    expect(addDays('2026-12-31', 1)).toBe('2027-01-01');
+    expect(addDays('2028-02-28', 1)).toBe('2028-02-29');
+    expect(addDays('2026-03-01', -1)).toBe('2026-02-28');
+  });
+
+  it('numbers weekdays Monday 1 to Sunday 7', () => {
+    expect(isoWeekday('2026-11-02')).toBe(1);
+    expect(isoWeekday('2026-11-08')).toBe(7);
   });
 });
