@@ -15,6 +15,17 @@ describe('describeSeedError', () => {
     expect(describeSeedError(wrapped)).toBe('seed: database error (23505)');
   });
 
+  it('keeps a string code of a connection error', () => {
+    const wrapped = new Error('Failed query', {
+      cause: Object.assign(new Error('connect ECONNREFUSED 10.0.0.1:5432'), {
+        code: 'ECONNREFUSED',
+      }),
+    });
+    expect(describeSeedError(wrapped)).toBe('seed: database error (ECONNREFUSED)');
+    const direct = Object.assign(new Error('password authentication failed'), { code: '28P01' });
+    expect(describeSeedError(direct)).toBe('seed: database error (28P01)');
+  });
+
   it('is generic when there is no code', () => {
     expect(describeSeedError(new Error('secret-hash'))).toBe('seed: database error');
     expect(describeSeedError('boom')).toBe('seed: database error');

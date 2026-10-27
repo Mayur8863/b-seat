@@ -131,7 +131,10 @@ export function assertSeedSpaces(spaces: readonly SeedSpace[]): void {
  * Claiming an unowned 001 space completes it in place: seats it already has keep their ids and
  * only gain a cubicle. A space the demo owner already holds is left alone, except that its shared
  * calendar is ensured: the owner may have edited it, and re-adding seats would resurrect ones
- * they removed (T003). Call inside a transaction (see runSeed) so a failure writes nothing.
+ * they removed (T003). The one exception is a repair for spaces claimed by the first seed
+ * version: a held space whose active seats sit in no cubicle, and that has no soft-removed
+ * cubicle, gets the demo cubicles once (existing seats are updated, never inserted). Side effect:
+ * an owner who empties every cubicle (without removing one) gets them refilled. Call inside a transaction (see runSeed) so a failure writes nothing.
  */
 export async function seedSpaces(
   db: DbExecutor,
@@ -153,7 +156,7 @@ export async function seedSpaces(
     const complete = { ...listing, ownerId, status: 'published' as const };
 
     let spaceId: string;
-    let claimed: boolean;
+    let seedOwnsSeats: boolean;
     if (!found) {
       const [row] = await db
         .insert(space)
@@ -161,7 +164,7 @@ export async function seedSpaces(
         .returning({ id: space.id });
       if (!row) throw new SeedError(`seed: space "${name}" was not created`);
       spaceId = row.id;
-      claimed = true;
+      seedOwnsSeats = true;
     } else if (found.ownerId === null) {
       const rows = await db
         .update(space)
@@ -170,25 +173,31 @@ export async function seedSpaces(
         .returning({ id: space.id });
       if (rows.length === 0) throw new SeedError(`seed: space "${name}" was claimed concurrently`);
       spaceId = found.id;
-      claimed = true;
+      seedOwnsSeats = true;
     } else {
       spaceId = found.id;
-      claimed = false;
+      seedOwnsSeats = false;
     }
 
-    // A space claimed by the first seed version has seats but none in a cubicle (its seat upsert
-    // skipped existing seats), so it is repaired once. Any seat in a cubicle means the owner has
-    // organised the space, and it is left alone.
-    const [placed] = claimed
+    // Repair for spaces the first seed version seedOwnsSeats: seats but none in a cubicle. Any seat in
+    // a cubicle, or any soft-removed cubicle, means the owner organised the space; leave it alone.
+    const [placed] = seedOwnsSeats
       ? []
       : await db
           .select({ id: seat.id })
           .from(seat)
           .where(and(eq(seat.spaceId, spaceId), isNotNull(seat.cubicleId)))
           .limit(1);
-    const needsCubicles = claimed || !placed;
+    const [removedCubicle] = seedOwnsSeats
+      ? []
+      : await db
+          .select({ id: cubicle.id })
+          .from(cubicle)
+          .where(and(eq(cubicle.spaceId, spaceId), isNotNull(cubicle.removedAt)))
+          .limit(1);
+    const needsCubicles = seedOwnsSeats || (!placed && !removedCubicle);
 
-    if (claimed) {
+    if (seedOwnsSeats) {
       await db
         .insert(spaceSlot)
         .values(slots.map((slot) => ({ spaceId, slot, enabled: true })))
@@ -216,7 +225,7 @@ export async function seedSpaces(
         .where(and(eq(cubicle.spaceId, spaceId), isNull(cubicle.removedAt)));
       const cubicleId = new Map(cubicles.map((c) => [c.name, c.id]));
 
-      if (!claimed) {
+      if (!seedOwnsSeats) {
         // Repair only: never insert, so a seat the owner removed stays removed.
         for (const s of seatList) {
           const id = s.cubicle ? cubicleId.get(s.cubicle) : undefined;

@@ -10,10 +10,11 @@ export class SeedError extends Error {
 /** The line the seed prints for any error; never includes driver messages or parameters. */
 export function describeSeedError(err: unknown): string {
   if (err instanceof SeedError) return err.message;
-  const cause = err instanceof Error ? err.cause : undefined;
+  // Drizzle wraps the driver error as `cause`; a bare driver error (e.g. a refused connection) has the code itself.
+  const source = err instanceof Error && err.cause instanceof Error ? err.cause : err;
   const code =
-    cause instanceof Error && 'code' in cause && typeof cause.code === 'string'
-      ? ` (${cause.code})`
+    source instanceof Error && 'code' in source && typeof source.code === 'string'
+      ? ` (${source.code})`
       : '';
   return `seed: database error${code}`;
 }

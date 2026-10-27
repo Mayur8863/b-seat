@@ -203,6 +203,29 @@ describe('demo marketplace seed (FR-012, OQ-11)', () => {
     expect(rows.find((s) => s.label === 'A-01')?.cubicleId).toBeNull();
   });
 
+  it('repairs cubicles without inserting a seat the owner removed', async () => {
+    await seedAll();
+    const db = testDb(app);
+    await db.update(seat).set({ removedAt: new Date() }).where(eq(seat.label, 'A-01'));
+    await db.update(seat).set({ cubicleId: null });
+    await seedAll();
+    const rows = (await snapshot()).seats;
+    expect(rows).toHaveLength(20);
+    expect(rows.filter((r) => r.removedAt === null)).toHaveLength(19);
+    expect(rows.filter((r) => r.removedAt === null).every((r) => r.cubicleId !== null)).toBe(true);
+  });
+
+  it('does not repair a space whose owner removed a cubicle', async () => {
+    await seedAll();
+    const db = testDb(app);
+    await db.update(cubicle).set({ removedAt: new Date() }).where(eq(cubicle.name, 'Main Floor'));
+    await db.update(seat).set({ cubicleId: null });
+    await seedAll();
+    const rows = (await snapshot()).seats;
+    expect(rows.filter((r) => r.cubicleId !== null).length).toBe(12);
+    expect((await snapshot()).cubicles.filter((c) => c.name === 'Main Floor')).toHaveLength(1);
+  });
+
   it('recreates a missing shared calendar for a space the owner already holds', async () => {
     await seedAll();
     const db = testDb(app);
@@ -244,7 +267,14 @@ describe('demo marketplace seed (FR-012, OQ-11)', () => {
       userId: owner.id,
       password: 'untouched',
     });
+    await db.insert(session).values({
+      id: 'old-session',
+      token: 'old-token',
+      userId: owner.id,
+      expiresAt: new Date(Date.now() + 3_600_000),
+    });
     await seedAccounts(db, PASSWORD);
+    expect(await db.select().from(session)).toHaveLength(0);
     const rows = await db.select().from(account).where(eq(account.userId, owner.id));
     expect(rows.find((r) => r.providerId === 'github')?.password).toBe('untouched');
     expect(rows.find((r) => r.providerId === 'credential')?.password).toBeTruthy();
@@ -325,8 +355,9 @@ describe('runSeed guards', () => {
     const pool = app.get<pg.Pool>(PG_POOL);
     try {
       await resetDb(app);
-      await pool.query(`create function seed_test_fail() returns trigger language plpgsql
+      await pool.query(`create or replace function seed_test_fail() returns trigger language plpgsql
         as $$ begin raise exception 'seed test failure'; end $$`);
+      await pool.query('drop trigger if exists seed_test_fail on availability_calendar');
       await pool.query(`create trigger seed_test_fail before insert on availability_calendar
         for each row execute function seed_test_fail()`);
       connect.mockReturnValue({ db: testDb(app), close: () => Promise.resolve() });

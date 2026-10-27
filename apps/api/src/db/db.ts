@@ -20,5 +20,5 @@ export function createDb(pool: pg.Pool): Database {
   return drizzle({ client: pool, schema, casing: 'snake_case' });
 }
 
-/** What the seed needs: a `Database` or one of its transactions. */
+/** The query methods shared by a `Database` and its transactions, for code that runs in either. */
 export type DbExecutor = Pick<Database, 'select' | 'insert' | 'update' | 'delete'>;

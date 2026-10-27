@@ -36,7 +36,7 @@ async function upsertCredentialUser(
     return id;
   }
 
-  // A real user who happens to hold a demo address must not be taken over.
+  // A user of a different account type is never touched.
   if (existing.accountType !== values.accountType) {
     throw new SeedError(
       `seed: ${values.email} already exists as a ${existing.accountType}, expected ${values.accountType}; refusing to touch it`,
@@ -56,6 +56,8 @@ async function upsertCredentialUser(
       userId: existing.id,
       password: await hashPassword(password),
     });
+    // Sessions that predate the credential row were not made with the demo password.
+    await db.delete(session).where(eq(session.userId, existing.id));
     return existing.id;
   }
 
