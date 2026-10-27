@@ -8,30 +8,38 @@ const commaList = z.string().transform((s) =>
 );
 
 /** Every environment variable the API reads. Documented in /.env.example. */
-export const EnvSchema = z.object({
-  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-  API_PORT: z.coerce.number().int().positive().default(3001),
-  LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
+export const EnvSchema = z
+  .object({
+    NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+    API_PORT: z.coerce.number().int().positive().default(3001),
+    LOG_LEVEL: z
+      .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
+      .default('info'),
 
-  DATABASE_URL: z.url(),
-  REDIS_URL: z.url(),
+    DATABASE_URL: z.url(),
+    REDIS_URL: z.url(),
 
-  SMTP_HOST: z.string().min(1).default('localhost'),
-  SMTP_PORT: z.coerce.number().int().positive().default(1025),
-  MAIL_FROM: z.string().min(1).default('BSeat <no-reply@bseat.local>'),
+    SMTP_HOST: z.string().min(1).default('localhost'),
+    SMTP_PORT: z.coerce.number().int().positive().default(1025),
+    MAIL_FROM: z.string().min(1).default('BSeat <no-reply@bseat.local>'),
 
-  BETTER_AUTH_SECRET: z.string().min(32, 'BETTER_AUTH_SECRET must be at least 32 characters'),
-  BETTER_AUTH_URL: z.url(),
-  TRUSTED_ORIGINS: commaList.default(['http://localhost:3000']),
-  NEXT_PUBLIC_APP_URL: z.url().default('http://localhost:3000'),
+    BETTER_AUTH_SECRET: z.string().min(32, 'BETTER_AUTH_SECRET must be at least 32 characters'),
+    BETTER_AUTH_URL: z.url(),
+    TRUSTED_ORIGINS: commaList.default(['http://localhost:3000']),
+    NEXT_PUBLIC_APP_URL: z.url().default('http://localhost:3000'),
 
-  // Read by the seed script only; optional so the API itself boots without it
-  // (production never sets it).
-  SEED_DEMO_PASSWORD: z
-    .string()
-    .min(8, 'SEED_DEMO_PASSWORD must be at least 8 characters')
-    .optional(),
-});
+    // Read by the seed script only; optional so the API itself boots without it. A blank
+    // value (e.g. `SEED_DEMO_PASSWORD=` in .env) counts as unset.
+    SEED_DEMO_PASSWORD: z.preprocess(
+      (v) => (v === '' ? undefined : v),
+      z.string().min(8, 'SEED_DEMO_PASSWORD must be at least 8 characters').optional(),
+    ),
+  })
+  // Demo accounts must never exist in production, so its presence there is a misconfiguration.
+  .refine((env) => env.NODE_ENV !== 'production' || env.SEED_DEMO_PASSWORD === undefined, {
+    message: 'SEED_DEMO_PASSWORD must not be set in production',
+    path: ['SEED_DEMO_PASSWORD'],
+  });
 
 export type Env = z.infer<typeof EnvSchema>;
 

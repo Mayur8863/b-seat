@@ -37,6 +37,16 @@ describe('loadEnv', () => {
     );
   });
 
+  it('treats a blank SEED_DEMO_PASSWORD as unset', () => {
+    expect(loadEnv({ ...valid, SEED_DEMO_PASSWORD: '' }).SEED_DEMO_PASSWORD).toBeUndefined();
+  });
+
+  it('refuses SEED_DEMO_PASSWORD in production', () => {
+    expect(() =>
+      loadEnv({ ...valid, NODE_ENV: 'production', SEED_DEMO_PASSWORD: '12345678' }),
+    ).toThrow(/SEED_DEMO_PASSWORD must not be set in production/);
+  });
+
   it('rejects a SEED_DEMO_PASSWORD shorter than 8 characters, naming the variable', () => {
     expect(() => loadEnv({ ...valid, SEED_DEMO_PASSWORD: 'short' })).toThrow(
       /SEED_DEMO_PASSWORD must be at least 8 characters/,

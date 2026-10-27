@@ -229,6 +229,8 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given a migrated, empty dev DB, When `bin/pnpm db:seed` runs twice, Then exactly 2 demo accounts, 2 published spaces owned by the owner, 20 active seats, their prices and shared calendars exist (Assumptions "seeded demo owner").
     - Given the seed, When `GET /api/listings?country=GB&city=london` is called by the renter (after T034), Then London HQ is returned; before T034, a direct query shows both spaces are `published` with every listing field set.
     - Given `SEED_DEMO_PASSWORD` is unset, When the seed runs, Then it exits non-zero naming the variable, and nothing is half-written.
+    - (T012 security review) Given `NODE_ENV=production` (the API image default), When `node dist/db/seed.js` runs, Then it exits non-zero with a clear message before opening a DB pool or writing anything, whether or not `SEED_DEMO_PASSWORD` is set, with no override flag.
+    - (T012 security review) Given `SEED_DEMO_PASSWORD` is unset or shorter than 8 characters, When the seed runs, Then it validates with its own Zod schema (the seed does not call `loadEnv`), exits non-zero naming the variable, and never prints the value; for any run, stdout and stderr never contain the password (asserted in `seed.int-spec.ts`).
 
 - [ ] T010 [P] Write `specs/002-space-marketplace/ui.md` (index of the area specs) and `specs/002-space-marketplace/ui/01-shell-accounts.md`
   - **Owner**: ui-ux-designer · **Branch**: `docs/002-ui-shell-accounts` · **Size**: M · **Depends on**: T001 · **Status**: todo
@@ -396,6 +398,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given a new owner, When they create a space, add 20 seats by pattern and try to publish without prices, Then publishing is refused with what is missing; after a price is added through the API, it publishes (AC 2.1–2.4). The time from sign-up to publish is recorded against SC-001 (final check in T070).
     - Given every `/api/owner/*` route, When called by another owner with a real id and with a random UUID, Then the two responses are identical 404s, and a renter gets 403 (FR-009, AC 2.6).
     - Given the owner dashboard, space form (with errors), overview and seats pages, When axe runs, Then zero violations (SC-007).
+  - **Note (T012 review)**: the compose `e2e` service does not receive `SEED_DEMO_PASSWORD`; the first journey that signs in as a seeded demo account must add it there (CI generates a random value per run).
 
 - [ ] T026 [US2] Docs: README "Listing a space" section, changeset check
   - **Owner**: docs-writer · **Branch**: `docs/002-us2-listing` · **Size**: S · **Depends on**: T025 · **Status**: todo

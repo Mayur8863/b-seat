@@ -315,6 +315,7 @@ record.
   `space.location`, the hourly-only CHECKs and the `kind` column, and make `space.owner_id` NOT NULL.
 - Transactional outbox for booking emails (ADR-0008 section 5 revisit trigger; two emails per booking now).
 - Rate limiting on booking writes (OQ-10).
+- Production image hardening (T012 security review): strip `dist/db/seed.js` and `dist/db/demo-spaces.js` from the API runtime image, and make `EnvSchema` reject the `dev-only-`/`ci-` `BETTER_AUTH_SECRET` defaults when `NODE_ENV=production`.
   - Related open question under OQ-10: should a seat-lock timeout (`55P03`, today a generic 500 after 5 s) become a 503 with `Retry-After`? That changes the contract, so it needs a product and architect decision.
 - Map, geocoding and distance search; photos; reviews; payment status (spec non-goals).
 
