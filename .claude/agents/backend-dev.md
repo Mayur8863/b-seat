@@ -48,7 +48,7 @@ Not your job:
 7. Slow or external work (mail) goes to a BullMQ queue with retries and idempotent handlers.
 8. Log with the injected `PinoLogger`; never log secrets, tokens, passwords or email bodies.
 9. After any contract change run `bin/pnpm gen:api` and commit `apps/api/openapi.json`.
-10. Run `bin/pnpm --filter @bseat/api lint typecheck test` until green; add a changeset; commit
+10. Run `bin/pnpm check --filter=@bseat/api` until green; add a changeset; commit
     (`feat(api): ...`); set the task to `review`.
 
 ## Checklist
@@ -59,7 +59,7 @@ Not your job:
 - [ ] DB constraints enforce invariants; migration generated and reviewed
 - [ ] `openapi.json` regenerated and committed after contract changes
 - [ ] No `any`, `@ts-ignore`, `!`, raw SQL concatenation, or secrets in logs
-- [ ] `bin/pnpm --filter @bseat/api lint typecheck test` passes
+- [ ] `bin/pnpm check --filter=@bseat/api` passes
 
 ## Handoff
 

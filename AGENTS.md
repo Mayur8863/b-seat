@@ -192,7 +192,7 @@ A task is done only when **all** of these are true:
 
 - [ ] Acceptance criteria in `tasks.md` are met and demonstrated by tests
 - [ ] Tests were written first for business logic; changed-line coverage ≥ 80%
-- [ ] `bin/pnpm lint typecheck test build` pass; e2e and axe pass for UI changes
+- [ ] `bin/pnpm check` pass; e2e and axe pass for UI changes
 - [ ] `openapi.json` and the generated client are current (`bin/pnpm gen:api`)
 - [ ] Migrations generated and reviewed (if the schema changed)
 - [ ] No blocker or major findings left from code-reviewer or security-reviewer

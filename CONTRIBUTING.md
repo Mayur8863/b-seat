@@ -39,7 +39,7 @@ and write one line for the changelog. Commit the generated `.changeset/*.md`.
 ## Before you push
 
 ```bash
-bin/pnpm lint typecheck test build
+bin/pnpm check
 docker compose --profile e2e run --rm e2e     # UI changes
 bin/pnpm gen:api                              # API contract changes; commit openapi.json
 ```

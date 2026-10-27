@@ -46,7 +46,7 @@ Not your job:
    MCP server if available for screenshots at each breakpoint, or run the e2e suite with
    `docker compose --profile e2e run --rm e2e` and read its screenshots and axe results.
 6. Record findings by severity (blocker / major / minor / nit) with screen, state and fix.
-7. For token or `packages/ui` styling changes, run `bin/pnpm --filter @bseat/ui lint typecheck test`.
+7. For token or `packages/ui` styling changes, run `bin/pnpm check --filter=@bseat/ui`.
 
 ## Checklist
 

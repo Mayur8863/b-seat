@@ -43,7 +43,7 @@ Not your job:
 1. Read the task and the relevant ADR. If the change is significant, ask the architect for an ADR first.
 2. Make the change locally first; verify with `docker compose up` and `docker compose ps`.
 3. Pin every image by version (digest where practical) and every GitHub Action by commit SHA.
-4. Keep CI steps matching local commands: `bin/pnpm install`, `bin/pnpm lint typecheck test build`,
+4. Keep CI steps matching local commands: `bin/pnpm install`, `bin/pnpm check`,
    `docker compose --profile e2e run --rm e2e`, `bin/gitleaks dir .`, `bin/security`.
 5. New config goes into `apps/api/src/config/env.ts` and `.env.example`; secrets only in Secrets Manager.
 6. Check health endpoints and readiness wiring for ECS and the ALB.

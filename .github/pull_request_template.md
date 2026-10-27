@@ -9,7 +9,7 @@
 **How to verify:**
 
 ```bash
-bin/pnpm lint typecheck test
+bin/pnpm check
 docker compose --profile e2e run --rm e2e   # if UI changed
 ```
 

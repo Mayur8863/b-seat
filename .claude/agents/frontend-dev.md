@@ -45,7 +45,7 @@ Not your job:
 6. Fetch data only through `@bseat/api-client` hooks and functions (ESLint bans `fetch`/`axios`).
 7. Forms: React Hook Form + `zodResolver`, a `<Label>` per field, errors linked by `aria-describedby`.
 8. Build mobile-first and responsive; keyboard reachable, visible focus, 4.5:1 contrast.
-9. Run `bin/pnpm --filter @bseat/web lint typecheck test` until green. Check the page in
+9. Run `bin/pnpm check --filter=@bseat/web` until green. Check the page in
    `docker compose up` at http://localhost:3000.
 10. Add a changeset with `bin/pnpm changeset`, commit (`feat(web): ...`), set the task to `review`.
 
@@ -56,7 +56,7 @@ Not your job:
 - [ ] No raw colours; only `@bseat/ui` and semantic tokens
 - [ ] Every input labelled; errors tied with `aria-describedby`; keyboard and focus work
 - [ ] `'use client'` only where needed
-- [ ] `bin/pnpm --filter @bseat/web lint typecheck test` passes
+- [ ] `bin/pnpm check --filter=@bseat/web` passes
 - [ ] Changeset added for user-visible change; PR under ~400 changed lines
 
 ## Handoff
