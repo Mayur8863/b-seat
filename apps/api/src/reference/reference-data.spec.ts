@@ -60,3 +60,26 @@ describe('utilities', () => {
     expect(MAX_STANDARD_UTILITIES).toBe(11);
   });
 });
+
+describe('data sanity', () => {
+  const zones = (code: string) => COUNTRIES.find((c) => c.code === code)?.timeZones ?? [];
+
+  it('gives plausible canonical zones for well-known countries', () => {
+    expect(zones('IN')).toEqual(['Asia/Kolkata']);
+    expect(zones('GB')).toEqual(['Europe/London']);
+    expect(zones('US')).toEqual(
+      expect.arrayContaining(['America/New_York', 'America/Los_Angeles']),
+    );
+    expect(zones('UA')).toContain('Europe/Kyiv');
+    expect(zones('UA')).not.toContain('Europe/Kiev');
+    expect(zones('AU')).toEqual(expect.arrayContaining(['Australia/Sydney', 'Australia/Perth']));
+    expect(zones('BR')).toEqual(expect.arrayContaining(['America/Sao_Paulo']));
+  });
+
+  it('excludes pseudo-regions and offers common currencies', () => {
+    for (const code of ['EU', 'UN', 'ZZ', 'QO', 'AA']) {
+      expect(COUNTRIES.some((c) => c.code === code)).toBe(false);
+    }
+    for (const code of ['INR', 'GBP', 'USD', 'EUR']) expect(isCurrencyCode(code)).toBe(true);
+  });
+});
