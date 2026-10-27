@@ -45,7 +45,7 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 | T013 | Renter preferences API                                       | backend-dev    | T002                   | S    | todo   | `feat/002-renter-preferences-api`     |
 | T014 | Signed-in shell, role-aware nav, role dashboards             | frontend-dev   | T002, T010             | M    | todo   | `feat/002-app-nav`                    |
 | T015 | Sign-up role choice and optional preferences                 | frontend-dev   | T002, T013, T014, T019 | M    | todo   | `feat/002-sign-up-role`               |
-| T016 | QA US1: accounts and navigation e2e, axe                     | qa-engineer    | T011, T014, T015       | S    | todo   | `test/002-us1-accounts-e2e`           |
+| T016 | QA US1: accounts and navigation e2e, axe                     | qa-engineer    | T011, T014, T015       | M    | todo   | `test/002-us1-accounts-e2e`           |
 | T017 | Docs US1                                                     | docs-writer    | T016                   | S    | todo   | `docs/002-us1-accounts`               |
 | T018 | UI spec: owner listing, seats, slots and prices              | ui-ux-designer | T010                   | M    | todo   | `docs/002-ui-owner-listing`           |
 | T019 | Reference data API (countries, currencies, utilities)        | backend-dev    | T001                   | S    | done   | `feat/002-reference-api`              |
@@ -298,10 +298,15 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given a signed-in user (server-validated session), When opening `/sign-up` Then redirect to `/dashboard`, and `/sign-in?next=…` redirects to `safeNext(next)`; a stale cookie does not redirect (ui/01 section 4).
 
 - [ ] T016 [US1] QA: `apps/web/e2e/accounts-nav.spec.ts` (journeys + axe); set T002, T013, T014 and T015 to `done` when green
-  - **Owner**: qa-engineer · **Branch**: `test/002-us1-accounts-e2e` · **Size**: S · **Depends on**: T011, T014, T015 · **Status**: todo
+  - **Owner**: qa-engineer · **Branch**: `test/002-us1-accounts-e2e` · **Size**: M · **Depends on**: T011, T014, T015 · **Status**: todo
+  - **Scope**: test-plan.md sections 6 and 7.1 to 7.3. Until T057 lands, the renter dashboard is asserted by its neutral card and the "Find a space" link, never by "You have no upcoming bookings" (T059 asserts that text).
   - **Acceptance criteria**:
     - Given a new visitor, When they sign up as a renter and then as an owner (two accounts), Then each lands on its dashboard and every nav page opens by clicking and by keyboard only (AC 1.1–1.5, FR-004).
-    - Given `/sign-up` (with a role error), both dashboards and the preferences form, When axe runs with WCAG 2.1 AA tags, Then zero violations (SC-007).
+    - Given a renter with no bookings, When `/dashboard` renders, Then the neutral card and the "Find a space" link show (AC 1.3, partial until T057).
+    - Given a valid session, When opening `/sign-up`, Then it lands on `/dashboard`; `/sign-in?next=/find` lands on `/find` and `/sign-in?next=//example.com` on `/dashboard` (T015, ui/01 section 4).
+    - Given a stale cookie (session invalidated server side), When opening `/sign-up` and `/sign-in`, Then each page renders with no redirect and no redirect loop (T015, ui/01 section 4).
+    - Given no session cookie, When each protected route in T014's proxy matcher is opened, Then it redirects to `/sign-in?next=<route>` (FR-005; T070 re-runs this sweep over every route).
+    - Given `/sign-up` (step 1 with a role error, step 2 preferences, "Check your email"), `/sign-in` (default, field error), the renter and owner dashboards (loading, empty, error), the preferences form and the mobile menu open, When axe runs with WCAG 2.1 AA tags, Then zero violations (SC-007, ui/01 section 8).
     - Given a pre-existing account created through a direct DB insert, When it signs in, Then the renter nav shows (AC 1.6).
 
 - [ ] T017 [US1] Docs: README "Accounts and roles" section, `docs/runbooks/local-development.md` (demo accounts, `SEED_DEMO_PASSWORD`), changeset check for `@bseat/api` and `@bseat/web`
@@ -579,11 +584,13 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 - [ ] T044 [US4] QA: `apps/web/e2e/search-book.spec.ts` (journey + axe), `apps/api/test/booking-races.int-spec.ts` (mixed slots), `apps/api/test/marketplace-perf.int-spec.ts`; set T034–T043 to `done` when green
   - **Owner**: qa-engineer · **Branch**: `test/002-us4-search-book-e2e` · **Size**: M · **Depends on**: T009, T037, T038, T042 · **Status**: todo
   - **Scope**: e2e picks dates 2–28 days ahead and the first free seat (avoid collisions with persisted dev data, 001 T014 lesson). Use a sturdy sign-up helper (API sign-up, wait for hydration), no retries-only fixes.
+  - **Perf spec**: `marketplace-perf.int-spec.ts` runs only through a dedicated `@bseat/api` script that QA runs; it is excluded from the default `bin/pnpm test` so it neither slows the suite nor disturbs the shared test DB (test-plan.md sections 5 and 8). Whether CI runs it is a devops follow-up (Notes).
   - **Acceptance criteria**:
     - Given two seeded cities, When a renter searches one, opens the result, books a weekly day pass on a free seat, Then the confirmation shows, both emails arrive in Mailpit, and the seat is taken for those 7 days (US4 independent test, AC 4.1, AC 4.4, AC 4.5, AC 4.10).
     - Given the dashboard, When a renter reaches a confirmed booking by keyboard only, Then no address is typed and the time is under 60 s (SC-002).
     - Given concurrent 24-hour vs day vs night bookings on one seat and date (10 each), When raced 5 times, Then the outcomes respect "24 hours blocks both; day and night coexist" exactly (edge, FR-018, SC-005).
-    - Given 1,000 published spaces, When 50 searches run, Then p95 < 1000 ms; Given a 200-seat space with a month of holds, When monthly-pass availability is requested 50 times, Then p95 < 1000 ms; `EXPLAIN` in the PR shows the GiST index on `seat_hold` (SC-003, SC-004).
+    - Given 1,000 published spaces, When 50 searches run, Then p95 < 1000 ms; Given a 200-seat space with a month of holds, When monthly-pass availability is requested 50 times, Then p95 < 1000 ms; `EXPLAIN` in the PR shows the GiST index on `seat_hold`; 3 consecutive runs of the perf script are recorded in test-plan.md (SC-003, SC-004).
+    - Given `bin/pnpm test`, When it runs, Then `marketplace-perf.int-spec.ts` is not included.
     - Given `/find` (results, empty), the listing page (seats loaded, conflict error) and the confirmation, When axe runs, Then zero violations (SC-007).
 
 - [ ] T045 [US4] Docs: README "Find and book", `docs/runbooks/booking-confirmations.md` (two emails), `docs/runbooks/database-migrations.md` (the T005 expand/contract and backfill), changeset check
@@ -814,10 +821,11 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 - [ ] T070 Final QA: full suite, SC-001 and SC-002 timed journeys, traceability sign-off in `specs/002-space-marketplace/test-plan.md`
   - **Owner**: qa-engineer · **Branch**: `test/002-final-regression` · **Size**: S · **Depends on**: T016, T025, T032, T044, T049, T053, T059, T067, T069 · **Status**: todo
   - **Acceptance criteria**:
-    - Given a new owner, When they sign up, list a space with 20 seats, set prices and publish without help, Then it takes under 10 minutes (recorded run; SC-001).
+    - Given a new owner, When they sign up, list a space with 20 seats, set prices and publish without help, Then it takes under 10 minutes (SC-001). Evidence: the scripted e2e time plus its step and field count (test-plan.md section 5.4); a human run is recorded too if one is available.
     - Given a renter, When they go from the dashboard to a confirmed booking by keyboard only, Then under 60 s with no typed address (SC-002).
-    - Given the traceability table below, When QA checks each row, Then every AC, FR, SC and edge row names a passing test. Missing rows reopen the owning task.
-    - Given `bin/pnpm lint typecheck test build`, e2e (5 consecutive green runs, no retries) and `bin/security`, When run, Then all pass.
+    - Given no session cookie, When every protected route in test-plan.md section 6 is opened, Then each redirects to `/sign-in?next=<route>` (FR-005; extends T016's US1 sweep).
+    - Given the traceability tables in `test-plan.md` (sections 3 and 4), When QA checks each row, Then every AC, FR, SC and edge row names a passing test in its Result column. Missing rows reopen the owning task. The traceability table below stays the owner map, not the sign-off.
+    - Given `bin/pnpm lint typecheck test build`, e2e (5 consecutive green runs, no retries), the perf script (3 consecutive runs) and `bin/security`, When run, Then all pass.
 
 - [ ] T071 Docs release: README overview of the marketplace, `docs/adr/README.md` index check (0009, 0010), `docs/runbooks/` review, changeset status
   - **Owner**: docs-writer · **Branch**: `docs/002-release` · **Size**: S · **Depends on**: T070 · **Status**: todo
@@ -881,7 +889,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 | FR-002                                              | T013, T015, T039                                                   |
 | FR-003                                              | T002                                                               |
 | FR-004                                              | T014 (route manifest test), every page task adds its link          |
-| FR-005                                              | T014 (proxy), 401 tests in every API task                          |
+| FR-005                                              | T014 (proxy), 401 tests in every API task, T016, T070 (e2e sweep)  |
 | FR-006                                              | T003, T019, T020, T022                                             |
 | FR-007                                              | T003, T021, T024                                                   |
 | FR-008                                              | T003 (CHECK), T020, T023, T028, T034                               |
@@ -908,7 +916,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 | FR-031                                              | T066                                                               |
 | FR-032                                              | T010, T018, T029, T046, T061 and every frontend task               |
 | FR-033                                              | T006, T035, T037, T040, T057                                       |
-| SC-001                                              | T025 (recorded), T070                                              |
+| SC-001                                              | T025 (recorded), T070 (scripted time and step count)               |
 | SC-002                                              | T029, T044, T070                                                   |
 | SC-003, SC-004                                      | T044                                                               |
 | SC-005                                              | T005 (DB), T036 (API), T044 (mixed slots), T049 (vs occupancy)     |
@@ -977,6 +985,7 @@ Level 12: T071
   - **Counted**: everything hand-written, including tests, fixtures and every migration `.sql` file (generated or custom). Migration SQL is reviewed line by line.
   - The PR description states both numbers (`git diff --stat` with and without the exclusions).
 - **Follow-up (001 booking race flake, fixed on `fix/001-booking-race-flake`):** concurrent booking inserts deadlocked inside the exclusion-constraint check and 3 retries ran out under load (500/timeouts). Every insert of active `seat_hold` rows must follow the lock rule in ADR-0009 section 9 (`SET LOCAL lock_timeout`, then `lockSeats`, then row locks and inserts); 001's `BookingsService.insertWithRetry` is the first implementation (ADR-0008 section 2 amendment).
+- **Follow-up (devops, from T011):** decide whether CI runs the perf script (`marketplace-perf.int-spec.ts`, T044), nightly or manual. Until then it is a QA gate recorded in test-plan.md.
 - Tests first for business logic (T005, T006, T007, T036, T047, T055, T064). The PR shows the failing-test commit.
 - No new runtime dependency is planned. Any new dependency needs a justification in the PR and must be raised with the task-manager.
 - Migrations: `0000`–`0002` are never edited; new migrations are generated first and `--custom` second (data-model.md).

@@ -113,7 +113,7 @@ proposes one (marked "proposed"). Every Result is `planned`.
 | FR-002                                            | `me.int-spec` (I); `preferences-form.test` success state (C); find prefill (C)                                                                                                                         | T013, T015, T039                                     |
 | FR-003                                            | DB default `renter` on a row without the column, then `GET /api/me` (I)                                                                                                                                | T002                                                 |
 | FR-004                                            | `nav.test` route manifest fails when a page under `(app)` is not in its role's nav or "reached from" (U); keyboard nav walk (E)                                                                        | T014, every page task                                |
-| FR-005                                            | `proxy.test` matcher and redirect with `next` for each `(app)` route (U); 401 in every API task (I); e2e sweep of signed-out visits (E, section 7 gap)                                                 | T014, every API task, T016                           |
+| FR-005                                            | `proxy.test` matcher and redirect with `next` for each `(app)` route (U); 401 in every API task (I); e2e sweep of signed-out visits (E, section 7.2)                                                   | T014, every API task, T016, T070                     |
 | FR-006                                            | `listing-constraints.int-spec` CHECKs (DB); `owner-spaces.int-spec` (I); `space-form.test` (C)                                                                                                         | T003, T019, T020, T022                               |
 | FR-007                                            | `listing-constraints` unique active label (DB); `owner-seats.int-spec` 200 cap, remove with future bookings refused (I); `seat-manager.test` (C)                                                       | T003, T021, T024                                     |
 | FR-008                                            | `space_owned_complete` and publish CHECKs (DB); `owner-spaces.int-spec` publish refusal (I); search and detail exclude drafts (I)                                                                      | T003, T020, T023, T028, T034                         |
@@ -277,7 +277,8 @@ These add tests under tasks QA already owns. They are not new tasks.
    `/dashboard`, and `/sign-in?next=/find` lands on `/find`, while `/sign-in?next=//example.com` lands on `/dashboard`
    (reuses the open-redirect cases in `sign-in-redirect.spec.ts`).
 2. **Signed-out sweep** (FR-005): one e2e table over every route in section 6 asserting a redirect to `/sign-in?next=<route>`
-   with no cookie, plus the matching `401` for each API route (done per API task).
+   with no cookie, plus the matching `401` for each API route (done per API task). T016 runs it over the US1 routes (T014's
+   proxy matcher); T070 re-runs it over every route in section 6.
 3. **T016 and neutral dashboard card**: T016 must not assert "You have no upcoming bookings" until T057 lands. It asserts the
    neutral card (T014) and the "Find a space" link. T059 owns the final empty-state text.
 4. **Wrong role in the browser**: a renter opening `/owner/spaces/new` shows the courtesy gate or the 403 copy "You don't have access to this.", not a blank page (ui/01
@@ -313,17 +314,26 @@ round counts, and the SC-001 and SC-002 times).
 1. **T016 does not list the stale-cookie and signed-in redirect e2e cases** that T015's last AC adds, nor the full ui/01 section 8
    axe states (step 2, "Check your email", loading, empty and error dashboards, mobile menu open). Section 6 and 7.1 plan them
    under T016. Task-manager: please add these lines to T016's acceptance criteria so the task and the plan agree.
+   **Resolved (task-manager):** added to T016's acceptance criteria.
 2. **No task owns an e2e sweep of signed-out access (FR-005) across all routes.** The traceability row names T014 (proxy unit test)
    and API 401 tests. Planned in T016 as section 7.2; confirm it belongs there, or assign it to T070.
+   **Resolved (task-manager):** T016 owns it for the US1 routes; T070 re-runs it over every route (both ACs added).
 3. **`/sign-in` has no axe owner in tasks.md.** It is not in the feature's web tree but T015 changes it. Planned in T016 (section 6).
+   **Resolved (task-manager):** added to T016's axe AC.
 4. **SC-003 and SC-004 need a perf script outside the default `bin/pnpm test`** (1,000 spaces and 100,000 holds make the normal run
    slow and the shared test DB noisy). T044 lists `marketplace-perf.int-spec.ts` but no script or CI job for it. Does CI run it (devops),
    or is it a manual QA gate recorded in the PR? The plan assumes a dedicated script run by QA, and 3 recorded runs in T070.
+   **Resolved (task-manager):** a dedicated script run by QA (3 recorded runs), excluded from the default `bin/pnpm test`
+   (T044 and T070 ACs). Whether CI runs it (nightly or manual) is a devops follow-up in tasks.md Notes.
 5. **SC-001 "under 10 minutes without help"** is a human measure; an automated run proves only that the flow works and how many steps it
    takes. Confirm that a scripted time plus step count, with an optional human run, is accepted evidence (T025, T070).
+   **Resolved (task-manager):** accepted as evidence (T070 AC); a human run is recorded if one is available.
 6. **SC-006 "within 1 minute"** has one owning task (T037, an integration test that polls Mailpit) and no e2e timing. Accepted as sufficient
    unless the architect wants queue latency measured under load.
+   **Resolved (task-manager):** T037's integration test is the evidence; no e2e timing.
 7. **AC 5.3, AC 5.4, AC 6.1 and AC 6.5 have API and component tests but no e2e step** in the QA tasks. Planned as covered at
    those levels; say if a journey step should be added to T049 or T053.
+   **Resolved (task-manager):** API and component coverage is accepted; no e2e step. tasks.md does not claim e2e for these.
 8. **T070 refers to "the traceability table below" in tasks.md** (the spec to task table, without tests). This file is where the test
    names live; T070 should sign off here, with the tasks.md table kept as the owner map.
+   **Resolved (task-manager):** T070 signs off in this file's Result column; its AC wording is fixed.
