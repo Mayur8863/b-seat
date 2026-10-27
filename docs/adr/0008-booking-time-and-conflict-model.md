@@ -1,6 +1,8 @@
 # ADR-0008: Booking time model, conflicts and API conventions
 
-- **Status:** Accepted
+- **Status:** Accepted. Amended by [ADR-0009](0009-pass-bookings-seat-holds-and-slots.md): section 1 for
+  DST at owner-set slot boundaries (resolved, not refused), and section 2 for where the exclusion constraints live
+  (`seat_hold` instead of `booking`, from feature 002).
 - **Date:** 2026-10-22
 - **Deciders:** architect agent (T001); product owner for the "30 days" and "own booking in availability" questions
 
