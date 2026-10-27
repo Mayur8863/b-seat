@@ -15,7 +15,8 @@ export default function SignUpPage() {
       <AuthForm
         mode="sign-up"
         onSubmit={async (values) => {
-          const { error } = await authClient.signUp.email(values);
+          // The API now requires an account type. Bridge until T015 replaces this with the user's choice.
+          const { error } = await authClient.signUp.email({ ...values, accountType: 'renter' });
           if (error) return error.message ?? 'Sign up failed';
           router.push('/dashboard');
           return undefined;

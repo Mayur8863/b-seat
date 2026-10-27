@@ -6,7 +6,8 @@ for (const next of ['/%5Cexample.com', '/.//example.com']) {
     const password = 'correct-horse-battery';
     const baseURL = test.info().project.use.baseURL ?? 'http://localhost:3000';
     const signUp = await request.post(`${baseURL}/api/auth/sign-up/email`, {
-      data: { name: 'Grace Hopper', email, password },
+      // accountType is required by the API; T015's e2e covers the user's own choice.
+      data: { name: 'Grace Hopper', email, password, accountType: 'renter' },
       headers: { origin: baseURL },
     });
 
