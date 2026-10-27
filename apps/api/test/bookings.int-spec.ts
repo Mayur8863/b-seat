@@ -394,6 +394,27 @@ describe('POST /api/bookings', () => {
       expect(row).toMatchObject({ id: res.body.id, status: 'active' });
     });
 
+    it('queues exactly one confirmation when several callers race for a seat: refused attempts enqueue nothing', async () => {
+      const send = vi.spyOn(app.get(MailService), 'send');
+      const service = app.get(BookingsService);
+      const callers = await Promise.all(
+        Array.from({ length: 12 }, async (_, i) => {
+          const email = `mail-race-${i}@example.com`;
+          const { id } = await createOwner(db, { email, accountType: 'renter' });
+          return { id, name: `Racer ${i}`, email };
+        }),
+      );
+
+      const outcomes = await Promise.allSettled(
+        callers.map((c) => service.create(c, { seatId: seatAt(4).id, ...window() })),
+      );
+
+      const winners = outcomes.flatMap((o) => (o.status === 'fulfilled' ? [o.value] : []));
+      expect(winners).toHaveLength(1);
+      expect(send).toHaveBeenCalledTimes(1);
+      expect(send.mock.calls[0]?.[1]).toEqual({ jobId: `booking-confirmed-${winners[0]?.id}` });
+    });
+
     it('still books when enqueueing fails', async () => {
       vi.spyOn(app.get(MailService), 'send').mockRejectedValue(new Error('queue unavailable'));
 
