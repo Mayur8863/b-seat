@@ -46,3 +46,13 @@ All servers run from pinned Docker images or remote endpoints; approve them once
 - `.claude/hooks/guard_bash.py` blocks commits on `main`, pushes to `main`, hook bypasses
   and destructive commands. Reviewer agents also run `readonly_bash.py`.
 - Run tooling through `bin/pnpm` and `bin/tools`. The host has no Node toolchain by design.
+- Usage limits: the status line (`.claude/hooks/usage_statusline.py`) records plan usage in
+  `.claude/state/usage.json`, and `usage_guard.py` (PreToolUse on `Agent` and `Bash`) warns
+  from 80% and blocks new agents and long runs from 92% (`BSEAT_USAGE_WARN`,
+  `BSEAT_USAGE_BLOCK`; `BSEAT_USAGE_GUARD=off` disables it). It needs a Pro/Max plan and a
+  surface that runs the status line (the terminal CLI); without usage data it allows
+  everything. Agents follow AGENTS.md "Working within usage limits".
+- When coordinating agents: above 80% run at most two at a time (read-only reviewers
+  aside); resume a stopped agent with `SendMessage` instead of starting a new one; after any
+  agent failure, check `git status` before dispatching the next.
+- Self-test the hooks with `python3 .claude/hooks/test_hooks.py`.

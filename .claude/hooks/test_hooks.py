@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
-"""Self-test for the Bash guard hooks. Run: python3 .claude/hooks/test_hooks.py"""
+"""Self-test for the guard hooks. Run: python3 .claude/hooks/test_hooks.py"""
 
 import json
+import os
 import subprocess
 import sys
+import tempfile
+import time
 from pathlib import Path
 
 HERE = Path(__file__).parent
@@ -47,6 +50,40 @@ def run(hook: str, command: str) -> int:
     ).returncode
 
 
+# usage_guard.py: (tool, command, used %, seconds until reset, expected exit, expect warning)
+# A percentage of None means no usage file; a negative reset means the window already ended.
+USAGE_CASES = [
+    ("Agent", "", 95, 600, 2, False),
+    ("Bash", "bin/pnpm check", 95, 600, 2, False),
+    ("Bash", "docker compose --profile e2e run --rm e2e", 95, 600, 2, False),
+    ("Bash", "bin/pnpm --filter @bseat/api test", 95, 600, 2, False),
+    ("Bash", "git add -A && git commit -m x", 95, 600, 0, False),
+    ("Bash", "bin/pnpm exec prettier --write x", 95, 600, 0, False),
+    ("Read", "", 95, 600, 0, False),
+    ("Agent", "", 85, 600, 0, True),
+    ("Bash", "bin/pnpm check", 85, 600, 0, True),
+    ("Agent", "", 50, 600, 0, False),
+    ("Agent", "", 99, -5, 0, False),
+    ("Agent", "", None, 0, 0, False),
+]
+
+
+def run_usage(tool: str, command: str, pct, reset_in: int) -> subprocess.CompletedProcess:
+    with tempfile.TemporaryDirectory() as tmp:
+        state = Path(tmp) / "usage.json"
+        if pct is not None:
+            now = time.time()
+            window = {"used_percentage": pct, "resets_at": now + reset_in}
+            state.write_text(json.dumps({"updated_at": now, "rate_limits": {"five_hour": window}}))
+        env = {**os.environ, "BSEAT_USAGE_FILE": str(state)}
+        env.pop("BSEAT_USAGE_GUARD", None)
+        payload = json.dumps({"tool_name": tool, "tool_input": {"command": command}})
+        return subprocess.run(
+            [sys.executable, str(HERE / "usage_guard.py")],
+            input=payload, text=True, capture_output=True, check=False, env=env,
+        )
+
+
 def main() -> int:
     failures = 0
     for hook, command, expected in CASES:
@@ -54,7 +91,15 @@ def main() -> int:
         if expected is not None and code != expected:
             failures += 1
             print(f"FAIL {hook}: {command!r} -> {code}, expected {expected}")
-    print(f"{len(CASES) - failures}/{len(CASES)} hook cases passed")
+    for tool, command, pct, reset_in, expected, warns in USAGE_CASES:
+        result = run_usage(tool, command, pct, reset_in)
+        warned = "additionalContext" in result.stdout
+        if result.returncode != expected or warned != warns:
+            failures += 1
+            print(f"FAIL usage_guard.py: {tool} {command!r} at {pct}% -> "
+                  f"{result.returncode} (warned={warned}), expected {expected} (warns={warns})")
+    total = len(CASES) + len(USAGE_CASES)
+    print(f"{total - failures}/{total} hook cases passed")
     return 1 if failures else 0
 
 

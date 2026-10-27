@@ -32,6 +32,8 @@ blob-report/
 
 # claude local overrides
 .claude/settings.local.json
+# plan usage recorded by .claude/hooks/usage_statusline.py
+.claude/state/
 CLAUDE.local.md
 
 # generated

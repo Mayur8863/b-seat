@@ -173,6 +173,24 @@ spec ──▶ task-manager ──▶ architect ──▶ backend-dev / frontend
 Task status in `tasks.md` is one of `todo → in-progress → review → done` (or `blocked`,
 with the reason). Only the task-manager changes ownership, and only qa-engineer marks `done`.
 
+### Working within usage limits
+
+Agents run on a plan with 5-hour and weekly usage limits, and a limit can stop an agent
+mid-task. Work so that any agent can stop at any moment and be resumed cleanly:
+
+- **Commit every green step** on the task branch (failing test and fix, refactor, docs).
+  Hold at most one step of uncommitted work, and commit before any long run (full `check`,
+  coverage, e2e, test loops).
+- **Keep a resume pointer.** While a task is `in-progress`, its status line in `tasks.md`
+  reads `in-progress — done: …; next: …`. Update it in the commit that finishes each step.
+- **Heed `usage_guard`.** From 80% of the plan limit the hook reminds you to checkpoint.
+  From 92% it refuses new agents and long-running commands, while git and short commands
+  still work. Then commit what is green, update the resume pointer, and end with the
+  handoff marked `Interrupted`. Do not work around the block.
+- **Resuming.** Start from `git status`, `git log main..HEAD` and the task's status line,
+  and continue from `next:`. Never redo committed work or discard uncommitted changes you
+  did not make.
+
 ### Handoff template
 
 Every handoff (agent → agent, or agent → human) ends with:
@@ -185,6 +203,9 @@ Every handoff (agent → agent, or agent → human) ends with:
 **How to verify:** exact commands and expected result
 **Open questions / risks:** anything the next agent or a human must decide
 ```
+
+An agent that stops early (usage limit, blocker) hands off to `Interrupted` instead of the
+next agent and lists the remaining steps under **Open questions / risks**.
 
 ## Definition of done
 
