@@ -36,7 +36,7 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 | T004 | Pricing and calendar schema, shared calendar backfill        | backend-dev    | T003                   | M    | done   | `feat/002-pricing-calendar-schema`    |
 | T005 | Pass booking header, seat holds, occupancy marks, exclusions | backend-dev    | T003, T008             | M    | todo   | `feat/002-seat-hold-schema`           |
 | T006 | Slot, calendar and pass-period engine (pure, TDD)            | backend-dev    | T001                   | M    | done   | `feat/002-slot-engine`                |
-| T007 | Money, problem types and pass booking rules (pure, TDD)      | backend-dev    | T006                   | M    | todo   | `feat/002-pass-rules`                 |
+| T007 | Money, problem types and pass booking rules (pure, TDD)      | backend-dev    | T006                   | M    | review | `feat/002-pass-rules`                 |
 | T008 | Retire hourly create; legacy space reads published-only      | backend-dev    | T003                   | S    | done   | `chore/002-retire-hourly-create`      |
 | T009 | Seed: demo owner and renter, priced listings, calendars      | backend-dev    | T002, T004, T012       | M    | done   | `feat/002-seed-marketplace`           |
 | T010 | UI spec: index, shell, nav, sign-up, dashboards              | ui-ux-designer | T001                   | M    | done   | `docs/002-ui-shell-accounts`          |
@@ -202,7 +202,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given the PR, When reviewed, Then the failing tests were committed first and changed-line coverage is ≥ 80% (Constitution II).
 
 - [ ] T007 Implement `apps/api/src/common/money/money.ts`, `apps/api/src/common/errors/problem-types.ts` and `apps/api/src/marketplace/booking-rules.ts`, with unit tests written first
-  - **Owner**: backend-dev · **Branch**: `feat/002-pass-rules` · **Size**: M · **Depends on**: T006 · **Status**: todo
+  - **Owner**: backend-dev · **Branch**: `feat/002-pass-rules` · **Size**: M · **Depends on**: T006 · **Status**: review
   - **Added (T004 review)**: money parsing follows the same rule as T027: Zod string `^\d{1,10}(\.\d{1,2})?$`, value > 0, explicit upper bound, never `z.coerce.number()`; `pass_price.updated_at` is set by the service on update.
   - **Scope**: research R-8; contracts/README.md problem types, rule order and extension schemas (AQ-3, ADR-0009 section 8). `parseDecimal`, `formatDecimal`, `fullDaySaving(day, night, fullDay)` → `{ amount, percent } | null` (percent rounded half-up). `evaluatePassBookingRules({ space, isOwner, offered, startDayOpen, firstStartsAt }, now)` returns the first violation in the documented order or `null`. Problem type constants for every row of the contracts README table. `ProblemException` gains an optional `extensions` record and `ProblemFilter` spreads it before the standard members; export `PublishIncompleteProblem`, `LabelTakenProblem` and `OccupancyConflictProblem` (`ProblemSchema.extend(...)`, response only) for T020, T021 and T047. `ProblemSchema` itself is unchanged.
   - **Boundary assumptions (T006 security review)**: dates `YYYY-MM-DD` within years 0100-9998; server-side max span for any iterated date range and max seats per request; `slot`/`pass` as `z.enum` matching the opening mode; calendar weekdays 1-127 and `endDate >= startDate`; services catch `RangeError` from the slot modules and map it to a typed problem or treat the date as closed.
@@ -216,7 +216,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given a `ProblemException` with `extensions: { labels: ['A-1'], type: 'x', status: 200 }`, When the filter renders it, Then the body has `labels: ['A-1']` and the exception's own `type` and `status` (extensions cannot override standard members; unit test of `ProblemFilter`).
 
 - [x] T008 Retire the hourly create and make legacy space reads published-only: remove `POST /api/bookings` from `apps/api/src/bookings/bookings.controller.ts` and `bookings.service.ts` (keep `booking-conflicts.ts`, `booking-confirmation.mail.ts`), filter `status = 'published'` in `apps/api/src/spaces/spaces.service.ts`, update `apps/api/test/bookings.int-spec.ts` and `spaces.int-spec.ts`; regenerate `apps/api/openapi.json`
-  - **Owner**: backend-dev · **Branch**: `chore/002-retire-hourly-create` · **Size**: S · **Depends on**: T003 · **Status**: done — done: review fixes M1, m1-m5, n2, n3 and carry-overs applied; next: QA re-check
+  - **Owner**: backend-dev · **Branch**: `chore/002-retire-hourly-create` · **Size**: S · **Depends on**: T003 · **Status**: done
   - **Carry-over (T003 review)**: legacy reads filter `status = 'published'`, and T008 must merge before any owner create route (T020), because owned drafts must never reach the legacy list.
   - **Scope**: research R-7 step 2 (AQ-8). No web code calls `useBookingsCreate` today; confirm with a grep in the PR. Hourly integration tests that only exercised the removed route are deleted; their coverage of `classifyInsertError` and the deadlock retry stays in unit tests. Must merge **before** T005.
   - **Acceptance criteria**:
