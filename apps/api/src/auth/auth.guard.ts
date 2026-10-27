@@ -24,6 +24,8 @@ export class AuthGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const req = context.switchToHttp().getRequest<AuthedRequest>();
+    // Idempotent: RequireRole applies AuthGuard itself, so a class-level guard may have run already.
+    if (req.session) return true;
     const session = await this.auth.api.getSession({ headers: fromNodeHeaders(req.headers) });
     if (!session) throw new UnauthorizedException('Sign in required');
     req.session = session;

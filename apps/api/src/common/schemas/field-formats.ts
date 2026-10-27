@@ -31,6 +31,15 @@ export const OfferedTimeZone = z
   .refine(isOfferedTimeZone, 'Unknown or unsupported time zone')
   .describe('IANA time zone offered by GET /api/reference, e.g. Europe/London');
 
+/**
+ * Free text without control characters (NUL makes Postgres reject the row with 22021) or the
+ * bidi override and isolate characters U+202A-U+202E and U+2066-U+2069 (display spoofing).
+ * Chain `.trim().min().max()` as needed.
+ */
+export const PlainText = z
+  .string()
+  .regex(/^[^\p{Cc}\u202A-\u202E\u2066-\u2069]*$/u, 'Contains control or bidi override characters');
+
 export const CountryCode = z
   .string()
   .regex(/^[A-Z]{2}$/)

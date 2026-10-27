@@ -24,7 +24,7 @@ src/<feature>/
 test/<feature>.int-spec.ts  HTTP-level tests with createTestApp / resetDb / signedInAgent
 ```
 
-Reference implementation: `src/me/me.controller.ts` (schemas, guard, OpenAPI decorators).
+Reference implementation: `src/me/` (`me.schemas.ts` schemas, `me.service.ts` caller-scoped query, `me.controller.ts` guards and OpenAPI decorators, `me.module.ts` module).
 
 ## Rules
 

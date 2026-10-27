@@ -58,6 +58,22 @@ describe('PUT /api/me/preferences', () => {
     expect(me.body.preferences).toEqual({ country: 'IN', city: 'Pune', area: null });
   });
 
+  it('trims a padded area and accepts the length boundaries', async () => {
+    const agent = await signedInAgent(app, ada);
+    const res = await agent
+      .put('/api/me/preferences')
+      .set('origin', ORIGIN)
+      .send({ country: 'IN', city: 'a'.repeat(100), area: '  Baner  ' })
+      .expect(200);
+    expect(res.body).toEqual({ country: 'IN', city: 'a'.repeat(100), area: 'Baner' });
+    const one = await agent
+      .put('/api/me/preferences')
+      .set('origin', ORIGIN)
+      .send({ country: 'IN', city: 'a'.repeat(100), area: 'a' })
+      .expect(200);
+    expect(one.body.area).toBe('a');
+  });
+
   it('upserts and clears with all nulls', async () => {
     const agent = await signedInAgent(app, ada);
     await agent
@@ -96,6 +112,8 @@ describe('PUT /api/me/preferences', () => {
     ['lowercase country', { country: 'in', city: null, area: null }],
     ['101-char city', { country: null, city: 'a'.repeat(101), area: null }],
     ['blank city', { country: null, city: '   ', area: null }],
+    ['control character in city', { country: null, city: 'a\u0000', area: null }],
+    ['bidi override in area', { country: null, city: null, area: 'a\u202eb' }],
     ['101-char area', { country: null, city: null, area: 'a'.repeat(101) }],
     ['missing field', { country: 'IN', city: 'Pune' }],
     ['extra field', { country: 'IN', city: null, area: null, role: 'owner' }],
@@ -113,13 +131,15 @@ describe('PUT /api/me/preferences', () => {
       .send({ country: 'IN', city: 'Pune', area: null })
       .expect(403);
     expect(res.headers['content-type']).toContain('application/problem+json');
+    expect(res.body.type).toBe('urn:bseat:problem:http-403');
     expect((await agent.get('/api/me').expect(200)).body.preferences).toBeNull();
   });
 
   it('is 401 when signed out', async () => {
-    await request(app.getHttpServer())
+    const res = await request(app.getHttpServer())
       .put('/api/me/preferences')
       .send({ country: null, city: null, area: null })
       .expect(401);
+    expect(res.headers['content-type']).toContain('application/problem+json');
   });
 });

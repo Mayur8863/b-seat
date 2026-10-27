@@ -11,7 +11,7 @@ import { createTestApp, pgFailure, resetDb } from './helpers.js';
 describe('renter_preference constraints (database)', () => {
   let app: NestExpressApplication;
   let db: Database;
-  let userId: string;
+  const userId = 'user-1';
 
   beforeAll(async () => {
     app = await createTestApp();
@@ -19,7 +19,6 @@ describe('renter_preference constraints (database)', () => {
   });
   beforeEach(async () => {
     await resetDb(app);
-    userId = 'user-1';
     await db.insert(user).values({ id: userId, name: 'Ada', email: 'ada@example.com' });
   });
   afterAll(() => app.close());
@@ -28,6 +27,14 @@ describe('renter_preference constraints (database)', () => {
     await db.insert(renterPreference).values({ userId });
     const [row] = await db.select().from(renterPreference);
     expect(row).toMatchObject({ userId, country: null, city: null, area: null });
+  });
+
+  it('accepts 100-char city and area and a 1-char area', async () => {
+    await db
+      .insert(renterPreference)
+      .values({ userId, country: 'IN', city: 'a'.repeat(100), area: 'a' });
+    const [row] = await db.select().from(renterPreference);
+    expect(row).toMatchObject({ country: 'IN', city: 'a'.repeat(100), area: 'a' });
   });
 
   it.each([
@@ -44,7 +51,10 @@ describe('renter_preference constraints (database)', () => {
 
   it('refuses a row for an unknown user (foreign key)', async () => {
     const failure = await pgFailure(db.insert(renterPreference).values({ userId: 'nobody' }));
-    expect(failure.code).toBe('23503');
+    expect(failure).toEqual({
+      code: '23503',
+      constraint: 'renter_preference_user_id_user_id_fk',
+    });
   });
 
   it('cascades the row when the user is deleted', async () => {

@@ -25,11 +25,11 @@ import { MeService } from './me.service.js';
 @ApiTags('me')
 @ApiCookieAuth()
 @Controller('me')
+@UseGuards(AuthGuard)
 export class MeController {
   constructor(private readonly me: MeService) {}
 
   @Get()
-  @UseGuards(AuthGuard)
   @ApiOkResponse({ standardSchema: MeSchema })
   @ApiUnauthorizedResponse({ standardSchema: ProblemSchema })
   async get(@CurrentSession() session: AuthSession): Promise<Me> {

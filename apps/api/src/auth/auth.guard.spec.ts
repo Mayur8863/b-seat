@@ -36,6 +36,13 @@ describe('AuthGuard', () => {
     expect(req.session).toBe(session);
   });
 
+  it('returns early without refetching when a session is already attached', async () => {
+    const req: Record<string, unknown> = { headers: {}, session: { user: { id: 'u1' } } };
+    const auth = { api: { getSession: vi.fn() } } as unknown as Auth;
+    await expect(new AuthGuard(auth).canActivate(context(req))).resolves.toBe(true);
+    expect(auth.api.getSession).not.toHaveBeenCalled();
+  });
+
   it('rejects anonymous requests with 401', async () => {
     await expect(guardWith(null).canActivate(context({ headers: {} }))).rejects.toBeInstanceOf(
       UnauthorizedException,

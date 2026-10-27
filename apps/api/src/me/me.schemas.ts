@@ -1,15 +1,15 @@
 import { z } from 'zod';
 
 import { ACCOUNT_TYPES } from '../auth/account-type.js';
-import { CountryCode } from '../common/schemas/field-formats.js';
+import { CountryCode, PlainText } from '../common/schemas/field-formats.js';
 
-const City = z.string().trim().min(1).max(100);
+const PlaceName = PlainText.trim().min(1).max(100);
 
 export const UpdatePreferencesInputSchema = z
   .strictObject({
     country: CountryCode.nullable(),
-    city: City.nullable(),
-    area: City.nullable(),
+    city: PlaceName.nullable(),
+    area: PlaceName.nullable(),
   })
   .meta({
     id: 'UpdatePreferencesInput',

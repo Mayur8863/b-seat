@@ -25,7 +25,7 @@ export class MeService {
   async savePreferences(userId: string, input: UpdatePreferencesInput): Promise<Preferences> {
     const [row] = await this.db
       .insert(renterPreference)
-      .values({ userId, ...input })
+      .values({ ...input, userId })
       .onConflictDoUpdate({
         target: renterPreference.userId,
         set: { ...input, updatedAt: sql`now()` },
