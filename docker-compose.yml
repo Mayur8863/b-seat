@@ -12,6 +12,7 @@ name: bseat
 x-node: &node
   image: bseat-tools:dev
   build: { context: docker, dockerfile: tools.Dockerfile }
+  init: true # reap orphaned dev-server processes
   working_dir: ${PWD}
   volumes:
     - .:${PWD}

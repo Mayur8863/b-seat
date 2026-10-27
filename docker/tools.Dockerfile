@@ -4,7 +4,8 @@
 FROM node:22-bookworm-slim
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends git ca-certificates openssh-client curl \
+  # procps provides `ps`, which nest/tree-kill need to stop the old dev server on reload
+  && apt-get install -y --no-install-recommends git ca-certificates openssh-client curl procps \
   && rm -rf /var/lib/apt/lists/*
 
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0 \
