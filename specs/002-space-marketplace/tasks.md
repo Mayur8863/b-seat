@@ -265,6 +265,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 - [ ] T013 [US1] Add renter preferences: `apps/api/src/db/schema/preference.ts`, migration `renter_preferences`, `PUT /api/me/preferences` and `preferences` in `Me` (`apps/api/src/me/`), `apps/api/test/me.int-spec.ts`; regenerate `apps/api/openapi.json`
   - **Owner**: backend-dev · **Branch**: `feat/002-renter-preferences-api` · **Size**: S · **Depends on**: T002 · **Status**: todo
   - **Scope**: research R-2; contracts/accounts.md. Columns and CHECKs per data-model.md "renter_preference". Owners get 403.
+  - **Added (T019 review)**: validate the stored time zone with `isOfferedTimeZone` (`reference/reference-data.ts`, allow-list of suggested zones plus UTC) and `.max(64)`; reuse `CountryCode`, `CurrencyCode` from `common/schemas/field-formats.ts`.
   - **Acceptance criteria**:
     - Given a renter, When `PUT /api/me/preferences` with `{ country: "IN", city: " Pune ", area: null }`, Then 200, and `GET /api/me` returns `preferences: { country: "IN", city: "Pune", area: null }` (FR-002, AC 1.2).
     - Given a renter without preferences, When `GET /api/me`, Then `preferences` is `null`.
@@ -335,6 +336,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
   - **Owner**: backend-dev · **Branch**: `feat/002-owner-spaces-api` · **Size**: M · **Depends on**: T002, T004, T019 · **Status**: todo
   - **Carry-over (T003 review)**: `ownerId`, `status` and `spaceId` come only from the session or route, never the request body, and the service maintains `space.updated_at`.
   - **Scope**: contracts/owner-spaces.md "Listing". Create also inserts the shared calendar (AC 6.1). Publish check: at least one active seat and one offered pass (enabled slot valid for the mode with a price). Scope every query by `owner_id`. Integration tests first.
+  - **Added (T019 review)**: validate the stored time zone with `isOfferedTimeZone` (`reference/reference-data.ts`, allow-list of suggested zones plus UTC) and `.max(64)`; reuse `CountryCode`, `CurrencyCode` from `common/schemas/field-formats.ts`.
   - **Boundary assumptions (T006 security review)**: dates `YYYY-MM-DD` within years 0100-9998; server-side max span for any iterated date range and max seats per request; `slot`/`pass` as `z.enum` matching the opening mode; calendar weekdays 1-127 and `endDate >= startDate`; services catch `RangeError` from the slot modules and map it to a typed problem or treat the date as closed.
   - **Added (T006 review)**: Zod enforces shift change time 00:00-11:59 with a clear message; time zone is validated (`isValidTimeZone`, max ~64 chars, stored canonical) and only ever taken from the stored space.
   - **Acceptance criteria**:

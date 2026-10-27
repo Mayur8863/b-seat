@@ -382,12 +382,21 @@ references).
 
 **Decision**: `GET /api/reference` returns:
 
-- `countries`: a committed constant list of ISO 3166-1 alpha-2 codes, with English names from
-  `Intl.DisplayNames(['en'], { type: 'region' })` and suggested time zones from `new Intl.Locale('und-' + code)`
-  (`getTimeZones()` or the older `timeZones` getter, whichever the Node 22 V8 build provides; verify in the
-  toolbox, and fall back to an empty list, in which case the owner picks from all zones).
-- `currencies`: `Intl.supportedValuesOf('currency')` with `Intl.DisplayNames` names.
+- `countries`: the committed ISO 3166-1 alpha-2 list (249 codes, `countries.ts`; no deprecated aliases such as UK
+  or SU, and no Kosovo/XK, which is not ISO-assigned), names from `Intl.DisplayNames(['en'], { type: 'region' })`
+  (module load throws if fewer than 240 resolve a name), suggested zones from
+  `locale.getTimeZones?.() ?? locale.timeZones ?? []` (Node 22 has only `timeZones`). Countries with no zones (BV,
+  HM) stay with `[]`. ICU still reports some pre-rename ids, so a rename map (a `Map`) canonicalises them
+  (Asia/Calcutta to Asia/Kolkata), duplicates and merged zones are dropped, and a committed `PRIMARY_TIME_ZONE` map
+  puts the default first for every multi-zone country (US America/New_York, AU Australia/Sydney, ...). The
+  first entry is therefore the default, as the contract says.
+- `currencies`: `Intl.supportedValuesOf('currency')` with `Intl.DisplayNames` names, minus a documented deny-set of
+  non-tender and superseded codes (XDR, XSU, XUA, XBA-XBD, XTS, XXX, metals, HRK, SLL, CUC, ZWL). XAF, XOF, XCD,
+  XPF stay.
 - `utilities`: the standard utility codes (OQ-8). The web owns their labels.
+
+`isCountryCode`, `isCurrencyCode` and `isOfferedTimeZone` (every suggested zone plus UTC) are exported for other
+modules. A unit test snapshots the code sets so ICU or Node upgrades show up in CI.
 
 The web lists all time zones with `Intl.supportedValuesOf('timeZone')`; the server validates with
 `isValidTimeZone` (001 R-1 note about canonical ids).

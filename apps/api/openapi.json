@@ -418,7 +418,8 @@
               "properties": {
                 "code": {
                   "type": "string",
-                  "pattern": "^[A-Z]{2}$"
+                  "pattern": "^[A-Z]{2}$",
+                  "description": "ISO 3166-1 alpha-2 country code, e.g. IN"
                 },
                 "name": {
                   "type": "string"
@@ -429,7 +430,7 @@
                     "type": "string",
                     "description": "IANA time zone, e.g. Europe/London"
                   },
-                  "description": "Suggested zones; the first is the default"
+                  "description": "Suggested zones (may be empty); the first is the default"
                 }
               },
               "required": [
@@ -447,7 +448,8 @@
               "properties": {
                 "code": {
                   "type": "string",
-                  "pattern": "^[A-Z]{3}$"
+                  "pattern": "^[A-Z]{3}$",
+                  "description": "ISO 4217 currency code, e.g. INR"
                 },
                 "name": {
                   "type": "string"

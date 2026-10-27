@@ -3,15 +3,8 @@ import { ApiCookieAuth, ApiOkResponse, ApiTags, ApiUnauthorizedResponse } from '
 
 import { AuthGuard } from '../auth/auth.guard.js';
 import { ProblemSchema } from '../common/errors/problem.js';
-import { COUNTRIES, CURRENCIES } from './reference-data.js';
+import { REFERENCE } from './reference-data.js';
 import { type Reference, ReferenceSchema } from './reference.schemas.js';
-import { STANDARD_UTILITIES } from './utilities.js';
-
-const REFERENCE: Reference = {
-  countries: COUNTRIES.map((c) => ({ ...c, timeZones: [...c.timeZones] })),
-  currencies: CURRENCIES.map((c) => ({ ...c })),
-  utilities: [...STANDARD_UTILITIES],
-};
 
 @ApiTags('reference')
 @ApiCookieAuth()

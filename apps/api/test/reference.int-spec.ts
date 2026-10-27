@@ -44,5 +44,6 @@ describe('GET /api/reference', () => {
   it('is 401 problem+json without a session', async () => {
     const res = await request(app.getHttpServer()).get('/api/reference').expect(401);
     expect(res.headers['content-type']).toContain('application/problem+json');
+    expect(res.headers['cache-control'] ?? '').not.toContain('max-age=3600');
   });
 });

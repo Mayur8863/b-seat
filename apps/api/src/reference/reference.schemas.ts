@@ -1,19 +1,25 @@
 import { z } from 'zod';
 
-import { TimeZone } from '../common/schemas/field-formats.js';
-import { STANDARD_UTILITIES } from './utilities.js';
+import {
+  CountryCode,
+  CurrencyCode,
+  StandardUtility,
+  TimeZone,
+} from '../common/schemas/field-formats.js';
 
 export const ReferenceSchema = z
   .object({
     countries: z.array(
       z.object({
-        code: z.string().regex(/^[A-Z]{2}$/),
+        code: CountryCode,
         name: z.string(),
-        timeZones: z.array(TimeZone).describe('Suggested zones; the first is the default'),
+        timeZones: z
+          .array(TimeZone)
+          .describe('Suggested zones (may be empty); the first is the default'),
       }),
     ),
-    currencies: z.array(z.object({ code: z.string().regex(/^[A-Z]{3}$/), name: z.string() })),
-    utilities: z.array(z.enum(STANDARD_UTILITIES)),
+    currencies: z.array(z.object({ code: CurrencyCode, name: z.string() })),
+    utilities: z.array(StandardUtility),
   })
   .meta({ id: 'Reference', description: 'Static lists used by listing and preference forms' });
 
