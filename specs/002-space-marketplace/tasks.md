@@ -39,7 +39,7 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 | T007 | Money, problem types and pass booking rules (pure, TDD)      | backend-dev    | T006                   | M    | todo   | `feat/002-pass-rules`                 |
 | T008 | Retire hourly create; legacy space reads published-only      | backend-dev    | T003                   | S    | todo   | `chore/002-retire-hourly-create`      |
 | T009 | Seed: demo owner and renter, priced listings, calendars      | backend-dev    | T002, T004, T012       | M    | todo   | `feat/002-seed-marketplace`           |
-| T010 | UI spec: index, shell, nav, sign-up, dashboards              | ui-ux-designer | T001                   | M    | review | `docs/002-ui-shell-accounts`          |
+| T010 | UI spec: index, shell, nav, sign-up, dashboards              | ui-ux-designer | T001                   | M    | done   | `docs/002-ui-shell-accounts`          |
 | T011 | Test plan and traceability skeleton                          | qa-engineer    | T001                   | S    | todo   | `test/002-test-plan`                  |
 | T012 | Wire `SEED_DEMO_PASSWORD` into compose and CI                | devops         | T001                   | S    | done   | `chore/002-seed-env`                  |
 | T013 | Renter preferences API                                       | backend-dev    | T002                   | S    | todo   | `feat/002-renter-preferences-api`     |
@@ -232,8 +232,8 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - (T012 security review) Given `NODE_ENV=production` (the API image default), When `node dist/db/seed.js` runs, Then it exits non-zero with a clear message before opening a DB pool or writing anything, whether or not `SEED_DEMO_PASSWORD` is set, with no override flag.
     - (T012 security review) Given `SEED_DEMO_PASSWORD` is unset or shorter than 8 characters, When the seed runs, Then it validates with its own Zod schema (the seed does not call `loadEnv`), exits non-zero naming the variable, and never prints the value; for any run, stdout and stderr never contain the password (asserted in `seed.int-spec.ts`).
 
-- [ ] T010 [P] Write `specs/002-space-marketplace/ui.md` (index of the area specs) and `specs/002-space-marketplace/ui/01-shell-accounts.md`
-  - **Owner**: ui-ux-designer · **Branch**: `docs/002-ui-shell-accounts` · **Size**: M · **Depends on**: T001 · **Status**: review
+- [x] T010 [P] Write `specs/002-space-marketplace/ui.md` (index of the area specs) and `specs/002-space-marketplace/ui/01-shell-accounts.md`
+  - **Owner**: ui-ux-designer · **Branch**: `docs/002-ui-shell-accounts` · **Size**: M · **Depends on**: T001 · **Status**: done
   - **Scope**: Signed-in shell and main nav per role (desktop and mobile; **OQ-9**), management sub-nav pattern for owner pages, sign-up role choice ("I own a space" / "I need a space"), optional preferences step, renter and owner dashboards (empty states, next-booking summary slot for T057), preferences editing on the dashboard, shared copy conventions (local times labelled with the zone, money format, slot and pass names), and the problem-copy mapping approach. Reuse `@bseat/ui` (001 ui.md components); name any shadcn component to add.
   - **Acceptance criteria**:
     - Given each screen, When read, Then default, hover, focus, disabled, loading, empty, error and success states are specified (FR-032).
