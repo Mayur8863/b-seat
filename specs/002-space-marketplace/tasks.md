@@ -40,7 +40,7 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 | T008 | Retire hourly create; legacy space reads published-only      | backend-dev    | T003                   | S    | todo   | `chore/002-retire-hourly-create`      |
 | T009 | Seed: demo owner and renter, priced listings, calendars      | backend-dev    | T002, T004, T012       | M    | todo   | `feat/002-seed-marketplace`           |
 | T010 | UI spec: index, shell, nav, sign-up, dashboards              | ui-ux-designer | T001                   | M    | done   | `docs/002-ui-shell-accounts`          |
-| T011 | Test plan and traceability skeleton                          | qa-engineer    | T001                   | S    | review | `test/002-test-plan`                  |
+| T011 | Test plan and traceability skeleton                          | qa-engineer    | T001                   | S    | done   | `test/002-test-plan`                  |
 | T012 | Wire `SEED_DEMO_PASSWORD` into compose and CI                | devops         | T001                   | S    | done   | `chore/002-seed-env`                  |
 | T013 | Renter preferences API                                       | backend-dev    | T002                   | S    | todo   | `feat/002-renter-preferences-api`     |
 | T014 | Signed-in shell, role-aware nav, role dashboards             | frontend-dev   | T002, T010             | M    | todo   | `feat/002-app-nav`                    |
@@ -241,8 +241,8 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given the sign-up form, When read, Then the role is a required radio group with a field error tied by `aria-describedby`, and the optional preferences fields are specified (AC 1.1, AC 1.2).
     - Given mobile, tablet and desktop, When read, Then layout, contrast notes (semantic tokens only) and live regions are defined (SC-007).
 
-- [ ] T011 [P] Write `specs/002-space-marketplace/test-plan.md`: test levels per story, data setup, race and performance methods, axe coverage list, and the traceability skeleton
-  - **Owner**: qa-engineer · **Branch**: `test/002-test-plan` · **Size**: S · **Depends on**: T001 · **Status**: review
+- [x] T011 [P] Write `specs/002-space-marketplace/test-plan.md`: test levels per story, data setup, race and performance methods, axe coverage list, and the traceability skeleton
+  - **Owner**: qa-engineer · **Branch**: `test/002-test-plan` · **Size**: S · **Depends on**: T001 · **Status**: done
   - **Acceptance criteria**:
     - Given the spec, When the test plan is read, Then every AC, FR, SC and edge case has a planned test level and an owning task (Constitution II).
     - Given SC-003, SC-004 and SC-005, When read, Then the data volumes, repetition counts, p95 method and `EXPLAIN` evidence are defined.
@@ -306,7 +306,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given a valid session, When opening `/sign-up`, Then it lands on `/dashboard`; `/sign-in?next=/find` lands on `/find` and `/sign-in?next=//example.com` on `/dashboard` (T015, ui/01 section 4).
     - Given a stale cookie (session invalidated server side), When opening `/sign-up` and `/sign-in`, Then each page renders with no redirect and no redirect loop (T015, ui/01 section 4).
     - Given no session cookie, When each protected route in T014's proxy matcher is opened, Then it redirects to `/sign-in?next=<route>` (FR-005; T070 re-runs this sweep over every route).
-    - Given `/sign-up` (step 1 with a role error, step 2 preferences, "Check your email"), `/sign-in` (default, field error), the renter and owner dashboards (loading, empty, error), the preferences form and the mobile menu open, When axe runs with WCAG 2.1 AA tags, Then zero violations (SC-007, ui/01 section 8). Only "Check your email" (a `page.route` response `{ token: null, user }` for `**/api/auth/sign-up/email`) and the dashboard loading and error states (delayed or 500 `**/api/me`) may use HTTP interception, because the live stack cannot produce them (test-plan.md section 6); every other state uses real interaction.
+    - Given `/sign-up` (step 1 with a role error, step 2 preferences, "Check your email"), `/sign-in` (default, field error), the renter and owner dashboards (loading, empty, error), the preferences form and the mobile menu open, When axe runs with WCAG 2.1 AA tags, Then zero violations (SC-007, ui/01 section 8). The shell 401 "Your session has ended" state, reached through the stale-cookie case, is also checked. Only "Check your email" (a `page.route` response `{ token: null, user }` for `**/api/auth/sign-up/email`) and the dashboard loading and error states (delayed or 500 `**/api/me`) may use HTTP interception, because the live stack cannot produce them (test-plan.md section 6); every other state uses real interaction.
     - Given a pre-existing account created through a direct DB insert, When it signs in, Then the renter nav shows (AC 1.6).
 
 - [ ] T017 [US1] Docs: README "Accounts and roles" section, `docs/runbooks/local-development.md` (demo accounts, `SEED_DEMO_PASSWORD`), changeset check for `@bseat/api` and `@bseat/web`
@@ -403,7 +403,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
   - **Acceptance criteria**:
     - Given a new owner, When they create a space, add 20 seats by pattern and try to publish without prices, Then publishing is refused with what is missing; after a price is added through the API, it publishes (AC 2.1–2.4). The time from sign-up to publish is recorded against SC-001 (final check in T070).
     - Given every `/api/owner/*` route, When called by another owner with a real id and with a random UUID, Then the two responses are identical 404s, and a renter gets 403 (FR-009, AC 2.6).
-    - Given the owner dashboard, space form (with errors), overview and seats pages, When axe runs, Then zero violations (SC-007).
+    - Given the owner dashboard, space form (with errors), overview and seats pages, and the owner gate's renter branch (`/owner/spaces/new` opened as a renter), When axe runs, Then zero violations (SC-007).
   - **Note (T012 review)**: the compose `e2e` service does not receive `SEED_DEMO_PASSWORD`; the first journey that signs in as a seeded demo account must add it there (CI generates a random value per run).
 
 - [ ] T026 [US2] Docs: README "Listing a space" section, changeset check
@@ -531,6 +531,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
   - **Scope**: contracts/booking-emails.md; research R-14. Replaces `booking-confirmation.mail.ts`.
   - **Acceptance criteria**:
     - Given a successful booking, When at most 60 s pass, Then Mailpit holds one email to the renter and one to the owner with the subjects and lines in the contract, including price, period with the time zone, and the "payment is made directly to the owner" sentence (AC 4.5, AC 4.10, FR-021, SC-006).
+    - Given the 20-renter race in `pass-bookings.int-spec` (T036), When it ends, Then Mailpit holds exactly one renter and one owner email for the winning booking and none for the 19 losers (SC-005, SC-006).
     - Given `MailService.send` rejects or never settles for both emails (unit test with fake timers), When booking, Then 201 after at most one 2 s bound (the two enqueues run concurrently), both failures are logged at `error` with the booking id only, and the booking persists (FR-021).
     - Given a night pass in `Europe/London` across a DST change, When the email is built, Then local times match the slot wall-clock (FR-033, edge DST).
 
@@ -591,7 +592,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given concurrent 24-hour vs day vs night bookings on one seat and date (10 each), When raced 5 times, Then the outcomes respect "24 hours blocks both; day and night coexist" exactly (edge, FR-018, SC-005).
     - Given 1,000 published spaces, When 50 searches run, Then p95 < 1000 ms; Given a 200-seat space with a month of holds, When monthly-pass availability is requested 50 times, Then p95 < 1000 ms; `EXPLAIN` in the PR shows the GiST index on `seat_hold`; 3 consecutive runs of the perf script are recorded in test-plan.md (SC-003, SC-004).
     - Given `bin/pnpm test`, When it runs, Then `marketplace.perf-spec.ts` is not included.
-    - Given `/find` (results, empty), the listing page (seats loaded, conflict error) and the confirmation, When axe runs, Then zero violations (SC-007).
+    - Given `/find` (results, empty, loading, error), the listing page (seats loaded, conflict error) and the confirmation, When axe runs, Then zero violations (SC-007). Only `/find` loading and error (delayed or 500 `**/api/listings*`) may use HTTP interception, because the live stack cannot produce them (test-plan.md section 6); every other state uses real interaction.
 
 - [ ] T045 [US4] Docs: README "Find and book", `docs/runbooks/booking-confirmations.md` (two emails), `docs/runbooks/database-migrations.md` (the T005 expand/contract and backfill), changeset check
   - **Owner**: docs-writer · **Branch**: `docs/002-us4-search-book` · **Size**: S · **Depends on**: T043, T044 · **Status**: todo
@@ -837,100 +838,100 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 
 ## Traceability (spec → tasks)
 
-| Spec id                                             | Tasks (test location)                                              |
-| --------------------------------------------------- | ------------------------------------------------------------------ |
-| AC 1.1                                              | T002 (roles.int-spec), T015 (auth-form.test), T016 (e2e)           |
-| AC 1.2                                              | T013 (me.int-spec), T015, T016                                     |
-| AC 1.3                                              | T014 (dashboard), T055 (`limit=1`), T057 (next-booking.test), T016 |
-| AC 1.4                                              | T020 (owner-spaces.int-spec), T023 (owner-spaces.test), T025       |
-| AC 1.5                                              | T014 (app-nav.test, route manifest), T016                          |
-| AC 1.6                                              | T002, T016                                                         |
-| AC 2.1                                              | T019, T020, T022 (space-form.test), T025                           |
-| AC 2.2                                              | T019, T020, T022                                                   |
-| AC 2.3                                              | T021 (owner-seats.int-spec), T024, T025                            |
-| AC 2.4                                              | T020, T023, T025                                                   |
-| AC 2.5                                              | T020, T023                                                         |
-| AC 2.6                                              | T020, T021, T023, T025 (owner-scoping sweep)                       |
-| AC 3.1                                              | T006 (slots.spec), T027, T030, T032                                |
-| AC 3.2                                              | T006, T027, T030                                                   |
-| AC 3.3                                              | T027, T028, T030                                                   |
-| AC 3.4                                              | T004, T007 (money.spec), T027, T030                                |
-| AC 3.5                                              | T007, T028, T031, T032                                             |
-| AC 3.6                                              | T027, T036                                                         |
-| AC 4.1                                              | T034, T039, T044                                                   |
-| AC 4.2                                              | T003 (keys), T034, T039                                            |
-| AC 4.3                                              | T034, T038                                                         |
-| AC 4.4                                              | T035, T040, T044                                                   |
-| AC 4.5                                              | T036, T037, T041, T044                                             |
-| AC 4.6                                              | T005, T036, T041                                                   |
-| AC 4.7                                              | T005, T036 (20 × 5), T044                                          |
-| AC 4.8                                              | T005, T036, T041                                                   |
-| AC 4.9                                              | T007, T036, T040, T041                                             |
-| AC 4.10                                             | T037, T044                                                         |
-| AC 5.1                                              | T047, T048, T049                                                   |
-| AC 5.2                                              | T047, T048, T049                                                   |
-| AC 5.3                                              | T047, T048                                                         |
-| AC 5.4                                              | T047, T048                                                         |
-| AC 6.1                                              | T004, T020, T051                                                   |
-| AC 6.2                                              | T006, T051, T052, T053                                             |
-| AC 6.3                                              | T051, T052, T053                                                   |
-| AC 6.4                                              | T006, T035, T040, T053                                             |
-| AC 6.5                                              | T051, T052                                                         |
-| AC 7.1                                              | T055, T057, T059                                                   |
-| AC 7.2                                              | T055, T057, T059                                                   |
-| AC 7.3                                              | T056, T058, T059                                                   |
-| AC 7.4                                              | T055, T056, T059                                                   |
-| AC 8.1                                              | T062, T064, T065, T067                                             |
-| AC 8.2                                              | T062, T064, T065                                                   |
-| AC 8.3                                              | T061, T064, T065, T067                                             |
-| AC 8.4                                              | T062, T066, T067                                                   |
-| AC 8.5                                              | T062, T066, T063                                                   |
-| FR-001                                              | T002, T015                                                         |
-| FR-002                                              | T013, T015, T039                                                   |
-| FR-003                                              | T002                                                               |
-| FR-004                                              | T014 (route manifest test), every page task adds its link          |
-| FR-005                                              | T014 (proxy), 401 tests in every API task, T016, T070 (e2e sweep)  |
-| FR-006                                              | T003, T019, T020, T022                                             |
-| FR-007                                              | T003, T021, T024                                                   |
-| FR-008                                              | T003 (CHECK), T020, T023, T028, T034                               |
-| FR-009                                              | T003, T008, T020, T021, T025, T047, T051, T056, T062               |
-| FR-010                                              | T006, T027                                                         |
-| FR-011                                              | T004, T007, T027                                                   |
-| FR-012                                              | T007, T028, T031                                                   |
-| FR-013                                              | T005 (CHECKs), T027, T036                                          |
-| FR-014, FR-015                                      | T034, T039                                                         |
-| FR-016                                              | T035, T040                                                         |
-| FR-017                                              | T006, T035, T036                                                   |
-| FR-018                                              | T005, T036, T044, T049                                             |
-| FR-019                                              | T005, T036                                                         |
-| FR-020                                              | T007, T036, T041                                                   |
-| FR-021                                              | T037, T069                                                         |
-| FR-022, FR-023                                      | T047, T048                                                         |
-| FR-024                                              | T004, T051, T052                                                   |
-| FR-025                                              | T051, T052                                                         |
-| FR-026                                              | T055, T057                                                         |
-| FR-027                                              | T056, T058                                                         |
-| FR-028                                              | T055, T056                                                         |
-| FR-029                                              | T062, T064, T065                                                   |
-| FR-030                                              | T061, T064, T065                                                   |
-| FR-031                                              | T066                                                               |
-| FR-032                                              | T010, T018, T029, T046, T061 and every frontend task               |
-| FR-033                                              | T006, T035, T037, T040, T057                                       |
-| SC-001                                              | T025 (recorded), T070 (scripted time and step count)               |
-| SC-002                                              | T029, T044, T070                                                   |
-| SC-003, SC-004                                      | T044                                                               |
-| SC-005                                              | T005 (DB), T036 (API), T044 (mixed slots), T049 (vs occupancy)     |
-| SC-006                                              | T037                                                               |
-| SC-007                                              | T016, T025, T032, T044, T049, T053, T059, T067                     |
-| Edge: night crosses midnight                        | T006, T035                                                         |
-| Edge: day/night different renters; 24 h blocks both | T005, T035, T044                                                   |
-| Edge: touching slots                                | T005, T006                                                         |
-| Edge: DST                                           | T006, T037                                                         |
-| Edge: switching to fixed hours                      | T027, T032                                                         |
-| Edge: delete seat or cubicle with future bookings   | T021, T024                                                         |
-| Edge: city with no spaces                           | T034, T039                                                         |
-| Edge: owner books own space                         | T007, T028, T036, T041                                             |
-| Edge: no seat for the whole pass                    | T038, T040                                                         |
+| Spec id                                             | Tasks (test location)                                                                       |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| AC 1.1                                              | T002 (roles.int-spec), T015 (auth-form.test), T016 (e2e)                                    |
+| AC 1.2                                              | T013 (me.int-spec), T015, T016                                                              |
+| AC 1.3                                              | T014 (dashboard), T055 (`limit=1`), T057 (next-booking.test), T016                          |
+| AC 1.4                                              | T020 (owner-spaces.int-spec), T023 (owner-spaces.test), T025                                |
+| AC 1.5                                              | T014 (app-nav.test, route manifest), T016                                                   |
+| AC 1.6                                              | T002, T016                                                                                  |
+| AC 2.1                                              | T019, T020, T022 (space-form.test), T025                                                    |
+| AC 2.2                                              | T019, T020, T022                                                                            |
+| AC 2.3                                              | T021 (owner-seats.int-spec), T024, T025                                                     |
+| AC 2.4                                              | T020, T023, T025                                                                            |
+| AC 2.5                                              | T020, T023                                                                                  |
+| AC 2.6                                              | T020, T021, T023, T025 (owner-scoping sweep)                                                |
+| AC 3.1                                              | T006 (slots.spec), T027, T030, T032                                                         |
+| AC 3.2                                              | T006, T027, T030                                                                            |
+| AC 3.3                                              | T027, T028, T030                                                                            |
+| AC 3.4                                              | T004, T007 (money.spec), T027, T030                                                         |
+| AC 3.5                                              | T007, T028, T031, T032                                                                      |
+| AC 3.6                                              | T027, T036                                                                                  |
+| AC 4.1                                              | T034, T039, T044                                                                            |
+| AC 4.2                                              | T003 (keys), T034, T039                                                                     |
+| AC 4.3                                              | T034, T038                                                                                  |
+| AC 4.4                                              | T035, T040, T044                                                                            |
+| AC 4.5                                              | T036, T037, T041, T044                                                                      |
+| AC 4.6                                              | T005, T036, T041                                                                            |
+| AC 4.7                                              | T005, T036 (20 × 5), T044                                                                   |
+| AC 4.8                                              | T005, T036, T041                                                                            |
+| AC 4.9                                              | T007, T036, T040, T041                                                                      |
+| AC 4.10                                             | T037, T044                                                                                  |
+| AC 5.1                                              | T047, T048, T049                                                                            |
+| AC 5.2                                              | T047, T048, T049                                                                            |
+| AC 5.3                                              | T047, T048                                                                                  |
+| AC 5.4                                              | T047, T048                                                                                  |
+| AC 6.1                                              | T004, T020, T051                                                                            |
+| AC 6.2                                              | T006, T051, T052, T053                                                                      |
+| AC 6.3                                              | T051, T052, T053                                                                            |
+| AC 6.4                                              | T006, T035, T040, T053                                                                      |
+| AC 6.5                                              | T051, T052                                                                                  |
+| AC 7.1                                              | T055, T057, T059                                                                            |
+| AC 7.2                                              | T055, T057, T059                                                                            |
+| AC 7.3                                              | T056, T058, T059                                                                            |
+| AC 7.4                                              | T055, T056, T059                                                                            |
+| AC 8.1                                              | T062, T064, T065, T067                                                                      |
+| AC 8.2                                              | T062, T064, T065                                                                            |
+| AC 8.3                                              | T061, T064, T065, T067                                                                      |
+| AC 8.4                                              | T062, T066, T067                                                                            |
+| AC 8.5                                              | T062, T066, T063                                                                            |
+| FR-001                                              | T002, T015                                                                                  |
+| FR-002                                              | T013, T015, T039                                                                            |
+| FR-003                                              | T002                                                                                        |
+| FR-004                                              | T014 (route manifest test), every page task adds its link                                   |
+| FR-005                                              | T014 (proxy), 401 tests in every API task, T016, T070 (e2e sweep)                           |
+| FR-006                                              | T003, T019, T020, T022                                                                      |
+| FR-007                                              | T003, T021, T024                                                                            |
+| FR-008                                              | T003 (CHECK), T020, T023, T028, T034                                                        |
+| FR-009                                              | T003, T008, T020, T021, T025, T047, T051, T056, T062                                        |
+| FR-010                                              | T006, T027                                                                                  |
+| FR-011                                              | T004, T007, T027                                                                            |
+| FR-012                                              | T007, T028, T031                                                                            |
+| FR-013                                              | T005 (CHECKs), T027, T036                                                                   |
+| FR-014, FR-015                                      | T034, T039                                                                                  |
+| FR-016                                              | T035, T040                                                                                  |
+| FR-017                                              | T006, T035, T036                                                                            |
+| FR-018                                              | T005, T036, T044, T047, T049                                                                |
+| FR-019                                              | T005, T036                                                                                  |
+| FR-020                                              | T007, T036, T041                                                                            |
+| FR-021                                              | T037, T069                                                                                  |
+| FR-022, FR-023                                      | T047, T048                                                                                  |
+| FR-024                                              | T004, T051, T052                                                                            |
+| FR-025                                              | T051, T052                                                                                  |
+| FR-026                                              | T055, T057                                                                                  |
+| FR-027                                              | T056, T058                                                                                  |
+| FR-028                                              | T055, T056                                                                                  |
+| FR-029                                              | T062, T064, T065                                                                            |
+| FR-030                                              | T061, T064, T065                                                                            |
+| FR-031                                              | T066                                                                                        |
+| FR-032                                              | T010, T018, T029, T046, T061 and every frontend task                                        |
+| FR-033                                              | T006, T035, T037, T040, T057                                                                |
+| SC-001                                              | T025 (recorded), T070 (scripted time and step count)                                        |
+| SC-002                                              | T029, T044, T070                                                                            |
+| SC-003, SC-004                                      | T044                                                                                        |
+| SC-005                                              | T005 (DB), T036 (API), T044 (mixed slots), T047 (opposite-order marks), T049 (vs occupancy) |
+| SC-006                                              | T037                                                                                        |
+| SC-007                                              | T016, T025, T032, T044, T049, T053, T059, T067                                              |
+| Edge: night crosses midnight                        | T006, T035                                                                                  |
+| Edge: day/night different renters; 24 h blocks both | T005, T035, T044                                                                            |
+| Edge: touching slots                                | T005, T006                                                                                  |
+| Edge: DST                                           | T006, T037                                                                                  |
+| Edge: switching to fixed hours                      | T027, T032                                                                                  |
+| Edge: delete seat or cubicle with future bookings   | T021, T024                                                                                  |
+| Edge: city with no spaces                           | T034, T039                                                                                  |
+| Edge: owner books own space                         | T007, T028, T036, T041                                                                      |
+| Edge: no seat for the whole pass                    | T038, T040                                                                                  |
 
 ## Dependencies & execution order
 
