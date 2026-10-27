@@ -25,8 +25,11 @@ export interface Caller {
   email: string;
 }
 
-/** Deadlocks between conflicting inserts are retried; see ADR-0008 section 2. */
+/** Cross-seat user-overlap deadlocks are retried (same-seat ones are queued by the seat lock); see ADR-0008 section 2. */
 export const MAX_INSERT_ATTEMPTS = 3;
+
+/** Longest an insert may wait on the seat lock or a row lock before it fails (ADR-0009 section 9). */
+export const LOCK_TIMEOUT = '5s';
 
 /**
  * Upper bound for queueing the confirmation. The shared ioredis client retries forever while
@@ -154,6 +157,7 @@ export class BookingsService {
     for (let attempt = 1; ; attempt += 1) {
       try {
         return await this.db.transaction(async (tx) => {
+          await tx.execute(sql`set local lock_timeout = ${sql.raw(`'${LOCK_TIMEOUT}'`)}`);
           await tx.execute(
             sql`select pg_advisory_xact_lock(hashtextextended(${values.seatId}::text, 0))`,
           );
@@ -163,6 +167,14 @@ export class BookingsService {
         });
       } catch (err) {
         const outcome = classifyInsertError(err);
+        if (outcome === 'lock-timeout') {
+          // Not retried: the seat is under heavy contention, so waiting again would pile on.
+          this.logger.warn(
+            { seatId: values.seatId, userId: values.userId },
+            'booking.lock_timeout',
+          );
+          throw err;
+        }
         if (outcome === 'retry' && attempt < MAX_INSERT_ATTEMPTS) continue;
         if (outcome === 'retry' || outcome === 'rethrow') throw err;
         throw outcome;

@@ -65,20 +65,42 @@ function query(settle: Settle): Record<string, unknown> {
   return q;
 }
 
-/** `selects` answer db.select() calls in order; `inserts` answer db.insert() attempts. */
+/**
+ * `selects` answer db.select() calls in order; `inserts` answer insert attempts. Inserts exist only
+ * on the transaction (not on `db`), so one outside it fails; `log` records the order of events.
+ */
 function fakeDb(selects: unknown[][], inserts: Settle[]) {
+  const log: string[] = [];
   const select = vi.fn(() => {
     const rows = selects.shift();
     return query(() => (rows ? Promise.resolve(rows) : Promise.reject(new Error('extra select'))));
   });
-  const insert = vi.fn(() =>
-    query(inserts.shift() ?? (() => Promise.reject(new Error('extra insert')))),
-  );
-  // The insert runs in a transaction that first takes the per-seat advisory lock.
-  const execute = vi.fn(() => Promise.resolve());
+  const insert = vi.fn(() => {
+    log.push('insert');
+    return query(inserts.shift() ?? (() => Promise.reject(new Error('extra insert'))));
+  });
+  // Each attempt runs two statements before the insert: SET LOCAL lock_timeout, then the seat lock.
+  const statements = ['lock_timeout', 'lock'];
+  let executed = 0;
+  const execute = vi.fn(() => {
+    log.push(statements[executed] ?? 'unexpected statement');
+    executed += 1;
+    return Promise.resolve();
+  });
   const tx = { insert, execute };
-  const transaction = vi.fn((fn: (t: typeof tx) => Promise<unknown>) => fn(tx));
-  return { db: { select, insert, transaction } as unknown as Database, select, insert, execute };
+  const transaction = vi.fn(async (fn: (t: typeof tx) => Promise<unknown>) => {
+    log.push('begin');
+    executed = 0;
+    try {
+      const result = await fn(tx);
+      log.push('commit');
+      return result;
+    } catch (err) {
+      log.push('rollback');
+      throw err;
+    }
+  });
+  return { db: { select, transaction } as unknown as Database, select, insert, transaction, log };
 }
 
 function fakeLogger() {
@@ -129,7 +151,10 @@ describe('BookingsService.create', () => {
   });
 
   it('inserts an active booking for the caller and returns local and UTC times (AC 2.1)', async () => {
-    const { db, insert, execute } = fakeDb([[SEAT_ROW]], [() => Promise.resolve([INSERTED])]);
+    const { db, insert, transaction, log } = fakeDb(
+      [[SEAT_ROW]],
+      [() => Promise.resolve([INSERTED])],
+    );
 
     const booking = await makeService(db, { logger }).create(CALLER, INPUT);
 
@@ -148,7 +173,8 @@ describe('BookingsService.create', () => {
       cancelledAt: null,
     });
     expect(insert).toHaveBeenCalledTimes(1);
-    expect(execute).toHaveBeenCalledTimes(1); // the seat lock, taken before the insert
+    expect(transaction).toHaveBeenCalledTimes(1);
+    expect(log).toEqual(['begin', 'lock_timeout', 'lock', 'insert', 'commit']);
     expect(JSON.stringify(booking)).not.toContain(CALLER.id);
     expect(logger.info).toHaveBeenCalledWith(
       { bookingId: BOOKING_ID, seatId: SEAT_ID },
@@ -203,7 +229,7 @@ describe('BookingsService.create', () => {
   });
 
   it('retries a deadlock and returns the 409 of the second attempt (ADR-0008 section 2)', async () => {
-    const { db, insert } = fakeDb(
+    const { db, transaction } = fakeDb(
       [[SEAT_ROW]],
       [
         () => Promise.reject(driverError('40P01')),
@@ -213,25 +239,25 @@ describe('BookingsService.create', () => {
 
     const err = await rejection(makeService(db).create(CALLER, INPUT));
 
-    expect(insert).toHaveBeenCalledTimes(2);
+    expect(transaction).toHaveBeenCalledTimes(2);
     expect(err).toMatchObject({ type: 'urn:bseat:problem:booking:seat-unavailable' });
   });
 
   it('retries a deadlock and succeeds when the other insert was the victim', async () => {
-    const { db, insert } = fakeDb(
+    const { db, transaction } = fakeDb(
       [[SEAT_ROW]],
       [() => Promise.reject(driverError('40P01')), () => Promise.resolve([INSERTED])],
     );
 
     const booking = await makeService(db).create(CALLER, INPUT);
 
-    expect(insert).toHaveBeenCalledTimes(2);
+    expect(transaction).toHaveBeenCalledTimes(2);
     expect(booking.id).toBe(BOOKING_ID);
   });
 
   it('rethrows after 3 deadlocked attempts (500)', async () => {
     const third = driverError('40P01');
-    const { db, insert } = fakeDb(
+    const { db, transaction } = fakeDb(
       [[SEAT_ROW]],
       [
         () => Promise.reject(driverError('40P01')),
@@ -242,7 +268,7 @@ describe('BookingsService.create', () => {
 
     const err = await rejection(makeService(db).create(CALLER, INPUT));
 
-    expect(insert).toHaveBeenCalledTimes(3);
+    expect(transaction).toHaveBeenCalledTimes(3);
     expect(err).toBe(third);
   });
 
@@ -254,6 +280,20 @@ describe('BookingsService.create', () => {
 
     expect(insert).toHaveBeenCalledTimes(1);
     expect(err).toBe(check);
+  });
+
+  it('logs a lock timeout (ids only) and rethrows it without retrying', async () => {
+    const timeout = driverError('55P03');
+    const { db, transaction } = fakeDb([[SEAT_ROW]], [() => Promise.reject(timeout)]);
+
+    const err = await rejection(makeService(db, { logger }).create(CALLER, INPUT));
+
+    expect(err).toBe(timeout);
+    expect(transaction).toHaveBeenCalledTimes(1);
+    expect(logger.warn).toHaveBeenCalledWith(
+      { seatId: SEAT_ID, userId: CALLER.id },
+      'booking.lock_timeout',
+    );
   });
 });
 
@@ -267,10 +307,10 @@ describe('BookingsService.create: confirmation email (FR-008, ADR-0008 section 5
   });
 
   it('enqueues the confirmation with job id booking-confirmed-<id> after the insert', async () => {
-    const { db, insert } = fakeDb([[SEAT_ROW]], [() => Promise.resolve([INSERTED])]);
+    const { db, log } = fakeDb([[SEAT_ROW]], [() => Promise.resolve([INSERTED])]);
     const mail = fakeMail(() => {
-      // Enqueued only once the INSERT has returned (autocommit, so it has committed).
-      expect(insert).toHaveBeenCalledTimes(1);
+      // Enqueued only once the transaction has committed.
+      expect(log.at(-1)).toBe('commit');
       return Promise.resolve();
     });
 

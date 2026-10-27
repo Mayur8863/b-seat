@@ -4,13 +4,16 @@ import { getQueueToken } from '@nestjs/bullmq';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import type { Queue } from 'bullmq';
 import { and, eq } from 'drizzle-orm';
+import pg from 'pg';
 import request from 'supertest';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ProblemException } from '../src/common/errors/problem.exception.js';
 import { type BookingRule, ruleViolation } from '../src/bookings/booking-rules.js';
 import { BookingsService } from '../src/bookings/bookings.service.js';
 import { BookingSchema } from '../src/bookings/bookings.schemas.js';
 import type { Database } from '../src/db/db.js';
+import { DB } from '../src/db/db.module.js';
 import { booking } from '../src/db/schema/index.js';
 import { MailService } from '../src/mail/mail.service.js';
 import { MAIL_QUEUE } from '../src/mail/mail.types.js';
@@ -312,24 +315,68 @@ describe('POST /api/bookings', () => {
     );
     const seat = seatAt(0);
 
+    const transaction = vi.spyOn(app.get<Database>(DB), 'transaction');
+
     for (let round = 0; round < 3; round += 1) {
       const startTime = `${String(8 + round * 2).padStart(2, '0')}:00`;
       const endTime = `${String(9 + round * 2).padStart(2, '0')}:00`;
+      transaction.mockClear();
       const outcomes = await Promise.allSettled(
         callers.map((c) =>
           service.create(c, { seatId: seat.id, date: tomorrow, startTime, endTime }),
         ),
       );
 
+      // One transaction per caller means no attempt was retried (no deadlock happened).
+      expect(transaction).toHaveBeenCalledTimes(60);
+      expect(outcomes.filter((o) => o.status === 'fulfilled')).toHaveLength(1);
       const rejected: unknown[] = outcomes.flatMap((o) =>
         o.status === 'rejected' ? [o.reason as unknown] : [],
       );
-      expect(outcomes.filter((o) => o.status === 'fulfilled')).toHaveLength(1);
+      expect(rejected).toHaveLength(59);
       for (const reason of rejected) {
-        expect(reason).toMatchObject({ status: 409 });
+        expect(reason).toBeInstanceOf(ProblemException);
+        expect(reason).toMatchObject({ type: SEAT_UNAVAILABLE });
+        expect((reason as ProblemException).getStatus()).toBe(409);
       }
+      const active = await db
+        .select()
+        .from(booking)
+        .where(
+          and(
+            eq(booking.seatId, seat.id),
+            eq(booking.status, 'active'),
+            eq(booking.startsAt, localInstant(tomorrow, startTime, TZ)),
+          ),
+        );
+      expect(active).toHaveLength(1);
     }
   }, 60_000);
+
+  it('fails within the lock timeout, writing nothing, when the seat lock is held (ADR-0009 section 9)', async () => {
+    const seat = seatAt(0);
+    const holder = new pg.Client({ connectionString: process.env.DATABASE_URL_TEST });
+    await holder.connect();
+    try {
+      await holder.query('begin');
+      await holder.query('select pg_advisory_xact_lock(hashtextextended($1::text, 0))', [seat.id]);
+
+      const started = Date.now();
+      const res = await agent
+        .post('/api/bookings')
+        .send({ seatId: seat.id, date: tomorrow, startTime: '09:00', endTime: '12:00' });
+      const elapsed = Date.now() - started;
+
+      expect(res.status).toBe(500);
+      expect(res.body.type).toBe('urn:bseat:problem:internal');
+      expect(elapsed).toBeGreaterThanOrEqual(4_500);
+      expect(elapsed).toBeLessThan(8_000);
+      expect(await bookingsOf(userId)).toHaveLength(0);
+    } finally {
+      await holder.query('rollback').catch(() => undefined);
+      await holder.end();
+    }
+  }, 20_000);
 
   describe('confirmation email (T010, FR-008)', () => {
     afterEach(() => {

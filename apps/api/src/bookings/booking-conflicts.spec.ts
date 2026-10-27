@@ -35,6 +35,10 @@ describe('classifyInsertError (ADR-0008 section 2)', () => {
     expect((problem as ProblemException).getStatus()).toBe(409);
   });
 
+  it('flags a lock timeout (55P03) so it is logged and not retried', () => {
+    expect(classifyInsertError(driverError('55P03'))).toBe('lock-timeout');
+  });
+
   it('asks for a retry on a deadlock (40P01)', () => {
     expect(classifyInsertError(driverError('40P01'))).toBe('retry');
   });

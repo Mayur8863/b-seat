@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import type pg from 'pg';
 
 import type { Env } from '../config/env.js';
-import { createDb, createPool } from './db.js';
+import { API_POOL_LIMITS, createDb, createPool } from './db.js';
 
 /** Injection token for the Drizzle database (`@Inject(DB) db: Database`). */
 export const DB = Symbol('DB');
@@ -16,7 +16,7 @@ export const PG_POOL = Symbol('PG_POOL');
       provide: PG_POOL,
       inject: [ConfigService],
       useFactory: (config: ConfigService<Env, true>) =>
-        createPool(config.get('DATABASE_URL', { infer: true })),
+        createPool(config.get('DATABASE_URL', { infer: true }), API_POOL_LIMITS),
     },
     { provide: DB, inject: [PG_POOL], useFactory: createDb },
   ],

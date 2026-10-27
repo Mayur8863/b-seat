@@ -40,6 +40,7 @@ export function bookingProblem(conflict: BookingConflict): ProblemException {
 const EXCLUSION_VIOLATION = '23P01';
 const FOREIGN_KEY_VIOLATION = '23503';
 const DEADLOCK_DETECTED = '40P01';
+const LOCK_NOT_AVAILABLE = '55P03';
 
 const CONFLICT_BY_CONSTRAINT: Record<string, BookingConflict | undefined> = {
   booking_seat_no_overlap: 'seat-unavailable',
@@ -48,16 +49,20 @@ const CONFLICT_BY_CONSTRAINT: Record<string, BookingConflict | undefined> = {
 
 /**
  * What to do with an error from the booking INSERT: throw the returned HTTP exception,
- * `retry` (a deadlock between conflicting inserts; nothing was committed), or `rethrow`
+ * `retry` (a deadlock between conflicting inserts; nothing was committed), `lock-timeout`
+ * (waited past `lock_timeout`; log and rethrow, never retry), or `rethrow`
  * (anything else, including a CHECK failure, which means the TS rules and the DB disagree).
  * SQLSTATE and constraint come from the driver error Drizzle wraps, never from the message.
  */
-export function classifyInsertError(err: unknown): HttpException | 'retry' | 'rethrow' {
+export function classifyInsertError(
+  err: unknown,
+): HttpException | 'retry' | 'lock-timeout' | 'rethrow' {
   if (!(err instanceof DrizzleQueryError) || !(err.cause instanceof pg.DatabaseError)) {
     return 'rethrow';
   }
   const { code, constraint = '' } = err.cause;
   if (code === DEADLOCK_DETECTED) return 'retry';
+  if (code === LOCK_NOT_AVAILABLE) return 'lock-timeout';
   if (code === EXCLUSION_VIOLATION) {
     const conflict = CONFLICT_BY_CONSTRAINT[constraint];
     return conflict ? bookingProblem(conflict) : 'rethrow';
