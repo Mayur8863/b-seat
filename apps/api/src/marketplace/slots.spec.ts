@@ -53,17 +53,35 @@ describe('slotWindow', () => {
     expect(() => slotWindow(shift('07:00'), 'working_hours', '2026-11-02', LONDON)).toThrow();
   });
 
-  it('puts a night slot that starts after the shift on the date it starts', () => {
-    // Shift 20:00: day 20:00-08:00 (crosses midnight), night 08:00-20:00 the next date.
-    const o = shift('20:00');
-    expect(iso(slotWindow(o, 'day', '2026-11-02', KOLKATA))).toEqual([
-      '2026-11-02T14:30:00.000Z',
-      '2026-11-03T02:30:00.000Z',
-    ]);
+  it('starts the night slot on its own date, 12 wall-clock hours after the shift', () => {
+    const o = shift('11:59');
     expect(iso(slotWindow(o, 'night', '2026-11-02', KOLKATA))).toEqual([
-      '2026-11-03T02:30:00.000Z',
-      '2026-11-03T14:30:00.000Z',
+      '2026-11-02T18:29:00.000Z',
+      '2026-11-03T06:29:00.000Z',
     ]);
+  });
+
+  it('rejects a shift change at or after 12:00', () => {
+    expect(() => slotWindow(shift('12:00'), 'day', '2026-11-02', KOLKATA)).toThrow(RangeError);
+    expect(() => offeredSlots(shift('20:00'))).toThrow(RangeError);
+  });
+
+  it('accepts a Postgres-style HH:mm:ss shift and rejects other seconds', () => {
+    expect(slotWindow(shift('07:00:00'), 'day', '2026-11-02', KOLKATA).startsAt.toISOString()).toBe(
+      '2026-11-02T01:30:00.000Z',
+    );
+    expect(() => slotWindow(shift('07:00:30'), 'day', '2026-11-02', KOLKATA)).toThrow(RangeError);
+  });
+
+  it('handles unusual zones', () => {
+    const t = shift('02:00');
+    expect(hours(slotWindow(t, 'full_day', '2026-10-25', 'Antarctica/Troll'))).toBe(26);
+    expect(dayBoundary(t, '2026-03-29', 'Antarctica/Troll').toISOString()).toBe(
+      '2026-03-29T02:00:00.000Z',
+    );
+    expect(dayBoundary(t, '2026-10-25', 'Antarctica/Troll').toISOString()).toBe(
+      '2026-10-25T00:00:00.000Z',
+    );
   });
 
   it('crosses month and year boundaries', () => {

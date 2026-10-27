@@ -115,8 +115,10 @@ hold's end, and a mark must have its hold. Both are written in one transaction f
   (T006).
 - Because every boundary instant comes from one function of (date, wall-clock, zone), "day ends where night
   starts" holds on every date, DST days included. Slots last 11, 12 or 13 hours (23, 24 or 25 for full_day; other
-  amounts in zones with unusual shifts). `slots.ts` asserts `end > start` and throws if not; that would be a tzdata
-  anomaly, not a user error.
+  amounts in zones with unusual shifts). `slots.ts` asserts `end > start` and throws if not. The cause is a tzdata
+  anomaly or owner fixed hours that both fall inside one DST gap (for example 02:30-03:15 in New York on
+  2026-03-08); `passPeriod` treats that date as closed (skipped, no occurrence) rather than failing. The shift
+  change time is limited to 00:00-11:59 so the night slot starts on its own date.
 - ADR-0008's **refusal** of nonexistent or ambiguous times still applies to wall-clock times that a **renter
   types**. After 002 no such input remains (renters send dates; the hourly routes are removed in T008 and T043).
   So `booking-rule:invalid-local-time` is not part of the 002 contract.

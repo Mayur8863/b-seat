@@ -153,19 +153,48 @@ describe('toInstantCompatible', () => {
   });
 
   it.each(['Europe/London', 'America/New_York'])(
-    'equals toInstant for every wall-clock that exists once (%s)',
+    'resolves every hourly wall-clock sample consistently (%s)',
     (zone) => {
       for (let h = 0; h < 366 * 24; h += 1) {
         const stamp = new Date(Date.UTC(2026, 0, 1) + h * 3_600_000).toISOString();
         const date = stamp.slice(0, 10);
         const time = stamp.slice(11, 16);
         const strict = toInstant(date, time, zone);
+        const got = toInstantCompatible(date, time, zone);
+        const local = toLocal(got, zone);
         if (strict.kind === 'ok') {
-          expect(toInstantCompatible(date, time, zone).getTime()).toBe(strict.instant.getTime());
+          expect(got.getTime()).toBe(strict.instant.getTime());
+        } else if (strict.kind === 'nonexistent') {
+          // One hour gap: the result reads one hour later than the requested wall-clock.
+          const later = toLocal(new Date(Date.UTC(2026, 0, 1) + (h + 1) * 3_600_000), 'UTC');
+          expect(`${local.date} ${local.time}`).toBe(`${later.date} ${later.time}`);
+        } else {
+          // Overlap: the earlier of the two instants showing this wall-clock.
+          expect(local).toEqual({ date, time });
+          const other = new Date(got.getTime() + 3_600_000);
+          expect(toLocal(other, zone)).toEqual({ date, time });
         }
       }
     },
   );
+
+  it.each([
+    ['Antarctica/Troll', '2026-03-29', '02:00', '2026-03-29T02:00:00.000Z'],
+    ['Antarctica/Troll', '2026-10-25', '02:00', '2026-10-25T00:00:00.000Z'],
+    ['Australia/Lord_Howe', '2026-10-04', '02:15', '2026-10-03T15:45:00.000Z'],
+    ['America/Santiago', '2026-09-06', '00:30', '2026-09-06T04:30:00.000Z'],
+  ])('resolves %s %s %s to %s', (zone, date, time, utc) => {
+    expect(toInstantCompatible(date, time, zone).toISOString()).toBe(utc);
+  });
+
+  it('accepts HH:mm:00 and rejects 24:00 and non-zero seconds', () => {
+    expect(toInstantCompatible('2026-11-02', '07:00:00', KOLKATA).toISOString()).toBe(
+      '2026-11-02T01:30:00.000Z',
+    );
+    expect(instantOf('2026-11-02', '07:00:00', KOLKATA)).toBe('2026-11-02T01:30:00.000Z');
+    expect(() => toInstantCompatible('2026-11-02', '24:00', KOLKATA)).toThrow(RangeError);
+    expect(() => toInstantCompatible('2026-11-02', '07:00:01', KOLKATA)).toThrow(RangeError);
+  });
 
   it('rejects malformed input', () => {
     expect(() => toInstantCompatible('2026-02-30', '09:00', LONDON)).toThrow(RangeError);

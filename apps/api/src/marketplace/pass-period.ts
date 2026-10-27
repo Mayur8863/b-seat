@@ -1,4 +1,4 @@
-import { addDays } from '../common/time/zoned-time.js';
+import { addDays, toInstantCompatible } from '../common/time/zoned-time.js';
 import { isOpen, type Calendar } from './calendar-rules.js';
 import { slotWindow, type OpeningHours, type SlotKind, type SlotWindow } from './slots.js';
 
@@ -19,25 +19,39 @@ export interface PassPeriod {
   skippedDates: string[];
 }
 
-export function passPeriod(input: {
+interface PassPeriodInput {
   pass: PassType;
   slot: SlotKind;
   startDate: string;
   calendar: Calendar;
   openingHours: OpeningHours;
   timeZone: string;
-}): PassPeriod {
-  const { pass, slot, startDate, calendar, openingHours, timeZone } = input;
+}
+
+/** Fixed hours inside one DST gap collapse to nothing (end <= start): that date is closed. */
+function tryWindow(input: PassPeriodInput, date: string): SlotWindow | null {
+  try {
+    return slotWindow(input.openingHours, input.slot, date, input.timeZone);
+  } catch (error) {
+    if (error instanceof RangeError && input.openingHours.mode === 'fixed_hours') {
+      const { opensAt, closesAt } = input.openingHours;
+      const at = (t: string) => toInstantCompatible(date, t, input.timeZone).getTime();
+      if (at(closesAt) <= at(opensAt)) return null;
+    }
+    throw error;
+  }
+}
+
+export function passPeriod(input: PassPeriodInput): PassPeriod {
+  const { pass, startDate, calendar } = input;
   const occurrences: PassOccurrence[] = [];
   const skippedDates: string[] = [];
 
   for (let i = 0; i < PASS_DAYS[pass]; i += 1) {
     const date = addDays(startDate, i);
-    if (isOpen(calendar, date)) {
-      occurrences.push({ date, ...slotWindow(openingHours, slot, date, timeZone) });
-    } else {
-      skippedDates.push(date);
-    }
+    const window = isOpen(calendar, date) ? tryWindow(input, date) : null;
+    if (window) occurrences.push({ date, ...window });
+    else skippedDates.push(date);
   }
 
   return {

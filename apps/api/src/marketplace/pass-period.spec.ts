@@ -93,5 +93,22 @@ describe('passPeriod', () => {
       pass: 'day',
     });
     expect(r.occurrences).toHaveLength(1);
+    expect(r.occurrences[0]?.startsAt.toISOString()).toBe('2026-11-02T03:30:00.000Z');
+    expect(r.occurrences[0]?.endsAt.toISOString()).toBe('2026-11-02T12:30:00.000Z');
+  });
+
+  it.each([
+    { zone: 'America/New_York', date: '2026-03-08', opensAt: '02:30', closesAt: '03:15' },
+    { zone: LONDON, date: '2026-03-29', opensAt: '01:30', closesAt: '02:15' },
+  ])('treats fixed hours inside a DST gap as closed ($zone)', (c) => {
+    const r = run({
+      openingHours: { mode: 'fixed_hours', opensAt: c.opensAt, closesAt: c.closesAt },
+      slot: 'working_hours',
+      pass: 'week',
+      startDate: c.date,
+      timeZone: c.zone,
+    });
+    expect(r.skippedDates).toEqual([c.date]);
+    expect(r.occurrences).toHaveLength(6);
   });
 });

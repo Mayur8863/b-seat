@@ -1,4 +1,4 @@
-import { addDays, toInstantCompatible } from '../common/time/zoned-time.js';
+import { addDays, parseLocalTime, toInstantCompatible } from '../common/time/zoned-time.js';
 
 /** Local `HH:mm`. */
 export type OpeningHours =
@@ -13,17 +13,19 @@ export interface SlotWindow {
 }
 
 export function offeredSlots(openingHours: OpeningHours): SlotKind[] {
-  return openingHours.mode === 'always_open' ? ['day', 'night', 'full_day'] : ['working_hours'];
+  if (openingHours.mode === 'fixed_hours') return ['working_hours'];
+  halfwayTime(openingHours.shiftChangeAt);
+  return ['day', 'night', 'full_day'];
 }
 
-/** The local time 12 wall-clock hours after `time`, and whether it falls on the next date. */
-function halfwayPoint(time: string): { time: string; nextDay: boolean } {
-  const [h = 0, m = 0] = time.split(':').map(Number);
-  const hour = (h + 12) % 24;
-  return {
-    time: `${String(hour).padStart(2, '0')}:${String(m).padStart(2, '0')}`,
-    nextDay: h >= 12,
-  };
+/**
+ * The shift change must be 00:00-11:59 so the night slot (T + 12 h) starts on its own date, as
+ * the spec says. Owner input is validated upstream; this is the last line of defence.
+ */
+function halfwayTime(shiftChangeAt: string): string {
+  const { hour, minute } = parseLocalTime(shiftChangeAt);
+  if (hour >= 12) throw new RangeError(`Shift change ${shiftChangeAt} must be before 12:00`);
+  return `${String(hour + 12).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
 }
 
 /**
@@ -48,12 +50,11 @@ export function slotWindow(
     };
   } else {
     const shift = openingHours.shiftChangeAt;
-    const half = halfwayPoint(shift);
-    const halfDate = half.nextDay ? addDays(date, 1) : date;
+    const half = halfwayTime(shift);
     if (slot === 'day') {
-      window = { startsAt: at(date, shift), endsAt: at(halfDate, half.time) };
+      window = { startsAt: at(date, shift), endsAt: at(date, half) };
     } else if (slot === 'night') {
-      window = { startsAt: at(halfDate, half.time), endsAt: at(addDays(date, 1), shift) };
+      window = { startsAt: at(date, half), endsAt: at(addDays(date, 1), shift) };
     } else if (slot === 'full_day') {
       window = { startsAt: at(date, shift), endsAt: at(addDays(date, 1), shift) };
     } else {
@@ -61,7 +62,8 @@ export function slotWindow(
     }
   }
 
-  // A tzdata anomaly rather than user input, so fail loudly.
+  // Either a tzdata anomaly or owner fixed hours that fall inside one DST gap (both ends resolve
+  // to the same instant). passPeriod treats the latter as a closed date.
   if (window.endsAt.getTime() <= window.startsAt.getTime()) {
     throw new RangeError(`Slot ${slot} on ${date} ends before it starts`);
   }

@@ -117,8 +117,11 @@ security gain); authorization in controllers (AGENTS.md puts it in services).
   instant after the gap, an overlap gives the earlier instant. Both cases come to one rule, which is to use the
   offset in force **before** the transition (in `toInstant`'s algorithm, the offset read at `W − 24 h`). London
   `01:30` on 2026-03-29 resolves to 01:30 UTC, and on 2026-10-25 to 00:30 UTC. `zoned-time.ts` gains
-  `toInstantCompatible`, unit-tested. `slots.ts` asserts `end > start` for every slot and throws otherwise (a
-  tzdata anomaly, not user input). Renter inputs are dates, not times, so `invalid-local-time` is not part of
+  `toInstantCompatible`, unit-tested. `slots.ts` asserts `end > start` for every slot and throws otherwise. The cause is a tzdata anomaly or
+  owner fixed hours inside one DST gap (e.g. New York 02:30-03:15 on 2026-03-08); `passPeriod` treats such a date
+  as closed (skipped, no occurrence). **Shift change restriction (product decision):** the shift change time is
+  00:00-11:59, so the night slot (T + 12 h) always starts on its own date; `slotWindow` and `offeredSlots` assert it.
+  Local times accept `HH:mm` or `HH:mm:00` (Postgres `time`). Renter inputs are dates, not times, so `invalid-local-time` is not part of
   the 002 contract. The ADR-0008 refusal still applies to renter-typed times, and none remain after T043.
 - Shift change and opening times are `HH:mm` (`LocalTime`). The spec sets no step, so none is enforced.
 

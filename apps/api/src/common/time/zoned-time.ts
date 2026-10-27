@@ -17,7 +17,8 @@ export type ToInstantResult =
   | { kind: 'ambiguous' };
 
 const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
-const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
+// Postgres `time` returns HH:mm:ss, so an all-zero seconds part is accepted.
+const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)(?::00)?$/;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 const formatters = new Map<string, Intl.DateTimeFormat>();
@@ -84,13 +85,20 @@ export function toLocal(instant: Date, timeZone: string): LocalDateTime {
   };
 }
 
+/** The one local-time parser: `HH:mm` or `HH:mm:00`; rejects `24:00` and non-zero seconds. */
+export function parseLocalTime(time: string): { hour: number; minute: number; canonical: string } {
+  const t = TIME_PATTERN.exec(time);
+  if (!t) throw new RangeError(`Invalid local time: ${time}`);
+  return { hour: Number(t[1]), minute: Number(t[2]), canonical: `${t[1]}:${t[2]}` };
+}
+
 /** The wall-clock read as if it were UTC (ms); throws RangeError for malformed input. */
 function wallClockAsUtc(date: string, time: string): number {
   const d = DATE_PATTERN.exec(date);
-  const t = TIME_PATTERN.exec(time);
-  if (!d || !t) throw new RangeError(`Invalid local date or time: ${date} ${time}`);
+  if (!d) throw new RangeError(`Invalid local date: ${date}`);
+  const t = parseLocalTime(time);
   const [year, month, day] = [Number(d[1]), Number(d[2]), Number(d[3])];
-  const ms = Date.UTC(year, month - 1, day, Number(t[1]), Number(t[2]));
+  const ms = Date.UTC(year, month - 1, day, t.hour, t.minute);
   const check = new Date(ms);
   // Date.UTC rolls 2026-02-30 over to March; refuse it instead.
   if (
@@ -113,12 +121,13 @@ function wallClockAsUtc(date: string, time: string): number {
  */
 export function toInstant(date: string, time: string, timeZone: string): ToInstantResult {
   const wall = wallClockAsUtc(date, time);
+  const wanted = parseLocalTime(time).canonical;
   const offsets = new Set([offsetAt(wall - DAY_MS, timeZone), offsetAt(wall + DAY_MS, timeZone)]);
   const matches = [...offsets]
     .map((offset) => new Date(wall - offset))
     .filter((candidate) => {
       const local = toLocal(candidate, timeZone);
-      return local.date === date && local.time === time;
+      return local.date === date && local.time === wanted;
     });
 
   const [only] = matches;

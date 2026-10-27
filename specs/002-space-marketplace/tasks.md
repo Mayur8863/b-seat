@@ -155,6 +155,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 - [ ] T004 Add `apps/api/src/db/schema/pricing.ts` (`space_slot`, `pass_price`) and `apps/api/src/db/schema/calendar.ts` (`availability_calendar`), migrations `pricing_calendar` (generated) and `shared_calendar_backfill` (custom), tests `apps/api/test/pricing-calendar-constraints.int-spec.ts`
   - **Owner**: backend-dev · **Branch**: `feat/002-pricing-calendar-schema` · **Size**: M · **Depends on**: T003 · **Status**: todo
   - **Scope**: data-model.md verbatim: PK `(space_id, slot)`; PK `(space_id, slot, pass)`; `amount numeric(12,2)` with `pass_price_positive` `amount > 0`; `weekdays smallint DEFAULT 127` with `availability_calendar_weekdays` `BETWEEN 1 AND 127`; `availability_calendar_range`; partial unique `availability_calendar_shared_unique (space_id) WHERE seat_id IS NULL`; `availability_calendar_seat_unique (seat_id)`; composite FK `(seat_id, space_id)`. Custom backfill: one shared calendar per existing space, `start_date = (created_at AT TIME ZONE time_zone)::date`.
+  - **Added (T006 review)**: the migration also adds CHECK `shift_change_at < '12:00'` on `space` (R-4).
   - **Acceptance criteria**:
     - Given an existing space, When the migrations run, Then it has exactly one shared calendar starting on its creation date (local), no end date, `weekdays = 127` (FR-024, AC 6.1).
     - Given a second shared calendar for a space, or a second own calendar for a seat, When inserted, Then `23505`.
@@ -201,6 +202,8 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 - [ ] T007 Implement `apps/api/src/common/money/money.ts`, `apps/api/src/common/errors/problem-types.ts` and `apps/api/src/marketplace/booking-rules.ts`, with unit tests written first
   - **Owner**: backend-dev · **Branch**: `feat/002-pass-rules` · **Size**: M · **Depends on**: T006 · **Status**: todo
   - **Scope**: research R-8; contracts/README.md problem types, rule order and extension schemas (AQ-3, ADR-0009 section 8). `parseDecimal`, `formatDecimal`, `fullDaySaving(day, night, fullDay)` → `{ amount, percent } | null` (percent rounded half-up). `evaluatePassBookingRules({ space, isOwner, offered, startDayOpen, firstStartsAt }, now)` returns the first violation in the documented order or `null`. Problem type constants for every row of the contracts README table. `ProblemException` gains an optional `extensions` record and `ProblemFilter` spreads it before the standard members; export `PublishIncompleteProblem`, `LabelTakenProblem` and `OccupancyConflictProblem` (`ProblemSchema.extend(...)`, response only) for T020, T021 and T047. `ProblemSchema` itself is unchanged.
+  - **Boundary assumptions (T006 security review)**: dates `YYYY-MM-DD` within years 0100-9998; server-side max span for any iterated date range and max seats per request; `slot`/`pass` as `z.enum` matching the opening mode; calendar weekdays 1-127 and `endDate >= startDate`; services catch `RangeError` from the slot modules and map it to a typed problem or treat the date as closed.
+  - **Added (T006 review)**: the service checks `offeredSlots(...).includes(slot)` and returns 422 `pass-not-offered` before calling `passPeriod`.
   - **Acceptance criteria**:
     - Given `"1500"`, `"1500.5"`, `"0.01"`, When parsed, Then minor units 150000, 150050, 1; Given `"10.005"`, `"0"`, `"-1"`, `"1e3"`, Then rejected (FR-011, AC 3.4).
     - Given day 500.00, night 400.00, full_day 800.00, When `fullDaySaving` runs, Then `{ amount: "100.00", percent: 11 }`; Given full_day ≥ day + night, Then `null` (FR-012, AC 3.5).
@@ -332,6 +335,8 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
   - **Owner**: backend-dev · **Branch**: `feat/002-owner-spaces-api` · **Size**: M · **Depends on**: T002, T004, T019 · **Status**: todo
   - **Carry-over (T003 review)**: `ownerId`, `status` and `spaceId` come only from the session or route, never the request body, and the service maintains `space.updated_at`.
   - **Scope**: contracts/owner-spaces.md "Listing". Create also inserts the shared calendar (AC 6.1). Publish check: at least one active seat and one offered pass (enabled slot valid for the mode with a price). Scope every query by `owner_id`. Integration tests first.
+  - **Boundary assumptions (T006 security review)**: dates `YYYY-MM-DD` within years 0100-9998; server-side max span for any iterated date range and max seats per request; `slot`/`pass` as `z.enum` matching the opening mode; calendar weekdays 1-127 and `endDate >= startDate`; services catch `RangeError` from the slot modules and map it to a typed problem or treat the date as closed.
+  - **Added (T006 review)**: Zod enforces shift change time 00:00-11:59 with a clear message; time zone is validated (`isValidTimeZone`, max ~64 chars, stored canonical) and only ever taken from the stored space.
   - **Acceptance criteria**:
     - Given an owner, When `POST /api/owner/spaces` with every required field, Then 201 `OwnerSpace` with `status: "draft"`, and a shared calendar from today (local), no end, all days exists (AC 2.1, FR-006, AC 6.1).
     - Given a body missing any required field, a 101-char name, a 2,001-char description, an unknown country, an invalid time zone, an unknown currency, fixed hours with closing ≤ opening, or six custom utilities, When posted, Then 400 naming the field (FR-006, AC 2.1, AC 2.2).
@@ -408,6 +413,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 - [ ] T027 [US3] Add pricing to `apps/api/src/owner-spaces/` (`GET`/`PUT …/pricing`) with `apps/api/test/owner-pricing.int-spec.ts`; regenerate `apps/api/openapi.json`
   - **Owner**: backend-dev · **Branch**: `feat/002-pricing-api` · **Size**: M · **Depends on**: T007, T020 · **Status**: todo
   - **Scope**: contracts/owner-spaces.md "Pricing". Slot times come from `slots.ts`. Changing `shiftChangeAt` or `openingHours` never touches bookings (edge).
+  - **Boundary assumptions (T006 security review)**: see T007.
   - **Acceptance criteria**:
     - Given a 24-hour space, When `PUT` sets shift 07:00 and enables day, night and full_day, Then `GET` returns three slots with 07:00–19:00, 19:00–07:00 (`endsNextDay`) and 07:00–07:00 (`endsNextDay`) (AC 3.1, FR-010).
     - Given a fixed-hours space 09:00–18:00, When `GET`, Then exactly one `working_hours` slot 09:00–18:00; When a `PUT` tries to disable it or enable `day`, Then 400 (AC 3.2).
@@ -474,6 +480,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 - [ ] T034 [US4] Add `GET /api/listings` (search) and `GET /api/listings/locations` (suggestions) to `apps/api/src/listings/` with `apps/api/test/listings-search.int-spec.ts`; regenerate `apps/api/openapi.json`
   - **Owner**: backend-dev · **Branch**: `feat/002-listing-search-api` · **Size**: M · **Depends on**: T027 · **Status**: todo
   - **Scope**: contracts/listings.md; research R-9. Order and paging per **OQ-12**. Without `startDate`, `pass` and `slot` filter on "offered". The availability filter is T038.
+  - **Boundary assumptions (T006 security review)**: see T007.
   - **Acceptance criteria**:
     - Given published spaces in Pune and London and a draft in Pune, When searching `country=IN&city=%20PUNE%20`, Then only the published Pune space returns (AC 4.1, AC 4.2, FR-014).
     - Given a space with Wi-Fi and parking and one with Wi-Fi only, When filtering `utilities=wifi&utilities=parking`, Then only the first returns (AC 4.3).
@@ -597,6 +604,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 - [ ] T047 [US5] Add occupancy to `apps/api/src/owner-operations/` (`GET`/`POST …/occupancy`, `POST …/occupancy/{markId}/end`) and fill `OwnerSeat.today` in `apps/api/src/owner-spaces/`, with `apps/api/test/occupancy.int-spec.ts`; regenerate `apps/api/openapi.json`
   - **Owner**: backend-dev · **Branch**: `feat/002-occupancy-api` · **Size**: M · **Depends on**: T006, T021 · **Status**: todo
   - **Scope**: contracts/owner-operations.md "Occupancy"; research R-11 (`dayBoundary` from T006; all seats in one transaction, holds inserted in `(seat_id, starts_at)` order; `40P01` retries the whole transaction, at most 3 attempts, with the booking create's helper; on `23P01` roll back, then build `OccupancyConflictProblem.conflicts` from the overlapping holds). Mark status comes from its hold (ADR-0009 section 3). **OQ-5** for vacate.
+  - **Boundary assumptions (T006 security review)**: see T007.
   - **Acceptance criteria**:
     - Given two seats, When marked occupied from next Monday with no end and a note, Then 201 with two marks, renters' seat availability shows them `taken` from that day onward, and the note never appears on `/api/listings/*` (AC 5.1, FR-022).
     - Given a renter booking on one of the seats on Wednesday, When marking both seats Mon–Fri, Then 409 `occupancy:conflicts-with-bookings` with `conflicts: [{ seatId, label, bookedDates: [Wednesday], marks: [] }]`, and no mark is created (AC 5.3, FR-023).
@@ -672,6 +680,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 - [ ] T055 [US7] Add `GET /api/bookings` and `POST /api/bookings/{bookingId}/cancel` to `apps/api/src/bookings/` with `apps/api/test/my-bookings.int-spec.ts`; regenerate `apps/api/openapi.json`
   - **Owner**: backend-dev · **Branch**: `feat/002-my-bookings-api` · **Size**: M · **Depends on**: T036 · **Status**: todo
   - **Scope**: contracts/bookings.md. Cancel is the single scoped `UPDATE booking`; `seat_hold_booking_fk` cascades the holds to inactive (AQ-7, ADR-0009 section 3), so the service never updates `seat_hold`. Legacy hourly rows are not listed (**OQ-3**).
+  - **Boundary assumptions (T006 security review)**: see T007.
   - **Acceptance criteria**:
     - Given renter A with two upcoming pass bookings, one ended, one cancelled and a legacy hourly row, and renter B with one, When A lists, Then exactly A's two upcoming pass bookings return, soonest first, with space, area, seat, pass, slot, local period with zone and price (AC 7.1, FR-026).
     - Given A's booking has not started, When A cancels it, Then 200 `cancelled`, every hold is inactive, and seat availability shows it free for the whole period (AC 7.2).
