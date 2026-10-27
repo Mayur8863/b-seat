@@ -35,7 +35,7 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 | T003 | Listing schema: space columns, cubicle, seat changes         | backend-dev    | T001                   | M    | done   | `feat/002-listing-schema`             |
 | T004 | Pricing and calendar schema, shared calendar backfill        | backend-dev    | T003                   | M    | todo   | `feat/002-pricing-calendar-schema`    |
 | T005 | Pass booking header, seat holds, occupancy marks, exclusions | backend-dev    | T003, T008             | M    | todo   | `feat/002-seat-hold-schema`           |
-| T006 | Slot, calendar and pass-period engine (pure, TDD)            | backend-dev    | T001                   | M    | review | `feat/002-slot-engine`                |
+| T006 | Slot, calendar and pass-period engine (pure, TDD)            | backend-dev    | T001                   | M    | done   | `feat/002-slot-engine`                |
 | T007 | Money, problem types and pass booking rules (pure, TDD)      | backend-dev    | T006                   | M    | todo   | `feat/002-pass-rules`                 |
 | T008 | Retire hourly create; legacy space reads published-only      | backend-dev    | T003                   | S    | todo   | `chore/002-retire-hourly-create`      |
 | T009 | Seed: demo owner and renter, priced listings, calendars      | backend-dev    | T002, T004, T012       | M    | todo   | `feat/002-seed-marketplace`           |
@@ -183,8 +183,8 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given `pg_constraint`, When queried, Then `seat_hold_seat_no_overlap` and `seat_hold_user_no_overlap` have `contype = 'x'`, `booking` has no `x` constraint, and `booking_no_new_hourly` has `convalidated = false`.
     - Given the migrations, When `db:generate` runs again, Then no new migration is produced.
 
-- [ ] T006 [P] Implement `apps/api/src/marketplace/slots.ts`, `calendar-rules.ts` and `pass-period.ts`, and add `toInstantCompatible` to `apps/api/src/common/time/zoned-time.ts`, with unit tests written first (`*.spec.ts`)
-  - **Owner**: backend-dev · **Branch**: `feat/002-slot-engine` · **Size**: M · **Depends on**: T001 · **Status**: review
+- [x] T006 [P] Implement `apps/api/src/marketplace/slots.ts`, `calendar-rules.ts` and `pass-period.ts`, and add `toInstantCompatible` to `apps/api/src/common/time/zoned-time.ts`, with unit tests written first (`*.spec.ts`)
+  - **Owner**: backend-dev · **Branch**: `feat/002-slot-engine` · **Size**: M · **Depends on**: T001 · **Status**: done (QA: failing-first commit not possible, lefthook typecheck rejects non-compiling specs and hooks may not be bypassed; specs are test-first in shape. Added exact London changeover instants and a Friday-start monthly pass count test)
   - **Scope**: research R-4 and R-5. Pure functions, no Nest or DB imports, no new dependency. `slotWindow(openingHours, slot, date, timeZone)`, `offeredSlots(openingHours)`, `dayBoundary(openingHours, date, timeZone)` (for occupancy, R-11), `isOpen(calendar, date)`, `passPeriod({ pass, slot, startDate, calendar, openingHours, timeZone })` → `{ endDate, occurrences, skippedDates }`. DST policy (AQ-2, ADR-0009 section 4): `toInstantCompatible(date, time, zone)` uses the offset in force before the transition (gap → instant after the gap, overlap → earlier instant); every slot and day boundary goes through it; `slotWindow` throws if `end <= start`. Existing `toInstant` (refusing) is unchanged.
   - **Acceptance criteria**:
     - Given a 24-hour space with shift 07:00 in `Asia/Kolkata`, When `slotWindow` runs for 2026-11-02, Then day = 07:00–19:00, night = 19:00–07:00 on 11-03, full_day = 07:00–07:00 on 11-03, as instants (AC 3.1, FR-010).

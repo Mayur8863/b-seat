@@ -82,6 +82,17 @@ describe('slotWindow', () => {
     expect(hours(slotWindow(shift('07:00'), 'full_day', '2026-10-24', LONDON))).toBe(25);
   });
 
+  it('asserts the exact instants of the London changeover slots', () => {
+    expect(iso(slotWindow(shift('07:00'), 'night', '2026-10-24', LONDON))).toEqual([
+      '2026-10-24T18:00:00.000Z',
+      '2026-10-25T07:00:00.000Z',
+    ]);
+    expect(iso(slotWindow(shift('07:00'), 'full_day', '2026-03-28', LONDON))).toEqual([
+      '2026-03-28T07:00:00.000Z',
+      '2026-03-29T06:00:00.000Z',
+    ]);
+  });
+
   it('resolves a shift inside a DST gap or overlap and keeps slots touching', () => {
     const o = shift('01:30');
     const gap = slotWindow(o, 'day', '2026-03-29', LONDON);

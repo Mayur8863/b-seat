@@ -50,6 +50,17 @@ describe('passPeriod', () => {
     expect(r.skippedDates).toEqual(['2026-11-07', '2026-11-08']);
   });
 
+  it('counts a 30-day pass on a Mon-Fri calendar starting on a Friday', () => {
+    // 2026-11-06 (Fri) .. 2026-12-05 (Sat): four full weeks (20 open) plus Fri (open) and Sat.
+    const r = run({ pass: 'month', calendar: monFri, startDate: '2026-11-06' });
+    expect(r.startDayOpen).toBe(true);
+    expect(r.endDate).toBe('2026-12-05');
+    expect(r.occurrences).toHaveLength(21);
+    expect(r.skippedDates).toHaveLength(9);
+    expect(r.skippedDates[0]).toBe('2026-11-07');
+    expect(r.skippedDates.at(-1)).toBe('2026-12-05');
+  });
+
   it('reports a closed start day', () => {
     expect(run({ calendar: monFri, startDate: '2026-11-07' }).startDayOpen).toBe(false);
   });
