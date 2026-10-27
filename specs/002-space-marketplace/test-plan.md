@@ -367,3 +367,20 @@ round counts, and the SC-001 and SC-002 times).
 8. **T070 refers to "the traceability table below" in tasks.md** (the spec to task table, without tests). This file is where the test
    names live; T070 should sign off here, with the tasks.md table kept as the owner map.
    **Resolved (task-manager):** T070 signs off in this file's Result column; its AC wording is fixed.
+
+## T009 QA results (seed, with T008 e2e gate)
+
+| Acceptance criterion                                               | Test (`apps/api/test/seed.int-spec.ts`)                                                       | Level | Result |
+| ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------- | ----- | ------ |
+| Twice: 2 accounts, 2 published spaces, 20 seats, prices, calendars | `seeds 2 accounts, 2 published spaces, 20 seats, prices and one shared calendar each, twice`  | I     | pass   |
+| Published with every listing field set                             | same test (field assertions); `claims and completes the 001 demo spaces in place`             | I     | pass   |
+| Unset password: non-zero, names variable, nothing written          | `runSeed guards` `rejects SEED_DEMO_PASSWORD=%j` (connect never called)                       | I     | pass   |
+| Production refused before pool, with or without password           | `refuses production before opening a pool`                                                    | I     | pass   |
+| Short password, own Zod schema, value never printed                | `rejects SEED_DEMO_PASSWORD=%j`; `seeds through the connection and never prints the password` | I     | pass   |
+| Soft-removed seats not resurrected; calendar recreated             | `does not resurrect a seat...`; `recreates a missing shared calendar...`                      | I     | pass   |
+
+Run: `bin/pnpm check` pass; `@bseat/api test` 378 passed, 1 skipped; seed files line coverage 100%
+(demo-spaces branch 75.9%). Compose `migrate` seeded the dev DB (`seed: done`), signed-in renter
+`GET /api/spaces` lists London HQ and Pune Hub. `docker compose --profile e2e run --rm e2e` 24 passed, and
+`... npx playwright test --retries=0` 24 passed (all 3 `/book` cases and axe included). E2E creates its own
+users, so it does not use the demo password.
