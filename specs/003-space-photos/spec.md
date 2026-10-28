@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-28
 
-**Status**: Draft
+**Status**: Approved (spec gate passed by the requester, 2026-10-28, with every default under Assumptions)
 
 **Input**: User description: "add space photos, so people know how their space looks. Also put some dummy space photos from the internet in the testing data."
 
@@ -14,6 +14,13 @@
 - The cover appears on search result cards ("Find a space"). The listing page shows a gallery. The owner manages photos from the owner pages of the space (the space pages from spec 002: Details, Seats, Passes and prices, Layout, Availability, Bookings).
 - This is a separate feature, 003. It builds on spec 002 (space marketplace), is demoed together with it, and is released after it.
 - About 8–10 free-licensed office and coworking photos (Unsplash or Pexels) are resized to about 1600 pixels on the long edge, kept in the project with a credits file, and attached to the seeded demo spaces. After that, seeding works offline.
+
+## Clarifications
+
+### Session 2026-10-28
+
+- Q: Must a photo's address that a renter saved earlier stop working once the space is unpublished or the photo is deleted, and how fast? → A: Yes, within 1 hour (option B). Photo addresses expire, so an address obtained earlier stops working within 1 hour after the space is unpublished or the photo is deleted (FR-019).
+- Q: Are the defaults listed under Assumptions accepted? → A: Yes, all of them, as written.
 
 **Depends on**: spec 002 (owner and renter roles, spaces and their draft/published/unpublished status, "Find a space", the listing page, the demo owner and the seeded London HQ and Pune Hub spaces). Terms such as owner, renter, space, listing, published and unpublished mean what they mean in `specs/002-space-marketplace/spec.md`.
 
@@ -182,7 +189,7 @@ covers.
 - **FR-016**: Each "Find a space" result card MUST show the space's cover photo, or a neutral placeholder announced as "No photos yet" when the space has none. The card layout MUST be the same either way.
 - **FR-017**: The listing page MUST show a gallery of all the space's photos in the owner's order, starting with the cover, with the photo count and each description as a caption. Opening a photo MUST show it large and uncropped with its position ("3 of 7"), next, previous and close controls usable by keyboard, pointer and touch, and focus MUST return to the opened photo on close. A space without photos MUST show the placeholder instead.
 - **FR-018**: Each place that shows a photo MUST receive a version sized for that place: a small version for result cards and a larger version for the gallery. A results card MUST NOT load the gallery-sized version.
-- **FR-019**: Renters MUST see photos only of published spaces. Photos of draft or unpublished spaces MUST NOT be shown to renters on any page. [NEEDS CLARIFICATION: must a photo's address that a renter saved earlier stop working once the space is unpublished or the photo is deleted, and how fast?]
+- **FR-019**: Renters MUST see photos only of published spaces. Photos of draft or unpublished spaces MUST NOT be shown to renters on any page. Photo addresses MUST expire, so a photo address obtained earlier stops working within 1 hour after its space is unpublished or the photo is deleted (Clarifications, Session 2026-10-28).
 - **FR-020**: Owners MUST always be able to see all photos of their own spaces in the Photos section, whatever the space's status.
 - **FR-021**: Changes to a published space's photos (added, described, reordered, deleted) MUST be visible to renters within 1 minute.
 - **FR-022**: Viewing photos MUST require sign-in, like every feature in spec 002 (FR-005).
@@ -214,7 +221,7 @@ covers.
 - **SC-004**: On a 10 Mbit/s connection, the first gallery photo on a listing page appears within 2 seconds for 95% of page loads.
 - **SC-005**: A test photo carrying GPS coordinates and a camera serial number, once uploaded, yields no stored or served version that contains either, in 100% of runs.
 - **SC-006**: In a test that fires 15 simultaneous uploads at a space with no photos, exactly 10 are added, every time.
-- **SC-007**: In tests, renters and other owners succeed in 0% of attempts to see photos of a draft or unpublished space, or to change another owner's photos.
+- **SC-007**: In tests, renters and other owners succeed in 0% of attempts to see photos of a draft or unpublished space (including through a photo address obtained more than 1 hour before it was unpublished), or to change another owner's photos.
 - **SC-008**: Automated accessibility checks report zero WCAG 2.1 AA violations on the Photos section, the results page and the listing gallery, including its large view.
 - **SC-009**: On a fresh environment with no internet access, the seed completes and a renter's search shows covers for both demo spaces.
 
