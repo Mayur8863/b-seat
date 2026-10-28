@@ -132,6 +132,21 @@ describe('owner spaces API', () => {
       expect(res.status).toBe(400);
     });
 
+    it.each([
+      'name',
+      'description',
+      'country',
+      'city',
+      'area',
+      'streetAddress',
+      'timeZone',
+      'currency',
+      'openingHours',
+    ])('400 when %s is missing', async (field) => {
+      const res = await create({ [field]: undefined }).expect(400);
+      expect(JSON.stringify(res.body)).toContain(field);
+    });
+
     it('400 names the field', async () => {
       const res = await create({ timeZone: 'Asia/Calcutta' }).expect(400);
       expect(JSON.stringify(res.body)).toContain('timeZone');
@@ -164,6 +179,37 @@ describe('owner spaces API', () => {
         hasOfferedPass: false,
         upcomingBookingCount: 0,
       });
+    });
+
+    it('orders names case-insensitively', async () => {
+      await create({ name: 'banana' }).expect(201);
+      await create({ name: 'Cherry' }).expect(201);
+      await create({ name: 'Apple' }).expect(201);
+      const res = await a.get('/api/owner/spaces').expect(200);
+      expect((res.body.items as { name: string }[]).map((i) => i.name)).toEqual([
+        'Apple',
+        'banana',
+        'Cherry',
+      ]);
+    });
+
+    it('counts only active pass bookings that have not ended', async () => {
+      const id = (await create().expect(201)).body.id as string;
+      const [s] = await createSeats(db(), id, 1);
+      if (!s) throw new Error('no seat');
+      const { userId } = await signedInUser(app, 'bk@example.com');
+      const day = (d: string) => ({
+        seatId: s.id,
+        userId,
+        startsAt: new Date(`${d}T00:00:00Z`),
+        endsAt: new Date(`${d}T23:00:00Z`),
+      });
+      await insertPassBooking(db(), day('2030-01-01'));
+      await insertPassBooking(db(), day('2030-01-02'));
+      await insertPassBooking(db(), { ...day('2030-01-03'), status: 'cancelled' });
+      await insertPassBooking(db(), day('2020-01-01'));
+      const res = await a.get('/api/owner/spaces').expect(200);
+      expect(res.body.items[0].upcomingBookingCount).toBe(2);
     });
 
     it('gets an owned space', async () => {
