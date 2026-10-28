@@ -119,6 +119,7 @@ function Body({ listing, onRefetch }: { listing: Listing; onRefetch: () => void 
             {choice && validDate ? (
               <ListingSeatList
                 spaceId={listing.id}
+                hasLayout={listing.hasLayout}
                 choice={choice}
                 startDate={startDate}
                 timeZone={listing.timeZone}
