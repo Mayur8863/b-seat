@@ -43,56 +43,52 @@ export interface PassRuleViolation {
 
 const TITLE = 'Booking rule broken';
 
-function violation(rule: PassBookingRule, type: string, detail: string): PassRuleViolation {
-  return { rule, type, status: 422, title: TITLE, detail };
+/** Problem type and contract detail text (contracts/README.md) of each rule. */
+const RULES = {
+  'space-not-published': {
+    type: PROBLEM_TYPES.spaceNotPublished,
+    detail: 'This space is no longer listed.',
+  },
+  'own-space': {
+    type: PROBLEM_TYPES.ownSpace,
+    detail: "You can't book a seat in your own space. Mark it occupied instead.",
+  },
+  'pass-not-offered': {
+    type: PROBLEM_TYPES.passNotOffered,
+    detail: "This space doesn't offer that pass for that slot.",
+  },
+  'start-day-closed': {
+    type: PROBLEM_TYPES.startDayClosed,
+    detail: "This seat isn't available on the start date you chose.",
+  },
+  'slot-started': {
+    type: PROBLEM_TYPES.slotStarted,
+    detail: 'That slot has already started. Choose a later start date.',
+  },
+  'too-far-ahead': {
+    type: PROBLEM_TYPES.tooFarAhead,
+    detail: 'Bookings can start at most 30 days ahead.',
+  },
+} satisfies Record<PassBookingRule, { type: string; detail: string }>;
+
+function violation(rule: PassBookingRule): PassRuleViolation {
+  return { rule, status: 422, title: TITLE, ...RULES[rule] };
 }
 
 export function evaluatePassBookingRules(
   facts: PassBookingFacts,
   now: Date,
 ): PassRuleViolation | null {
-  if (facts.space.status !== 'published') {
-    return violation(
-      'space-not-published',
-      PROBLEM_TYPES.spaceNotPublished,
-      'This space is no longer listed.',
-    );
-  }
-  if (facts.isOwner) {
-    return violation(
-      'own-space',
-      PROBLEM_TYPES.ownSpace,
-      "You can't book a seat in your own space. Mark it occupied instead.",
-    );
-  }
-  if (!facts.offered) {
-    return violation(
-      'pass-not-offered',
-      PROBLEM_TYPES.passNotOffered,
-      "This space doesn't offer that pass for that slot.",
-    );
-  }
-  if (!facts.startDayOpen) {
-    return violation(
-      'start-day-closed',
-      PROBLEM_TYPES.startDayClosed,
-      'The space is closed on the start date.',
-    );
-  }
   const startMs = facts.firstStartsAt.getTime();
-  if (startMs <= now.getTime()) {
-    return violation(
-      'slot-started',
-      PROBLEM_TYPES.slotStarted,
-      'The first slot of this pass has already started.',
-    );
+  const nowMs = now.getTime();
+  if (!Number.isFinite(startMs) || !Number.isFinite(nowMs)) {
+    throw new RangeError('firstStartsAt and now must be valid dates');
   }
-  if (startMs - now.getTime() > MAX_BOOKING_LEAD_MS) {
-    return violation(
-      'too-far-ahead',
-      PROBLEM_TYPES.tooFarAhead,
-      'A booking can start at most 30 days from now.',
-    );
-  }
+  if (facts.space.status !== 'published') return violation('space-not-published');
+  if (facts.isOwner) return violation('own-space');
+  if (!facts.offered) return violation('pass-not-offered');
+  if (!facts.startDayOpen) return violation('start-day-closed');
+  if (startMs <= nowMs) return violation('slot-started');
+  if (startMs - nowMs > MAX_BOOKING_LEAD_MS) return violation('too-far-ahead');
   return null;
 }
