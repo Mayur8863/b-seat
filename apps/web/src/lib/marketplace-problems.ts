@@ -4,7 +4,20 @@ import { safeNext } from './safe-next';
 import type { ProblemCopy } from './booking-problems';
 
 /** Screens that use this copy; the Alert title reads "We couldn't {action}" (ui/02 9.1). */
-export type OwnerAction = 'save your space';
+export type OwnerAction =
+  'save your space' | 'publish this space' | 'unpublish this space' | 'load your spaces';
+
+export type MissingItem = 'seat' | 'pricedPass';
+
+/** What a `listing:publish-incomplete` problem says the space lacks; undefined for any other error. */
+export function publishMissing(error: unknown): MissingItem[] | undefined {
+  if (!(error instanceof ApiError) || error.status !== 422) return undefined;
+  if (error.problem?.type !== 'urn:bseat:problem:listing:publish-incomplete') return undefined;
+  const items = (error.problem.missing ?? []).filter(
+    (m): m is MissingItem => m === 'seat' || m === 'pricedPass',
+  );
+  return items.length > 0 ? items : undefined;
+}
 
 /**
  * Copy for a failed owner request. The server's `title` and `detail` are never shown (OQ-H):

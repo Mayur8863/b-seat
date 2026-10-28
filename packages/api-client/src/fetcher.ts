@@ -14,6 +14,8 @@ export interface ProblemDetails {
   instance?: string;
   requestId?: string;
   errors?: { path: string; message: string }[];
+  /** Extension member of `listing:publish-incomplete`: what the listing still lacks. */
+  missing?: string[];
 }
 
 export class ApiError extends Error {
@@ -65,6 +67,9 @@ function asProblem(data: unknown, status: number): ProblemDetails | undefined {
         typeof (e as Record<string, unknown>).path === 'string' &&
         typeof (e as Record<string, unknown>).message === 'string',
     );
+  }
+  if (Array.isArray(raw.missing)) {
+    problem.missing = raw.missing.filter((m): m is string => typeof m === 'string');
   }
   return problem;
 }

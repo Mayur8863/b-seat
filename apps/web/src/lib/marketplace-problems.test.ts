@@ -1,7 +1,7 @@
 import { ApiError } from '@bseat/api-client';
 import { describe, expect, it } from 'vitest';
 
-import { describeOwnerProblem } from './marketplace-problems';
+import { describeOwnerProblem, publishMissing } from './marketplace-problems';
 
 const err = (status: number) => new ApiError(status, undefined);
 
@@ -39,5 +39,22 @@ describe('describeOwnerProblem', () => {
       text: 'Sign in',
       href: '/sign-in?next=%2Fowner%2Fspaces%2Fnew',
     });
+  });
+});
+
+describe('publishMissing', () => {
+  const problem = (type: string, missing: string[]) =>
+    new ApiError(422, { type, status: 422, missing });
+
+  it('returns the known missing items of a publish refusal', () => {
+    expect(
+      publishMissing(problem('urn:bseat:problem:listing:publish-incomplete', ['seat', 'x'])),
+    ).toEqual(['seat']);
+  });
+
+  it('is undefined for other problems and non-API errors', () => {
+    expect(publishMissing(problem('urn:bseat:problem:validation', ['seat']))).toBeUndefined();
+    expect(publishMissing(err(500))).toBeUndefined();
+    expect(publishMissing(new TypeError('x'))).toBeUndefined();
   });
 });

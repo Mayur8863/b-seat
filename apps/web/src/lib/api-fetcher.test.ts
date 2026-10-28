@@ -112,6 +112,15 @@ describe('apiFetch error bodies', () => {
     expect(error.problem?.title).toBeUndefined();
   });
 
+  it('keeps the string entries of a missing extension member', async () => {
+    server.use(
+      http.get('*/api/x', () =>
+        HttpResponse.json({ type: 'x', missing: ['seat', 5, 'pricedPass'] }, { status: 422 }),
+      ),
+    );
+    expect((await failure()).problem?.missing).toEqual(['seat', 'pricedPass']);
+  });
+
   it('keeps only well-formed validation errors', async () => {
     server.use(
       http.get('*/api/x', () =>
