@@ -109,6 +109,13 @@ describe('ProblemFilter extensions', () => {
     expect(body).toMatchObject({ labels: ['A-1'], status: 409, detail: 'Taken.' });
   });
 
+  it('leaves the body unchanged when the extensions are empty', () => {
+    const { body } = run(new ProblemException(409, 'urn:t', 'T', 'D', {}));
+    expect(Object.keys(body as Record<string, unknown>).sort()).toEqual(
+      ['detail', 'instance', 'requestId', 'status', 'title', 'type'].sort(),
+    );
+  });
+
   it('never lets an extension override a standard member', () => {
     const { body, res } = run(
       new ProblemException(409, 'urn:bseat:problem:listing:label-taken', 'Label taken', 'Taken.', {

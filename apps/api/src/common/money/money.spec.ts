@@ -74,6 +74,20 @@ describe('fullDaySaving', () => {
     expect(fullDaySaving('500', '400', '950')).toBeNull();
   });
 
+  it('is null when full day equals day + night exactly (boundary, FR-012)', () => {
+    expect(fullDaySaving('500.00', '400.00', '900.00')).toBeNull();
+    expect(fullDaySaving('0.01', '0.01', '0.02')).toBeNull();
+  });
+
+  it('reports one minor unit of saving at the boundary', () => {
+    expect(fullDaySaving('500.00', '400.00', '899.99')).toEqual({ amount: '0.01', percent: 0 });
+  });
+
+  it('rejects an invalid price', () => {
+    expect(() => fullDaySaving('500.00', '400.00', '1e3')).toThrow(RangeError);
+    expect(() => fullDaySaving('0', '400.00', '100')).toThrow(RangeError);
+  });
+
   it('works at the largest accepted prices', () => {
     expect(fullDaySaving('9999999999.99', '9999999999.99', '9999999999.99')).toEqual({
       amount: '9999999999.99',
