@@ -22,7 +22,7 @@ import { Input } from '@bseat/ui/components/input';
 import { Skeleton } from '@bseat/ui/components/skeleton';
 import { toast } from '@bseat/ui/components/sonner';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { type ReactNode, type Ref, useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
@@ -168,8 +168,16 @@ interface Props {
   onRetry: () => void;
   cubicles: CubicleOptions;
   onPageProblem: (copy: ProblemCopy) => void;
-  /** Seam for T048: extra per-seat content (occupancy state and actions) rendered after the details. */
+  /** Extra per-seat content (occupancy state and actions) rendered after the details. */
   renderExtra?: (seat: OwnerSeat) => ReactNode;
+  /** First control of a row, before the label (the selection checkbox). */
+  renderLead?: (seat: OwnerSeat) => ReactNode;
+  /** Content under a row (the occupancy marks). */
+  renderBelow?: (seat: OwnerSeat) => ReactNode;
+  /** Under the heading when there are seats (hint, selection toolbar). */
+  header?: ReactNode;
+  /** Receives the "Your seats" h2 so success can move focus to it. */
+  headingRef?: Ref<HTMLHeadingElement>;
 }
 
 /** ui/02 7.4: loading, error, empty and list states, with inline edit and a remove dialog. */
@@ -181,6 +189,10 @@ export function SeatList({
   cubicles,
   onPageProblem,
   renderExtra,
+  renderLead,
+  renderBelow,
+  header,
+  headingRef,
 }: Props) {
   const refresh = useSeatRefresh(spaceId);
   const remove = useOwnerSeatsDeleteSeat();
@@ -281,6 +293,7 @@ export function SeatList({
               />
             ) : (
               <div className="grid gap-2 p-3 sm:flex sm:items-center sm:gap-4">
+                {renderLead?.(s)}
                 <div className="grid min-w-0 gap-0.5 sm:flex-1 sm:grid-cols-[8rem_1fr] sm:items-baseline sm:gap-4">
                   <span className="font-medium break-words">{s.label}</span>
                   <span className="text-muted-foreground text-sm break-words">
@@ -311,6 +324,7 @@ export function SeatList({
                 </div>
               </div>
             )}
+            {editing !== s.id && renderBelow?.(s)}
           </li>
         ))}
       </ul>
@@ -319,9 +333,10 @@ export function SeatList({
 
   return (
     <section aria-labelledby="seats-heading" className="grid gap-4">
-      <h2 id="seats-heading" className="text-lg font-medium">
+      <h2 id="seats-heading" ref={headingRef} tabIndex={-1} className="text-lg font-medium">
         Your seats
       </h2>
+      {seats && seats.length > 0 && !failed && header}
       {body}
       <AlertDialog
         open={removing !== null}

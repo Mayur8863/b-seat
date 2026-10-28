@@ -15,7 +15,11 @@ export type OwnerAction =
   | 'remove this seat'
   | 'add this cubicle'
   | 'rename this cubicle'
-  | 'remove this cubicle';
+  | 'remove this cubicle'
+  | 'mark those seats occupied'
+  | 'mark that seat vacant'
+  | 'remove that mark'
+  | 'load occupancy details';
 
 export type MissingItem = 'seat' | 'pricedPass';
 

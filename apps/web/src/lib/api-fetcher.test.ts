@@ -112,6 +112,31 @@ describe('apiFetch error bodies', () => {
     expect(error.problem?.title).toBeUndefined();
   });
 
+  it('keeps well-formed occupancy conflicts and drops malformed entries', async () => {
+    const good = {
+      seatId: 's1',
+      label: 'A-1',
+      bookedDates: ['2026-11-03', 7],
+      marks: [{ id: 'm1', startDate: '2026-11-02', endDate: null }, { id: 5 }],
+    };
+    server.use(
+      http.get('*/api/x', () =>
+        HttpResponse.json(
+          { type: 'x', conflicts: [good, { label: 'no id' }, 'junk'] },
+          { status: 409 },
+        ),
+      ),
+    );
+    expect((await failure()).problem?.conflicts).toEqual([
+      {
+        seatId: 's1',
+        label: 'A-1',
+        bookedDates: ['2026-11-03'],
+        marks: [{ id: 'm1', startDate: '2026-11-02', endDate: null }],
+      },
+    ]);
+  });
+
   it('keeps the string entries of a missing extension member', async () => {
     server.use(
       http.get('*/api/x', () =>

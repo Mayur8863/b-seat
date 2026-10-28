@@ -48,6 +48,8 @@ function fakeApi(db: Db) {
     return f?.();
   };
   server.use(
+    http.get(BASE, () => HttpResponse.json({ id: 's1', timeZone: 'Europe/London' })),
+    http.get(`${BASE}/occupancy`, () => HttpResponse.json({ items: [] })),
     http.get(`${BASE}/seats`, () => HttpResponse.json({ items: db.seats })),
     http.get(`${BASE}/cubicles`, () =>
       HttpResponse.json({ items: db.cubicles.map((c) => ({ ...c, seatCount: seatCount(c) })) }),
@@ -136,6 +138,8 @@ describe('SeatManager states', () => {
 
   it('error: both lists offer retry and the forms stay usable', async () => {
     server.use(
+      http.get(BASE, () => HttpResponse.json({ id: 's1', timeZone: 'Europe/London' })),
+      http.get(`${BASE}/occupancy`, () => HttpResponse.json({ items: [] })),
       http.get(`${BASE}/seats`, () => HttpResponse.json({ status: 500 }, { status: 500 })),
       http.get(`${BASE}/cubicles`, () => HttpResponse.json({ status: 500 }, { status: 500 })),
     );

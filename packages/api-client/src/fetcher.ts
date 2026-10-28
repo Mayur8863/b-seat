@@ -18,6 +18,15 @@ export interface ProblemDetails {
   missing?: string[];
   /** Extension member of `listing:label-taken`: the clashing seat labels. */
   labels?: string[];
+  /** Extension member of `occupancy:*` conflicts: per seat, the booked dates and the owner's own marks. */
+  conflicts?: OccupancyConflict[];
+}
+
+export interface OccupancyConflict {
+  seatId: string;
+  label: string;
+  bookedDates: string[];
+  marks: { id: string; startDate: string; endDate: string | null }[];
 }
 
 export class ApiError extends Error {
@@ -76,7 +85,27 @@ function asProblem(data: unknown, status: number): ProblemDetails | undefined {
   if (Array.isArray(raw.labels)) {
     problem.labels = raw.labels.filter((l): l is string => typeof l === 'string');
   }
+  if (Array.isArray(raw.conflicts)) problem.conflicts = raw.conflicts.flatMap(asConflict);
   return problem;
+}
+
+function asConflict(c: unknown): OccupancyConflict[] {
+  if (typeof c !== 'object' || c === null) return [];
+  const r = c as Record<string, unknown>;
+  const seatId = str(r.seatId);
+  const label = str(r.label);
+  if (seatId === undefined || label === undefined) return [];
+  const bookedDates = Array.isArray(r.bookedDates)
+    ? r.bookedDates.filter((d): d is string => typeof d === 'string')
+    : [];
+  const marks = (Array.isArray(r.marks) ? r.marks : []).flatMap((m: unknown) => {
+    const mark = (typeof m === 'object' && m !== null ? m : {}) as Record<string, unknown>;
+    const id = str(mark.id);
+    const startDate = str(mark.startDate);
+    if (id === undefined || startDate === undefined) return [];
+    return [{ id, startDate, endDate: str(mark.endDate) ?? null }];
+  });
+  return [{ seatId, label, bookedDates, marks }];
 }
 
 /**
