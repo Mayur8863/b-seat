@@ -29,8 +29,21 @@ describe('parseDecimal', () => {
     '12345678901',
     '10000000000.00',
     '١٢',
+    '007',
+    '00.5',
+    '01.50',
+    '００１',
+    '１',
+    '1.٥',
   ])('rejects %j', (input) => {
     expect(() => parseDecimal(input)).toThrow(RangeError);
+  });
+});
+
+describe('parseDecimal input type', () => {
+  const inputs: unknown[] = [undefined, null, 5, {}];
+  it.each(inputs)('rejects a non-string %j', (input) => {
+    expect(() => parseDecimal(input as string)).toThrow(RangeError);
   });
 });
 

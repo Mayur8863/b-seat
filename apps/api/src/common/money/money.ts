@@ -2,23 +2,26 @@
  * Money as exact decimal strings (research R-8). Arithmetic runs on integer minor units
  * (1/100). The largest column value, numeric(12,2) = 9999999999.99, is 999999999999 minor
  * units, far below Number.MAX_SAFE_INTEGER, so plain safe integers are exact and a sum of
- * two prices stays exact too. No floats and no `Number(text)` are involved.
+ * two prices stays exact too. Amounts are never parsed as floats (no `Number(text)`).
+ * The one `/` left, in the percent of `fullDaySaving`, divides two safe integers and floors:
+ * the quotient is at most 100 (ulp about 1e-14) and, when not whole, sits at least
+ * 1 / (2 * separate) >= 5e-13 from the next integer, so rounding can never cross it.
  */
 
-const MONEY_INPUT = /^\d{1,10}(?:\.\d{1,2})?$/;
+const MONEY_INPUT = /^(0|[1-9]\d{0,9})(\.\d{1,2})?$/;
 
 /** numeric(12,2) upper bound in minor units (9999999999.99). */
 export const MAX_MINOR_UNITS = 999_999_999_999;
 
 /** Parses a positive money string into integer minor units; throws `RangeError` otherwise. */
 export function parseDecimal(input: string): number {
-  if (!MONEY_INPUT.test(input)) {
+  if (typeof input !== 'string' || !MONEY_INPUT.test(input)) {
     throw new RangeError('Money must be a decimal with at most two fraction digits');
   }
   const [whole = '', fraction = ''] = input.split('.');
   const minor = Number.parseInt(whole, 10) * 100 + Number.parseInt(fraction.padEnd(2, '0'), 10);
   if (minor <= 0) throw new RangeError('Money must be greater than zero');
-  if (minor > MAX_MINOR_UNITS) throw new RangeError('Money exceeds the maximum amount');
+  // The regex caps the whole part at 10 digits, so minor never exceeds MAX_MINOR_UNITS.
   return minor;
 }
 
