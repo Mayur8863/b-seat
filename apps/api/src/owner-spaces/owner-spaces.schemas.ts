@@ -40,7 +40,7 @@ const unique = (values: string[]) =>
 
 const fields = {
   name: Text(100),
-  description: MultilineText.pipe(z.string().trim().min(1).max(2000)),
+  description: MultilineText.trim().min(1).max(2000),
   country: CountryCode,
   city: Text(100),
   area: Text(100),

@@ -31,33 +31,35 @@ export const OfferedTimeZone = z
   .refine(isOfferedTimeZone, 'Unknown or unsupported time zone')
   .describe('IANA time zone offered by GET /api/reference, e.g. Europe/London');
 
+/*
+ * Checked with refine, not .regex: the astral tag range needs the `u` flag, and a pattern in that
+ * flavour fails OpenAPI "regex" format validation in the client generator.
+ */
+const PLAIN = /^(?:[^\p{Cc}\p{Cf}\u2028\u2029]|\u200D|\u200C|[\u{E0020}-\u{E007F}])*$/u;
+const MULTILINE = /^(?:[^\p{Cc}\p{Cf}\u2028\u2029]|\u200D|\u200C|[\u{E0020}-\u{E007F}]|\n)*$/u;
+
 /**
  * Free text without control characters (NUL makes Postgres reject the row with 22021), bidi
  * override and isolate characters (display spoofing), or invisible format characters (\p{Cf}:
  * zero-width spaces, LRM/RLM, U+061C, BOM) and U+2028/U+2029, which let two names look identical.
- * U+200D (zero-width joiner) stays because emoji sequences need it.
+ * Allowed format characters: U+200D (ZWJ, emoji sequences), U+200C (ZWNJ, Persian and other
+ * scripts) and U+E0020-U+E007F (emoji tags, subdivision flags). Written as alternation because
+ * ESLint rejects joiners inside a character class.
  * Chain `.trim().min().max()` as needed.
  */
 export const PlainText = z
   .string()
-  .regex(
-    /^(?:[^\p{Cc}\p{Cf}\u2028\u2029]|\u200D)*$/u,
-    'Contains control, invisible or bidi override characters',
-  );
+  .refine((v) => PLAIN.test(v), 'Contains control, invisible or bidi override characters');
 
 /**
- * PlainText that may span lines: CRLF becomes LF, and `\n` is the only control character allowed.
- * Pipe into a trimmed, length-bounded string for the field: `MultilineText.pipe(z.string()...)`.
+ * PlainText that may span lines: CRLF becomes LF, tabs become spaces, and `\n` is the only other
+ * control character allowed. Built with `.overwrite` (not preprocess) so the OpenAPI output keeps
+ * the string type and the field's trim/min/max: `MultilineText.trim().min(1).max(n)`.
  */
-export const MultilineText = z.preprocess(
-  (v) => (typeof v === 'string' ? v.replace(/\r\n/g, '\n') : v),
-  z
-    .string()
-    .regex(
-      /^(?:[^\p{Cc}\p{Cf}\u2028\u2029]|\u200D|\n)*$/u,
-      'Contains control, invisible or bidi override characters',
-    ),
-);
+export const MultilineText = z
+  .string()
+  .overwrite((v) => v.replace(/\r\n/g, '\n').replace(/\t/g, ' '))
+  .refine((v) => MULTILINE.test(v), 'Contains control, invisible or bidi override characters');
 
 export const CountryCode = z
   .string()
