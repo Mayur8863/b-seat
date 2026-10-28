@@ -68,7 +68,7 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 | T036 | Create pass booking API (rules, holds, races)                | backend-dev    | T008, T035             | M    | todo                                                           | `feat/002-create-pass-booking-api`    |
 | T037 | Renter and owner booking emails                              | backend-dev    | T036                   | S    | todo                                                           | `feat/002-booking-emails`             |
 | T038 | Search availability filter (date, pass, slot)                | backend-dev    | T034, T035             | M    | todo                                                           | `feat/002-search-availability-filter` |
-| T039 | Find a space page                                            | frontend-dev   | T013, T014, T029, T034 | M    | todo                                                           | `feat/002-find-page`                  |
+| T039 | Find a space page                                            | frontend-dev   | T013, T014, T029, T034 | M    | review — dev done; next: QA (queued)                           | `feat/002-find-page`                  |
 | T040 | Listing page: seat availability for a pass                   | frontend-dev   | T031, T035             | M    | todo                                                           | `feat/002-listing-seats`              |
 | T041 | Book a pass, confirmation, problem copy                      | frontend-dev   | T036, T040             | M    | todo                                                           | `feat/002-book-pass-ui`               |
 | T042 | Retire `/book`: redirect to `/find`, remove 001 components   | frontend-dev   | T039, T041             | S    | todo                                                           | `chore/002-retire-book-page`          |
@@ -578,7 +578,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given `startDate` without pass or slot, Then the OQ-4 rule applies (test named after it).
 
 - [ ] T039 [US4] Find a space page `apps/web/src/app/(app)/find/page.tsx` with `components/listing-search-form.tsx`, `components/location-combobox.tsx` and `components/listing-results.tsx` (+ tests); point the nav's "Find a space" at `/find`
-  - **Owner**: frontend-dev · **Branch**: `feat/002-find-page` · **Size**: M · **Depends on**: T013, T014, T029, T034 · **Status**: todo
+  - **Owner**: frontend-dev · **Branch**: `feat/002-find-page` · **Size**: M · **Depends on**: T013, T014, T029, T034 · **Status**: review — dev done; next: QA (queued)
   - **Scope**: ui/03. Filters prefilled from `Me.preferences`. Accessible combobox (ARIA 1.2 pattern) with debounced `useListingsLocations`. Filters in the URL so results are shareable and back-navigation works.
   - **Acceptance criteria**:
     - Given a renter with preferences IN / Pune, When `/find` opens, Then country and city are prefilled and matching results load (AC 4.1, FR-002).
