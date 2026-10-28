@@ -47,7 +47,7 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 | T015 | Sign-up role choice and optional preferences                 | frontend-dev   | T002, T013, T014, T019 | M    | todo   | `feat/002-sign-up-role`               |
 | T016 | QA US1: accounts and navigation e2e, axe                     | qa-engineer    | T011, T014, T015       | M    | todo   | `test/002-us1-accounts-e2e`           |
 | T017 | Docs US1                                                     | docs-writer    | T016                   | S    | todo   | `docs/002-us1-accounts`               |
-| T018 | UI spec: owner listing, seats, slots and prices              | ui-ux-designer | T010                   | M    | review | `docs/002-ui-owner-listing`           |
+| T018 | UI spec: owner listing, seats, slots and prices              | ui-ux-designer | T010                   | M    | done   | `docs/002-ui-owner-listing`           |
 | T019 | Reference data API (countries, currencies, utilities)        | backend-dev    | T001                   | S    | done   | `feat/002-reference-api`              |
 | T020 | Owner spaces API: CRUD, publish, unpublish                   | backend-dev    | T002, T004, T019       | M    | todo   | `feat/002-owner-spaces-api`           |
 | T021 | Seats and cubicles API                                       | backend-dev    | T005, T020             | M    | todo   | `feat/002-seats-cubicles-api`         |
@@ -328,8 +328,8 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 **Goal**: an owner creates a complete listing with seats and cubicles, and publishes or unpublishes it.
 **Independent test**: create a space with all details and 10 seats, add a price (fixture or US3), publish, and confirm it is searchable (search itself is verified in T044).
 
-- [ ] T018 [P] [US2] Write `specs/002-space-marketplace/ui/02-owner-listing.md`
-  - **Owner**: ui-ux-designer · **Branch**: `docs/002-ui-owner-listing` · **Size**: M · **Depends on**: T010 · **Status**: review
+- [x] T018 [P] [US2] Write `specs/002-space-marketplace/ui/02-owner-listing.md`
+  - **Owner**: ui-ux-designer · **Branch**: `docs/002-ui-owner-listing` · **Size**: M · **Depends on**: T010 · **Status**: done (architect review 2026-10-28; docs-only, so no QA step, approved by the requester; OQ-A to OQ-H decided in ui/02 section 11)
   - **Scope**: owner dashboard spaces list and empty state, space form (country → suggested time zone, currency, opening hours radio + times, utilities checkboxes + up to 5 custom), space overview with status and publish/unpublish (including the "what is missing" refusal), seats page (list, add one, bulk pattern with preview, rename, cubicle assign, remove with the future-bookings refusal, 200 limit), cubicles, and the pricing page (shift time, slot toggles with derived times, price grid with currency, empty = not offered). Exact copy for every problem type these screens can receive.
   - **Acceptance criteria**:
     - Given each screen, When read, Then all eight states are specified (FR-032).
