@@ -108,30 +108,50 @@ const label = PlainText.trim().min(1).max(20);
 const features = z.array(PlainText.trim().min(1).max(40)).max(10).refine(uniqueIgnoringCase); // 400 on a repeat; create adds .default([]), update has no default
 const cubicleName = PlainText.trim().min(1).max(100); // = cubicle_name_length check
 
+// One object with exactly one of `seats` or `pattern` (amended 2026-10-28, see below), not a union.
 const CreateSeatsInput = z
-  .union([
-    z.strictObject({
-      seats: z
-        .array(
-          z.strictObject({ label, cubicleId: z.uuid().optional(), features: features.default([]) }),
-        )
-        .min(1)
-        .max(200),
-    }),
-    z.strictObject({
-      pattern: z.strictObject({
+  .strictObject({
+    seats: z
+      .array(
+        z.strictObject({ label, cubicleId: z.uuid().optional(), features: features.default([]) }),
+      )
+      .min(1)
+      .max(200)
+      .optional(),
+    pattern: z
+      .strictObject({
         prefix: PlainText.max(15), // may be empty
         from: z.int().min(0),
         to: z.int(),
         padTo: z.int().min(1).max(4).optional(),
-      }), // refines: path ['to'] to >= from and to - from + 1 <= 200;
-      //     path ['prefix'] every generated label (prefix + padded number) is at most 20 characters
-      cubicleId: z.uuid().optional(),
-      features: features.default([]),
-    }),
-  ])
+      }) // refines: path ['to'] to >= from and to - from + 1 <= 200;
+      //    path ['prefix'] every generated label (prefix + padded number) is at most 20 characters
+      .optional(),
+    cubicleId: z.uuid().optional(), // pattern only
+    features: features.default([]), // pattern only
+  })
+  .refine((v) => (v.seats === undefined) !== (v.pattern === undefined)) // path ['seats']: send exactly one
+  .refine((v) => v.seats === undefined || (v.cubicleId === undefined && v.features.length === 0)) // path ['seats']
   .meta({ id: 'CreateSeatsInput' });
 ```
+
+**`CreateSeatsInput` shape: accepted as implemented (architect, 2026-10-28; T021 code review).** The contract
+first drew a `z.union` of a `seats` branch and a `pattern` branch. T021 implemented one strict object with both
+keys optional and two refines, and that shape is now the contract:
+
+- **Why.** When both branches of a Zod 4 union fail, it reports one `invalid_union` issue at the root, so the 400
+  cannot name the field. The object form keeps the per-field paths this contract promises (dotted:
+  `pattern.to`, `pattern.prefix`, `seats.0.label`), and puts the "exactly one of" and "per-seat fields only" errors on `seats`.
+  The server still accepts exactly the same bodies, apart from the edge case below.
+- **Side effect, accepted.** `openapi.json` has no `oneOf`: `seats` and `pattern` are both optional, and the
+  refines do not appear in the generated client types or zod. A client can therefore send `{}` or both keys. The
+  server refuses either with a 400 on `seats`. Each web form sends one shape (`add-seat-form` and `layout-add-form`
+  send `seats`, `bulk-seat-form` sends `pattern`), so this is a documentation gap and not a safety gap. The API stays the authority.
+- **Edge case.** Because `features` defaults to `[]`, a `seats` body that also sends a top-level `features: []` is
+  accepted (it changes nothing). Any non-empty top-level `features`, or any top-level `cubicleId`, with `seats` is
+  a 400.
+- **Rejected alternative.** Keeping the union and remapping `invalid_union` in the filter, or overriding the
+  OpenAPI output with a hand-written `oneOf`: both add special cases to shared code for one schema.
 
 | Route                           | Body                                                           | Responses                                                                                                                                      |
 | ------------------------------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |

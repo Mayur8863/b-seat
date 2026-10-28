@@ -24,7 +24,9 @@ export type SeatLockTx = Parameters<Parameters<Database['transaction']>[0]>[0];
  * Takes one transaction-scoped advisory lock per seat, de-duplicated and in ascending **key**
  * order (not seat id order: two seats can share a 32-bit hash, and only key order is free of
  * lock-order cycles), in one statement. This is the only place that calls `pg_advisory_*`.
- * Call it first in the transaction, after `SET LOCAL lock_timeout`, before any row lock.
+ * Lock order (ADR-0009 section 9.3): `SET LOCAL lock_timeout`, then exactly one space row (`FOR SHARE`
+ * to add or end holds or marks, `FOR UPDATE` to remove seats or change the space), then this call,
+ * once, then the seat rows and the inserts. Never lock a seat, booking, hold or mark row before it.
  */
 export async function lockSeats(tx: SeatLockTx, seatIds: readonly string[]): Promise<void> {
   const distinct = [...new Set(seatIds)];
