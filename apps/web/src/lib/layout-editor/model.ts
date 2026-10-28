@@ -53,7 +53,9 @@ export type Action =
   | { type: 'renameArea'; id: string; label: string }
   | { type: 'removeFromPlan'; id: string }
   | { type: 'deleteArea'; id: string }
-  | { type: 'setGrid'; columns: number; rows: number };
+  | { type: 'setGrid'; columns: number; rows: number }
+  | { type: 'setCubicle'; id: string; cubicleId: string | null }
+  | { type: 'forget'; id: string };
 export interface Problem {
   code: 'seat-outside-cubicle' | 'outside-grid' | 'empty' | 'too-many';
   id?: string;
@@ -320,6 +322,9 @@ export function reduce(state: DraftState, action: Action): DraftState {
       return remove(state, action.id, true);
     case 'setGrid':
       return setGrid(state, action.columns, action.rows);
+    case 'setCubicle':
+    case 'forget':
+      return state;
   }
 }
 
