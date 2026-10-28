@@ -3,12 +3,15 @@ import type { Listing } from '@bseat/api-client';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { server } from '@/test/msw';
 import { renderWithQuery } from '@/test/render';
 
 import { ListingDetails } from './listing-details';
+
+let search = '';
+vi.mock('next/navigation', () => ({ useSearchParams: () => new URLSearchParams(search) }));
 
 const listing = (over: Partial<Listing> = {}): Listing =>
   getListingsGetResponseMock({
@@ -57,6 +60,22 @@ const listing = (over: Partial<Listing> = {}): Listing =>
   });
 
 describe('ListingDetails', () => {
+  it('back link returns to the carried search, or says Find a space without one', async () => {
+    server.use(getListingsGetMockHandler(listing()));
+    search = 'country=IN&city=Pune&utilities=wifi';
+    const first = renderWithQuery(<ListingDetails spaceId="s1" />);
+    const back = await screen.findByRole('link', { name: 'Back to results' });
+    expect(back).toHaveAttribute('href', '/find?country=IN&city=Pune&utilities=wifi');
+    first.unmount();
+
+    search = '';
+    renderWithQuery(<ListingDetails spaceId="s1" />);
+    expect(await screen.findByRole('link', { name: 'Find a space' })).toHaveAttribute(
+      'href',
+      '/find',
+    );
+  });
+
   it('loading: busy status', () => {
     server.use(getListingsGetMockHandler(listing()));
     renderWithQuery(<ListingDetails spaceId="s1" />);
@@ -140,5 +159,20 @@ describe('ListingDetails', () => {
     renderWithQuery(<ListingDetails spaceId="s1" />);
     expect(await screen.findByText("We couldn't load this space")).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+  });
+});
+
+describe('ListingDetails seat selection', () => {
+  it('asks for pass and date, then fills Your selection', async () => {
+    server.use(getListingsGetMockHandler(listing()));
+    renderWithQuery(<ListingDetails spaceId="s1" />);
+    expect(
+      await screen.findByText('Choose a pass and a start date to see which seats are free.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText('Start date')).not.toBeInTheDocument();
+    await userEvent.click(screen.getAllByRole('radio')[0]!);
+    expect(screen.getByLabelText('Start date')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Review booking' }));
+    expect(screen.getByText('Choose a start date.')).toBeInTheDocument();
   });
 });

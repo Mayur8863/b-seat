@@ -15,6 +15,7 @@ import { type Env, loadEnv } from './config/env.js';
 import { BookingsModule } from './bookings/bookings.module.js';
 import { DbModule } from './db/db.module.js';
 import { HealthController } from './health/health.controller.js';
+import { LayoutModule } from './owner-operations/layout.module.js';
 import { ListingsModule } from './listings/listings.module.js';
 import { MailModule } from './mail/mail.module.js';
 import { MeModule } from './me/me.module.js';
@@ -62,6 +63,7 @@ import { SpacesModule } from './spaces/spaces.module.js';
     OwnerSpacesModule,
     ListingsModule,
     BookingsModule,
+    LayoutModule,
   ],
   controllers: [HealthController, ReferenceController],
   providers: [

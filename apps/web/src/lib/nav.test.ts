@@ -54,7 +54,7 @@ describe('route manifest (FR-004)', () => {
   const routes = pageRoutes(APP_DIR);
 
   it('finds the existing pages', () => {
-    expect(routes).toEqual(expect.arrayContaining(['/dashboard', '/book']));
+    expect(routes).toEqual(expect.arrayContaining(['/dashboard', '/find']));
   });
 
   it.each(ROLES)('every (app) page a %s can use is in their nav or reached from it', (role) => {
@@ -114,7 +114,7 @@ describe('navLinksFor', () => {
     expect(navLinksFor('owner').map((l) => [l.label, l.href])).toEqual([
       ['Dashboard', '/dashboard'],
       ['List a space', '/owner/spaces/new'],
-      ['Find a space', '/book'],
+      ['Find a space', '/find'],
     ]);
     expect(PAGE_ROLES['/owner/spaces/new']).toBe('owner');
   });
@@ -124,7 +124,7 @@ describe('navActive', () => {
   const [dashboard, list, find] = navLinksFor('owner');
   it('is page on an exact match', () => {
     expect(navActive(dashboard!, '/dashboard')).toBe('page');
-    expect(navActive(find!, '/book')).toBe('page');
+    expect(navActive(find!, '/find')).toBe('page');
   });
   it('is true on a parent match', () => {
     expect(navActive(dashboard!, '/owner/spaces/abc/seats')).toBe('true');

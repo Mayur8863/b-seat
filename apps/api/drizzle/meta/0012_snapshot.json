@@ -1,5 +1,5 @@
 {
-  "id": "511305ff-64e7-43ee-aeaf-18c3b058a3d1",
+  "id": "fca54ea1-cbca-49e2-8929-761ac5996e34",
   "prevId": "9de84996-3a52-41d4-b95c-ff787b64fe0a",
   "version": "7",
   "dialect": "postgresql",
@@ -101,24 +101,24 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "account_user_id_user_id_fk": {
           "name": "account_user_id_user_id_fk",
           "tableFrom": "account",
+          "tableTo": "user",
           "columnsFrom": [
             "user_id"
           ],
-          "tableTo": "user",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -194,34 +194,34 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "session_user_id_user_id_fk": {
           "name": "session_user_id_user_id_fk",
           "tableFrom": "session",
+          "tableTo": "user",
           "columnsFrom": [
             "user_id"
           ],
-          "tableTo": "user",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "session_token_unique": {
           "name": "session_token_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "token"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -291,10 +291,10 @@
       "uniqueConstraints": {
         "user_email_unique": {
           "name": "user_email_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "email"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -361,9 +361,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {},
@@ -487,8 +487,8 @@
           "primaryKey": false,
           "notNull": true,
           "generated": {
-            "type": "stored",
-            "as": "status = 'active'"
+            "as": "status = 'active'",
+            "type": "stored"
           }
         }
       },
@@ -510,9 +510,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "booking_space_id_starts_at_idx": {
           "name": "booking_space_id_starts_at_idx",
@@ -531,65 +531,65 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "booking_seat_id_seat_id_fk": {
           "name": "booking_seat_id_seat_id_fk",
           "tableFrom": "booking",
+          "tableTo": "seat",
           "columnsFrom": [
             "seat_id"
           ],
-          "tableTo": "seat",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         },
         "booking_user_id_user_id_fk": {
           "name": "booking_user_id_user_id_fk",
           "tableFrom": "booking",
+          "tableTo": "user",
           "columnsFrom": [
             "user_id"
           ],
-          "tableTo": "user",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "booking_seat_space_fk": {
           "name": "booking_seat_space_fk",
           "tableFrom": "booking",
+          "tableTo": "seat",
           "columnsFrom": [
             "seat_id",
             "space_id"
           ],
-          "tableTo": "seat",
           "columnsTo": [
             "id",
             "space_id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "booking_hold_key_unique": {
           "name": "booking_hold_key_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "id",
             "seat_id",
             "user_id",
             "holds_active"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -691,41 +691,41 @@
         "occupancy_mark_created_by_user_id_fk": {
           "name": "occupancy_mark_created_by_user_id_fk",
           "tableFrom": "occupancy_mark",
+          "tableTo": "user",
           "columnsFrom": [
             "created_by"
           ],
-          "tableTo": "user",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         },
         "occupancy_mark_seat_space_fk": {
           "name": "occupancy_mark_seat_space_fk",
           "tableFrom": "occupancy_mark",
+          "tableTo": "seat",
           "columnsFrom": [
             "seat_id",
             "space_id"
           ],
-          "tableTo": "seat",
           "columnsTo": [
             "id",
             "space_id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "occupancy_mark_id_seat_id_unique": {
           "name": "occupancy_mark_id_seat_id_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "id",
             "seat_id"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -814,9 +814,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "seat_hold_booking_id_idx": {
           "name": "seat_hold_booking_id_idx",
@@ -829,9 +829,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "seat_hold_user_id_idx": {
           "name": "seat_hold_user_id_idx",
@@ -844,81 +844,81 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "seat_hold_seat_id_seat_id_fk": {
           "name": "seat_hold_seat_id_seat_id_fk",
           "tableFrom": "seat_hold",
+          "tableTo": "seat",
           "columnsFrom": [
             "seat_id"
           ],
-          "tableTo": "seat",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         },
         "seat_hold_user_id_user_id_fk": {
           "name": "seat_hold_user_id_user_id_fk",
           "tableFrom": "seat_hold",
+          "tableTo": "user",
           "columnsFrom": [
             "user_id"
           ],
-          "tableTo": "user",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "seat_hold_booking_fk": {
           "name": "seat_hold_booking_fk",
           "tableFrom": "seat_hold",
+          "tableTo": "booking",
           "columnsFrom": [
             "booking_id",
             "seat_id",
             "user_id",
             "active"
           ],
-          "tableTo": "booking",
           "columnsTo": [
             "id",
             "seat_id",
             "user_id",
             "holds_active"
           ],
-          "onUpdate": "cascade",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "cascade"
         },
         "seat_hold_occupancy_mark_fk": {
           "name": "seat_hold_occupancy_mark_fk",
           "tableFrom": "seat_hold",
+          "tableTo": "occupancy_mark",
           "columnsFrom": [
             "occupancy_mark_id",
             "seat_id"
           ],
-          "tableTo": "occupancy_mark",
           "columnsTo": [
             "id",
             "seat_id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "seat_hold_occupancy_mark_id_unique": {
           "name": "seat_hold_occupancy_mark_id_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "occupancy_mark_id"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -1008,50 +1008,50 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"availability_calendar\".\"seat_id\" IS NULL",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
         "availability_calendar_space_id_space_id_fk": {
           "name": "availability_calendar_space_id_space_id_fk",
           "tableFrom": "availability_calendar",
+          "tableTo": "space",
           "columnsFrom": [
             "space_id"
           ],
-          "tableTo": "space",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         },
         "availability_calendar_seat_space_fk": {
           "name": "availability_calendar_seat_space_fk",
           "tableFrom": "availability_calendar",
+          "tableTo": "seat",
           "columnsFrom": [
             "seat_id",
             "space_id"
           ],
-          "tableTo": "seat",
           "columnsTo": [
             "id",
             "space_id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "availability_calendar_seat_unique": {
           "name": "availability_calendar_seat_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "seat_id"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -1108,15 +1108,15 @@
         "renter_preference_user_id_user_id_fk": {
           "name": "renter_preference_user_id_user_id_fk",
           "tableFrom": "renter_preference",
+          "tableTo": "user",
           "columnsFrom": [
             "user_id"
           ],
-          "tableTo": "user",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -1181,15 +1181,15 @@
         "pass_price_space_id_space_id_fk": {
           "name": "pass_price_space_id_space_id_fk",
           "tableFrom": "pass_price",
+          "tableTo": "space",
           "columnsFrom": [
             "space_id"
           ],
-          "tableTo": "space",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -1241,15 +1241,15 @@
         "space_slot_space_id_space_id_fk": {
           "name": "space_slot_space_id_space_id_fk",
           "tableFrom": "space_slot",
+          "tableTo": "space",
           "columnsFrom": [
             "space_id"
           ],
-          "tableTo": "space",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -1321,36 +1321,36 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"cubicle\".\"removed_at\" IS NULL",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
         "cubicle_space_id_space_id_fk": {
           "name": "cubicle_space_id_space_id_fk",
           "tableFrom": "cubicle",
+          "tableTo": "space",
           "columnsFrom": [
             "space_id"
           ],
-          "tableTo": "space",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "cubicle_id_space_id_unique": {
           "name": "cubicle_id_space_id_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "id",
             "space_id"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -1430,51 +1430,51 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"seat\".\"removed_at\" IS NULL",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
         "seat_space_id_space_id_fk": {
           "name": "seat_space_id_space_id_fk",
           "tableFrom": "seat",
+          "tableTo": "space",
           "columnsFrom": [
             "space_id"
           ],
-          "tableTo": "space",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         },
         "seat_cubicle_space_fk": {
           "name": "seat_cubicle_space_fk",
           "tableFrom": "seat",
+          "tableTo": "cubicle",
           "columnsFrom": [
             "cubicle_id",
             "space_id"
           ],
-          "tableTo": "cubicle",
           "columnsTo": [
             "id",
             "space_id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "seat_id_space_id_unique": {
           "name": "seat_id_space_id_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "id",
             "space_id"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -1570,8 +1570,8 @@
           "primaryKey": false,
           "notNull": false,
           "generated": {
-            "type": "stored",
-            "as": "lower(btrim(\"city\"))"
+            "as": "lower(btrim(\"city\"))",
+            "type": "stored"
           }
         },
         "area_key": {
@@ -1580,8 +1580,8 @@
           "primaryKey": false,
           "notNull": false,
           "generated": {
-            "type": "stored",
-            "as": "lower(btrim(\"area\"))"
+            "as": "lower(btrim(\"area\"))",
+            "type": "stored"
           }
         },
         "street_address": {
@@ -1655,9 +1655,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "space_search_idx": {
           "name": "space_search_idx",
@@ -1682,10 +1682,10 @@
             }
           ],
           "isUnique": false,
-          "with": {},
-          "method": "btree",
           "where": "\"space\".\"status\" = 'published'",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "space_city_prefix_idx": {
           "name": "space_city_prefix_idx",
@@ -1705,10 +1705,10 @@
             }
           ],
           "isUnique": false,
-          "with": {},
-          "method": "btree",
           "where": "\"space\".\"status\" = 'published'",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "space_area_prefix_idx": {
           "name": "space_area_prefix_idx",
@@ -1734,10 +1734,10 @@
             }
           ],
           "isUnique": false,
-          "with": {},
-          "method": "btree",
           "where": "\"space\".\"status\" = 'published'",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "space_utilities_gin": {
           "name": "space_utilities_gin",
@@ -1750,24 +1750,24 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "gin",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "space_owner_id_user_id_fk": {
           "name": "space_owner_id_user_id_fk",
           "tableFrom": "space",
+          "tableTo": "user",
           "columnsFrom": [
             "owner_id"
           ],
-          "tableTo": "user",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -1836,6 +1836,225 @@
         }
       },
       "isRLSEnabled": false
+    },
+    "public.layout_element": {
+      "name": "layout_element",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "space_id": {
+          "name": "space_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "layout_element_kind",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "seat_id": {
+          "name": "seat_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cubicle_id": {
+          "name": "cubicle_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "label": {
+          "name": "label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "x": {
+          "name": "x",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "y": {
+          "name": "y",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "w": {
+          "name": "w",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "h": {
+          "name": "h",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "layout_element_space_id_space_layout_space_id_fk": {
+          "name": "layout_element_space_id_space_layout_space_id_fk",
+          "tableFrom": "layout_element",
+          "tableTo": "space_layout",
+          "columnsFrom": [
+            "space_id"
+          ],
+          "columnsTo": [
+            "space_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "layout_element_seat_space_fk": {
+          "name": "layout_element_seat_space_fk",
+          "tableFrom": "layout_element",
+          "tableTo": "seat",
+          "columnsFrom": [
+            "seat_id",
+            "space_id"
+          ],
+          "columnsTo": [
+            "id",
+            "space_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "layout_element_cubicle_space_fk": {
+          "name": "layout_element_cubicle_space_fk",
+          "tableFrom": "layout_element",
+          "tableTo": "cubicle",
+          "columnsFrom": [
+            "cubicle_id",
+            "space_id"
+          ],
+          "columnsTo": [
+            "id",
+            "space_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "layout_element_seat_id_unique": {
+          "name": "layout_element_seat_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "seat_id"
+          ]
+        },
+        "layout_element_cubicle_id_unique": {
+          "name": "layout_element_cubicle_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "cubicle_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "layout_element_kind_ref": {
+          "name": "layout_element_kind_ref",
+          "value": "(\"layout_element\".\"kind\" = 'seat') = (\"layout_element\".\"seat_id\" IS NOT NULL) AND (\"layout_element\".\"kind\" = 'cubicle') = (\"layout_element\".\"cubicle_id\" IS NOT NULL) AND (\"layout_element\".\"kind\" = 'area') = (\"layout_element\".\"label\" IS NOT NULL)"
+        },
+        "layout_element_label_length": {
+          "name": "layout_element_label_length",
+          "value": "\"layout_element\".\"label\" IS NULL OR length(btrim(\"layout_element\".\"label\")) between 1 and 40"
+        },
+        "layout_element_origin": {
+          "name": "layout_element_origin",
+          "value": "\"layout_element\".\"x\" >= 0 AND \"layout_element\".\"y\" >= 0"
+        },
+        "layout_element_size": {
+          "name": "layout_element_size",
+          "value": "\"layout_element\".\"w\" >= 1 AND \"layout_element\".\"h\" >= 1"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.space_layout": {
+      "name": "space_layout",
+      "schema": "",
+      "columns": {
+        "space_id": {
+          "name": "space_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "columns": {
+          "name": "columns",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rows": {
+          "name": "rows",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "space_layout_space_id_space_id_fk": {
+          "name": "space_layout_space_id_space_id_fk",
+          "tableFrom": "space_layout",
+          "tableTo": "space",
+          "columnsFrom": [
+            "space_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "space_layout_columns_range": {
+          "name": "space_layout_columns_range",
+          "value": "\"space_layout\".\"columns\" between 10 and 80"
+        },
+        "space_layout_rows_range": {
+          "name": "space_layout_rows_range",
+          "value": "\"space_layout\".\"rows\" between 10 and 80"
+        }
+      },
+      "isRLSEnabled": false
     }
   },
   "enums": {
@@ -1890,13 +2109,22 @@
         "published",
         "unpublished"
       ]
+    },
+    "public.layout_element_kind": {
+      "name": "layout_element_kind",
+      "schema": "public",
+      "values": [
+        "seat",
+        "cubicle",
+        "area"
+      ]
     }
   },
   "schemas": {},
-  "views": {},
   "sequences": {},
   "roles": {},
   "policies": {},
+  "views": {},
   "_meta": {
     "columns": {},
     "schemas": {},

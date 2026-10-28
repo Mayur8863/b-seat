@@ -75,6 +75,7 @@ export class ListingsController {
   }
 
   @Get(':spaceId/seats')
+  @ApiQueryFromSchema(SeatAvailabilityInputSchema)
   @ApiOkResponse({ standardSchema: ListingSeatAvailabilitySchema })
   @ApiBadRequestResponse({ standardSchema: ProblemSchema })
   @ApiNotFoundResponse({ standardSchema: ProblemSchema })

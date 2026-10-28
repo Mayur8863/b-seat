@@ -6,13 +6,18 @@ import { Badge } from '@bseat/ui/components/badge';
 import { Button } from '@bseat/ui/components/button';
 import { Card, CardContent } from '@bseat/ui/components/card';
 import { Skeleton } from '@bseat/ui/components/skeleton';
-import { InfoIcon } from 'lucide-react';
+import { ArrowLeftIcon, InfoIcon } from 'lucide-react';
 import type { Route } from 'next';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 
+import { ListingSeatList, type SeatSelection } from '@/components/listing-seat-list';
 import { type PassChoice, PassOptions } from '@/components/pass-options';
-import { utilityLabel } from '@/lib/format';
+import { StartDateField } from '@/components/start-date-field';
+import { YourSelection } from '@/components/your-selection';
+import { slotTitle, utilityLabel } from '@/lib/format';
+import { isStartDateAllowed, startDateRange } from '@/lib/seat-picker';
 
 const FRAME = 'mx-auto grid w-full max-w-6xl gap-4 px-4 py-8 sm:px-6';
 
@@ -58,9 +63,21 @@ function Details({ listing }: { listing: Listing }) {
   );
 }
 
-function Body({ listing }: { listing: Listing }) {
-  // T040 reads this to fetch seats, T041 to review the booking.
-  const [choice, setChoice] = useState<PassChoice | null>(null);
+function Body({ listing, onRefetch }: { listing: Listing; onRefetch: () => void }) {
+  // The selection T041 books: pass and slot, start date, seat. Changing any earlier piece clears the later ones.
+  const [choice, setChoiceState] = useState<PassChoice | null>(null);
+  const [startDate, setStartDateState] = useState('');
+  const [seat, setSeat] = useState<SeatSelection | null>(null);
+  const setChoice = (c: PassChoice) => {
+    setChoiceState(c);
+    setSeat(null);
+  };
+  const setStartDate = (d: string) => {
+    setStartDateState(d);
+    setSeat(null);
+  };
+  const validDate = isStartDateAllowed(startDate, startDateRange(listing.timeZone));
+  const offer = choice ? listing.offers.find((o) => o.slot === choice.slot) : undefined;
   return (
     <div className="grid gap-8">
       <Details listing={listing} />
@@ -84,12 +101,48 @@ function Body({ listing }: { listing: Listing }) {
             <p className="font-medium">This space isn&apos;t offering passes right now.</p>
             <p className="text-muted-foreground">Check back later or find another space.</p>
             <Button asChild>
-              <Link href="/book">Find a space</Link>
+              <Link href="/find">Find a space</Link>
             </Button>
           </CardContent>
         </Card>
       ) : (
-        <PassOptions listing={listing} value={choice} onChange={setChoice} />
+        <div className="grid gap-8 lg:grid-cols-[1fr_20rem]">
+          <div className="grid gap-8">
+            <PassOptions listing={listing} value={choice} onChange={setChoice} />
+            {choice && (
+              <StartDateField
+                value={startDate}
+                onChange={setStartDate}
+                timeZone={listing.timeZone}
+              />
+            )}
+            {choice && validDate ? (
+              <ListingSeatList
+                spaceId={listing.id}
+                choice={choice}
+                startDate={startDate}
+                timeZone={listing.timeZone}
+                selectedSeatId={seat?.seat.id ?? null}
+                onSelect={setSeat}
+                onPassNotOffered={onRefetch}
+              />
+            ) : (
+              <p className="text-muted-foreground">
+                Choose a pass and a start date to see which seats are free.
+              </p>
+            )}
+          </div>
+          <div className="lg:sticky lg:top-4 lg:self-start">
+            <YourSelection
+              choice={choice}
+              startDate={validDate ? startDate : ''}
+              selection={seat}
+              currency={listing.currency}
+              timeZone={listing.timeZone}
+              slotText={offer ? slotTitle(offer) : null}
+            />
+          </div>
+        </div>
       )}
     </div>
   );
@@ -99,10 +152,22 @@ function Body({ listing }: { listing: Listing }) {
 export function ListingDetails({ spaceId }: { spaceId: string }) {
   const { data, isPending, error, refetch } = useListingsGet(spaceId);
   const listing = data?.data;
+  // The search that led here; a link without one (or a shared deep link) just says "Find a space".
+  const params = useSearchParams();
+  const carried = params.get('country') ? params.toString() : '';
 
   const back = (
     <Button variant="link" size="sm" asChild className="justify-self-start px-0">
-      <Link href="/book">Find a space</Link>
+      <Link href={carried ? `/find?${carried}` : '/find'}>
+        {carried ? (
+          <>
+            <ArrowLeftIcon aria-hidden="true" />
+            Back to results
+          </>
+        ) : (
+          'Find a space'
+        )}
+      </Link>
     </Button>
   );
 
@@ -134,7 +199,7 @@ export function ListingDetails({ spaceId }: { spaceId: string }) {
           </h1>
           <p className="text-muted-foreground">It may have been unlisted.</p>
           <Button asChild>
-            <Link href="/book">Find a space</Link>
+            <Link href="/find">Find a space</Link>
           </Button>
         </main>
       );
@@ -167,7 +232,7 @@ export function ListingDetails({ spaceId }: { spaceId: string }) {
           {listing.area}, {listing.city}, {countryName(listing.country)}
         </p>
       </div>
-      <Body listing={listing} />
+      <Body listing={listing} onRefetch={() => void refetch()} />
     </main>
   );
 }
