@@ -45,9 +45,18 @@ describe('PlainText', () => {
 
 describe('PlainText format characters', () => {
   it('rejects zero-width, directional mark, BOM and line separator characters', () => {
-    for (const cp of [0x200b, 0x200c, 0x200e, 0x200f, 0x061c, 0xfeff, 0x2028, 0x2029, 0x00ad]) {
+    for (const cp of [0x200b, 0x200e, 0x200f, 0x061c, 0xfeff, 0x2028, 0x2029, 0x00ad]) {
       expect(PlainText.safeParse(`a${String.fromCodePoint(cp)}b`).success).toBe(false);
     }
+  });
+
+  it('keeps ZWNJ and emoji tag characters for Persian text and subdivision flags', () => {
+    expect(PlainText.safeParse('خانه\u200Cها').success).toBe(true);
+    expect(
+      PlainText.safeParse('🏴\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F}').success,
+    ).toBe(true);
+    expect(PlainText.safeParse('a\u{E0001}b').success).toBe(false);
+    expect(MultilineText.safeParse('خانه\u200Cها\nx').success).toBe(true);
   });
 
   it('keeps the zero-width joiner so emoji sequences work', () => {
@@ -63,8 +72,12 @@ describe('MultilineText', () => {
     expect(parse('a\r\nb\r\nc').data).toBe('a\nb\nc');
   });
 
-  it('rejects NUL, a lone CR, tab, C1 controls, bidi characters and format characters', () => {
-    for (const v of ['a\u0000b', 'a\rb', 'a\tb', 'a\u0085b', 'a\u202eb', 'a\u2067b', 'a\u200bb']) {
+  it('turns tabs into spaces', () => {
+    expect(parse('a\tb').data).toBe('a b');
+  });
+
+  it('rejects NUL, a lone CR, C1 controls, bidi characters and format characters', () => {
+    for (const v of ['a\u0000b', 'a\rb', 'a\u0085b', 'a\u202eb', 'a\u2067b', 'a\u200bb']) {
       expect(parse(v).success).toBe(false);
     }
   });

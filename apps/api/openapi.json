@@ -1152,15 +1152,13 @@
             "nullable": true,
             "type": "string",
             "minLength": 1,
-            "maxLength": 100,
-            "pattern": "^(?:[^\\p{Cc}\\p{Cf}\\u2028\\u2029]|\\u200D)*$"
+            "maxLength": 100
           },
           "area": {
             "nullable": true,
             "type": "string",
             "minLength": 1,
-            "maxLength": 100,
-            "pattern": "^(?:[^\\p{Cc}\\p{Cf}\\u2028\\u2029]|\\u200D)*$"
+            "maxLength": 100
           }
         },
         "required": [
@@ -1249,12 +1247,12 @@
           "name": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 100,
-            "pattern": "^(?:[^\\p{Cc}\\p{Cf}\\u2028\\u2029]|\\u200D)*$"
+            "maxLength": 100
           },
           "description": {
             "type": "string",
-            "pattern": "^(?:[^\\p{Cc}\\p{Cf}\\u2028\\u2029]|\\u200D|\\n)*$"
+            "minLength": 1,
+            "maxLength": 2000
           },
           "country": {
             "type": "string",
@@ -1264,20 +1262,17 @@
           "city": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 100,
-            "pattern": "^(?:[^\\p{Cc}\\p{Cf}\\u2028\\u2029]|\\u200D)*$"
+            "maxLength": 100
           },
           "area": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 100,
-            "pattern": "^(?:[^\\p{Cc}\\p{Cf}\\u2028\\u2029]|\\u200D)*$"
+            "maxLength": 100
           },
           "streetAddress": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 200,
-            "pattern": "^(?:[^\\p{Cc}\\p{Cf}\\u2028\\u2029]|\\u200D)*$"
+            "maxLength": 200
           },
           "timeZone": {
             "type": "string",
@@ -1369,13 +1364,13 @@
             "items": {
               "type": "string",
               "minLength": 1,
-              "maxLength": 40,
-              "pattern": "^(?:[^\\p{Cc}\\p{Cf}\\u2028\\u2029]|\\u200D)*$"
+              "maxLength": 40
             }
           }
         },
         "required": [
           "name",
+          "description",
           "country",
           "city",
           "area",
@@ -1560,12 +1555,12 @@
           "name": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 100,
-            "pattern": "^(?:[^\\p{Cc}\\p{Cf}\\u2028\\u2029]|\\u200D)*$"
+            "maxLength": 100
           },
           "description": {
             "type": "string",
-            "pattern": "^(?:[^\\p{Cc}\\p{Cf}\\u2028\\u2029]|\\u200D|\\n)*$"
+            "minLength": 1,
+            "maxLength": 2000
           },
           "country": {
             "type": "string",
@@ -1575,20 +1570,17 @@
           "city": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 100,
-            "pattern": "^(?:[^\\p{Cc}\\p{Cf}\\u2028\\u2029]|\\u200D)*$"
+            "maxLength": 100
           },
           "area": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 100,
-            "pattern": "^(?:[^\\p{Cc}\\p{Cf}\\u2028\\u2029]|\\u200D)*$"
+            "maxLength": 100
           },
           "streetAddress": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 200,
-            "pattern": "^(?:[^\\p{Cc}\\p{Cf}\\u2028\\u2029]|\\u200D)*$"
+            "maxLength": 200
           },
           "timeZone": {
             "type": "string",
@@ -1678,8 +1670,7 @@
             "items": {
               "type": "string",
               "minLength": 1,
-              "maxLength": 40,
-              "pattern": "^(?:[^\\p{Cc}\\p{Cf}\\u2028\\u2029]|\\u200D)*$"
+              "maxLength": 40
             }
           }
         },
