@@ -67,12 +67,12 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 | T035 | Seat availability for a pass API                             | backend-dev    | T005, T028             | M    | review — dev done; next: QA (queued)                           | `feat/002-seat-availability-api`      |
 | T036 | Create pass booking API (rules, holds, races)                | backend-dev    | T008, T035             | M    | review — dev done; next: QA (queued)                           | `feat/002-create-pass-booking-api`    |
 | T037 | Renter and owner booking emails                              | backend-dev    | T036                   | S    | review — dev done; next: QA (queued)                           | `feat/002-booking-emails`             |
-| T038 | Search availability filter (date, pass, slot)                | backend-dev    | T034, T035             | M    | todo                                                           | `feat/002-search-availability-filter` |
+| T038 | Search availability filter (date, pass, slot)                | backend-dev    | T034, T035             | M    | review — dev done; next: QA (queued)                           | `feat/002-search-availability-filter` |
 | T039 | Find a space page                                            | frontend-dev   | T013, T014, T029, T034 | M    | review — dev done; next: QA (queued)                           | `feat/002-find-page`                  |
 | T040 | Listing page: seat availability for a pass                   | frontend-dev   | T031, T035             | M    | review                                                         | `feat/002-listing-seats`              |
 | T041 | Book a pass, confirmation, problem copy                      | frontend-dev   | T036, T040             | M    | review — dev done; next: QA (queued)                           | `feat/002-book-pass-ui`               |
 | T042 | Retire `/book`: redirect to `/find`, remove 001 components   | frontend-dev   | T039, T041             | S    | review — dev done; next: QA (queued)                           | `chore/002-retire-book-page`          |
-| T043 | Retire legacy `GET /api/spaces` routes                       | backend-dev    | T042                   | S    | todo                                                           | `chore/002-retire-legacy-spaces-api`  |
+| T043 | Retire legacy `GET /api/spaces` routes                       | backend-dev    | T042                   | S    | review — dev done; next: QA (queued)                           | `chore/002-retire-legacy-spaces-api`  |
 | T044 | QA US4: search and book e2e, races, performance, axe         | qa-engineer    | T009, T037, T038, T042 | M    | todo                                                           | `test/002-us4-search-book-e2e`        |
 | T045 | Docs US4                                                     | docs-writer    | T043, T044             | S    | todo                                                           | `docs/002-us4-search-book`            |
 | T046 | UI spec: occupancy, calendars, owner bookings                | ui-ux-designer | T018                   | M    | review — spec done; next: frontend tasks can start             | `docs/002-ui-owner-operations`        |
@@ -92,7 +92,7 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 | T060 | Docs US7                                                     | docs-writer    | T059                   | S    | todo                                                           | `docs/002-us7-bookings`               |
 | T061 | UI spec: layout editor and renter plan                       | ui-ux-designer | T018, T029             | M    | review — spec done; next: frontend tasks can start             | `docs/002-ui-layout`                  |
 | T062 | Layout schema and API (owner and renter)                     | backend-dev    | T021                   | M    | review — dev done; next: QA (queued)                           | `feat/002-layout-api`                 |
-| T063 | Seed a sample layout                                         | backend-dev    | T009, T062             | S    | todo                                                           | `feat/002-seed-layout`                |
+| T063 | Seed a sample layout                                         | backend-dev    | T009, T062             | S    | review — dev done; next: QA (queued)                           | `feat/002-seed-layout`                |
 | T064 | Layout editor model (pure reducer, TDD)                      | frontend-dev   | T061, T062             | M    | review — dev done; next: QA (queued)                           | `feat/002-layout-editor-model`        |
 | T065 | Layout editor page (grid, pointer, keyboard, form)           | frontend-dev   | T023, T064             | M    | review — dev done; next: QA (queued)                           | `feat/002-layout-editor`              |
 | T066 | Renter plan view on the listing page                         | frontend-dev   | T040, T061, T062       | M    | review                                                         | `feat/002-renter-plan`                |
@@ -570,7 +570,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given a night pass in `Europe/London` across a DST change, When the email is built, Then local times match the slot wall-clock (FR-033, edge DST).
 
 - [ ] T038 [US4] Add the availability filter to `GET /api/listings` (`startDate`, `pass`, `slot`) and `apps/api/test/listings-search-availability.int-spec.ts`
-  - **Owner**: backend-dev · **Branch**: `feat/002-search-availability-filter` · **Size**: M · **Depends on**: T034, T035 · **Status**: todo
+  - **Owner**: backend-dev · **Branch**: `feat/002-search-availability-filter` · **Size**: M · **Depends on**: T034, T035 · **Status**: review — dev done; next: QA (queued)
   - **Scope**: research R-10 (prefilter in SQL, evaluate candidates in batches until the page fills). Behaviour without pass or slot per **OQ-4**.
   - **Acceptance criteria**:
     - Given space P with one seat free for the week and space Q with every seat taken on one day of that week, When searching with `startDate`, `pass=week`, `slot=day`, Then only P returns (AC 4.3).
@@ -612,7 +612,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given the web app, When `grep -r "useSpacesList\|useSpacesAvailability" apps/web/src` runs, Then nothing is found, and lint, typecheck and tests pass.
 
 - [ ] T043 [US4] Retire the legacy spaces API: remove `apps/api/src/spaces/` (move or delete `resolveWindow`), its tests and registration; regenerate `apps/api/openapi.json`
-  - **Owner**: backend-dev · **Branch**: `chore/002-retire-legacy-spaces-api` · **Size**: S · **Depends on**: T042 · **Status**: todo
+  - **Owner**: backend-dev · **Branch**: `chore/002-retire-legacy-spaces-api` · **Size**: S · **Depends on**: T042 · **Status**: review — dev done; next: QA (queued)
   - **Note (T005 review)**: legacy hourly rows cannot be updated at all (not even cancelled) because of `booking_no_new_hourly`. Any legacy release must DELETE the row, or relax the check to allow a status-only change.
   - **Follow-up (T007 review)**: when the legacy files are removed or touched, make any remaining problem URNs import from `PROBLEM_TYPES` instead of duplicating the literals.
   - **Acceptance criteria**:
@@ -812,7 +812,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given another owner, Then 404 parity. Given `gen:api`, Then the layout schemas are committed.
 
 - [ ] T063 [US8] Seed a sample layout for London HQ in `apps/api/src/db/demo-spaces.ts`, extend `apps/api/test/seed.int-spec.ts`
-  - **Owner**: backend-dev · **Branch**: `feat/002-seed-layout` · **Size**: S · **Depends on**: T009, T062 · **Status**: todo
+  - **Owner**: backend-dev · **Branch**: `feat/002-seed-layout` · **Size**: S · **Depends on**: T009, T062 · **Status**: review — dev done; next: QA (queued)
   - **Acceptance criteria**:
     - Given the seed runs twice, Then London HQ has one layout with its 12 seats placed in two cubicles plus "Meeting room", "Kitchen" and "Entrance" areas, and Pune Hub has none (Assumptions "sample layout", AC 8.5 demo).
 

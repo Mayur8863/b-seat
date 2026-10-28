@@ -142,17 +142,39 @@ export class ListingsService {
         AND NOT EXISTS (SELECT 1 FROM ${spaceSlot} ss WHERE ss.space_id = pp.space_id
           AND ss.slot = pp.slot AND NOT ss.enabled))`);
     }
-    if (q.cursor) {
-      const c = decodeCursor(q.cursor);
-      where.push(sql`(${space.name}, ${space.id}) > (${c.name}, ${c.id})`);
-    }
+    const base = (after: { name: string; id: string } | null) =>
+      this.db
+        .select()
+        .from(space)
+        .where(
+          and(
+            ...where,
+            after ? sql`(${space.name}, ${space.id}) > (${after.name}, ${after.id})` : undefined,
+          ),
+        )
+        .orderBy(asc(space.name), asc(space.id));
 
-    const rows = await this.db
-      .select()
-      .from(space)
-      .where(and(...where))
-      .orderBy(asc(space.name), asc(space.id))
-      .limit(q.limit + 1);
+    // Without a start date the SQL prefilter is the whole answer. With one, candidates are
+    // evaluated in batches (R-10) until the page, plus one row to detect a next page, is full.
+    let rows: (typeof space.$inferSelect)[];
+    if (q.startDate) {
+      const startDate = q.startDate;
+      rows = [];
+      let after = q.cursor ? decodeCursor(q.cursor) : null;
+      const batchSize = Math.max(q.limit * 2, 20);
+      while (rows.length < q.limit + 1) {
+        const batch = await base(after).limit(batchSize);
+        for (const candidate of batch) {
+          if (rows.length > q.limit) break;
+          if (await this.hasFreeSeat(candidate, startDate, q.pass, q.slot)) rows.push(candidate);
+        }
+        const tail = batch.at(-1);
+        if (batch.length < batchSize || !tail) break;
+        after = { name: tail.name, id: tail.id };
+      }
+    } else {
+      rows = await base(q.cursor ? decodeCursor(q.cursor) : null).limit(q.limit + 1);
+    }
     const page = rows.slice(0, q.limit);
     const last = page.at(-1);
     const nextCursor =
@@ -207,6 +229,30 @@ export class ListingsService {
     };
   }
 
+  /**
+   * At least one seat free for the whole pass period (AC 4.3). Without a pass the day pass is
+   * meant, and without a slot any offered slot counts (OQ-4). A pass the space does not sell is
+   * simply not a match.
+   */
+  private async hasFreeSeat(
+    s: typeof space.$inferSelect,
+    startDate: string,
+    pass: SeatAvailabilityInput['pass'] | undefined,
+    slot: SeatAvailabilityInput['slot'] | undefined,
+  ): Promise<boolean> {
+    if (!s.openingMode) return false;
+    const slots = slot ? [slot] : offeredSlots(openingHoursOf(s));
+    for (const kind of slots) {
+      try {
+        const view = await this.availabilityOf(s, { pass: pass ?? 'day', slot: kind, startDate });
+        if (view.seats.some((x) => x.status === 'free')) return true;
+      } catch (e) {
+        if (!(e instanceof ProblemException)) throw e;
+      }
+    }
+    return false;
+  }
+
   async locations(q: LocationSuggestionsInput): Promise<LocationSuggestions> {
     const key = q.field === 'city' ? space.cityKey : space.areaKey;
     const label = q.field === 'city' ? space.city : space.area;
@@ -237,7 +283,15 @@ export class ListingsService {
       .from(space)
       .where(and(eq(space.id, spaceId), eq(space.status, 'published')));
     if (!s?.openingMode) throw new NotFoundException('Space not found');
+    return this.availabilityOf(s, input);
+  }
 
+  /** The seat-by-seat view of one published space; shared by the seats route and the search filter. */
+  private async availabilityOf(
+    s: typeof space.$inferSelect,
+    input: SeatAvailabilityInput,
+  ): Promise<ListingSeatAvailability> {
+    const spaceId = s.id;
     const openingHours = openingHoursOf(s);
     const [slots, [price], seats, calendars] = await Promise.all([
       this.db

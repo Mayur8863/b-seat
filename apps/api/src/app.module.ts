@@ -25,7 +25,6 @@ import { MeModule } from './me/me.module.js';
 import { OwnerSpacesModule } from './owner-spaces/owner-spaces.module.js';
 import { ReferenceController } from './reference/reference.controller.js';
 import { REDIS, RedisModule } from './redis/redis.module.js';
-import { SpacesModule } from './spaces/spaces.module.js';
 
 @Module({
   imports: [
@@ -61,7 +60,6 @@ import { SpacesModule } from './spaces/spaces.module.js';
     DbModule,
     MailModule,
     AuthModule,
-    SpacesModule,
     MeModule,
     OwnerSpacesModule,
     ListingsModule,

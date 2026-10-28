@@ -10,11 +10,13 @@ import {
   account,
   availabilityCalendar,
   cubicle,
+  layoutElement,
   passPrice,
   renterPreference,
   seat,
   session,
   space,
+  spaceLayout,
   spaceSlot,
   user,
 } from '../src/db/schema/index.js';
@@ -187,6 +189,54 @@ describe('demo marketplace seed (FR-012, OQ-11)', () => {
     expect(active).toHaveLength(19);
     const [pune] = await db.select().from(space).where(eq(space.name, 'Pune Hub'));
     expect(pune?.description).toBe('Edited by the owner.');
+  });
+
+  it('seeds one sample layout for London HQ only, once (T063, AC 8.5)', async () => {
+    await seedAll();
+    await seedAll();
+    const db = testDb(app);
+    const layouts = await db.select().from(spaceLayout);
+    const [london] = await db.select().from(space).where(eq(space.name, 'London HQ'));
+    expect(layouts.map((l) => l.spaceId)).toEqual([london?.id]);
+
+    const elements = await db.select().from(layoutElement);
+    expect(elements.filter((e) => e.kind === 'seat')).toHaveLength(12);
+    expect(elements.filter((e) => e.kind === 'cubicle')).toHaveLength(2);
+    expect(
+      elements
+        .filter((e) => e.kind === 'area')
+        .map((e) => e.label)
+        .sort(),
+    ).toEqual(['Entrance', 'Kitchen', 'Meeting room']);
+    const layout = layouts[0];
+    expect(
+      elements.every(
+        (e) => e.x + e.w <= (layout?.columns ?? 0) && e.y + e.h <= (layout?.rows ?? 0),
+      ),
+    ).toBe(true);
+    // Each seat sits inside its own cubicle, as the editor requires.
+    const seatRows = await db.select().from(seat);
+    for (const e of elements.filter((x) => x.kind === 'seat')) {
+      const parent = elements.find(
+        (c) =>
+          c.kind === 'cubicle' &&
+          c.cubicleId === seatRows.find((r) => r.id === e.seatId)?.cubicleId,
+      );
+      expect(parent).toBeDefined();
+      if (!parent) continue;
+      expect(e.x >= parent.x && e.y >= parent.y).toBe(true);
+      expect(e.x + e.w <= parent.x + parent.w && e.y + e.h <= parent.y + parent.h).toBe(true);
+    }
+  });
+
+  it('does not replace a layout the owner already saved', async () => {
+    await seedAll();
+    const db = testDb(app);
+    await db.delete(layoutElement);
+    await db.update(spaceLayout).set({ version: 5 });
+    await seedAll();
+    expect(await db.select().from(layoutElement)).toHaveLength(0);
+    expect((await db.select().from(spaceLayout))[0]?.version).toBe(5);
   });
 
   it('gives cubicles once to a space the first seed version claimed with empty cubicles', async () => {
