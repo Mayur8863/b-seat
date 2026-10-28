@@ -11,7 +11,7 @@ import type { Route } from 'next';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { BookingConfirmation, BookProblemAlert, ReviewDialog } from '@/components/book-pass';
 import { ListingSeatList, type SeatSelection } from '@/components/listing-seat-list';
@@ -19,10 +19,10 @@ import { type PassChoice, PassOptions } from '@/components/pass-options';
 import { StartDateField } from '@/components/start-date-field';
 import { type BookingSelection, YourSelection } from '@/components/your-selection';
 import { slotTitle, utilityLabel } from '@/lib/format';
-import { parseListingParams, searchOnly, withListingParams } from '@/lib/listing-params';
-import { describeBookProblem } from '@/lib/marketplace-problems';
+import { parseListingParams, withListingParams } from '@/lib/listing-params';
+import { describeBookProblem, SLOT_STARTED } from '@/lib/marketplace-problems';
 import type { ProblemCopy } from '@/lib/problem-copy';
-import { isStartDateAllowed, startDateRange } from '@/lib/seat-picker';
+import { isStartDateAllowed, slotHasStarted, startDateRange } from '@/lib/seat-picker';
 
 const FRAME = 'mx-auto grid w-full max-w-6xl gap-4 px-4 py-8 sm:px-6';
 
@@ -164,6 +164,9 @@ function Body({ listing, onRefetch }: { listing: Listing; onRefetch: () => void 
 
   const validDate = isStartDateAllowed(startDate, startDateRange(listing.timeZone));
   const offer = choice ? listing.offers.find((o) => o.slot === choice.slot) : undefined;
+  const started = Boolean(
+    offer && validDate && slotHasStarted(startDate, offer.startTime, listing.timeZone),
+  );
   return (
     <div className="grid gap-8">
       <Details listing={listing} />
@@ -208,6 +211,11 @@ function Body({ listing, onRefetch }: { listing: Listing; onRefetch: () => void 
                     value={startDate}
                     onChange={setStartDate}
                     timeZone={listing.timeZone}
+                    note={
+                      started
+                        ? `${SLOT_STARTED.title}. ${SLOT_STARTED.description.map((d) => (typeof d === 'string' ? d : d.text)).join(' ')}`
+                        : undefined
+                    }
                   />
                 )}
                 <div ref={seatsRef}>
@@ -270,9 +278,14 @@ function Body({ listing, onRefetch }: { listing: Listing; onRefetch: () => void 
 export function ListingDetails({ spaceId }: { spaceId: string }) {
   const { data, isPending, error, refetch } = useListingsGet(spaceId);
   const listing = data?.data;
+  const onRefetch = useCallback(() => {
+    void refetch();
+  }, [refetch]);
   // The search that led here; a link without one (or a shared deep link) just says "Find a space".
   const params = useSearchParams();
-  const carried = params.get('country') ? searchOnly(params) : '';
+  // Captured once: the booking choice is mirrored into the URL later, and the link must return
+  // to the search exactly as it came, filters included (ui/03 2.1).
+  const [carried] = useState(() => (params.get('country') ? params.toString() : ''));
 
   const back = (
     <Button variant="link" size="sm" asChild className="justify-self-start px-0">
@@ -309,7 +322,7 @@ export function ListingDetails({ spaceId }: { spaceId: string }) {
   }
 
   if (error || !listing) {
-    if (error instanceof ApiError && error.status === 404) {
+    if (error instanceof ApiError && (error.status === 404 || error.status === 400)) {
       return (
         <main id="main" className={`${FRAME} justify-items-start`}>
           <h1 className="text-2xl font-semibold tracking-tight">
@@ -350,7 +363,7 @@ export function ListingDetails({ spaceId }: { spaceId: string }) {
           {listing.area}, {listing.city}, {countryName(listing.country)}
         </p>
       </div>
-      <Body listing={listing} onRefetch={() => void refetch()} />
+      <Body listing={listing} onRefetch={onRefetch} />
     </main>
   );
 }

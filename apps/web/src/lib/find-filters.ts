@@ -1,4 +1,4 @@
-import type { ListingsSearchParams } from '@bseat/api-client';
+import { ListingSummaryUtilitiesItem, type ListingsSearchParams } from '@bseat/api-client';
 
 import { PASS_LABELS, type PassType, type SlotKind, utilityLabel } from '@/lib/format';
 
@@ -37,19 +37,7 @@ function oneOf<T extends string>(value: string | null, allowed: readonly T[]): T
 }
 
 /** Standard utility codes the API accepts; anything else in the URL is ignored. */
-export const UTILITY_CODES = [
-  'wifi',
-  'air_conditioning',
-  'power_backup',
-  'parking',
-  'meeting_room',
-  'tea_coffee',
-  'printer',
-  'lockers',
-  'security_24h',
-  'cafeteria',
-  'accessible_entrance',
-] as const;
+export const UTILITY_CODES = Object.values(ListingSummaryUtilitiesItem);
 type UtilityCode = (typeof UTILITY_CODES)[number];
 
 export function parseFilters(params: URLSearchParams): FindFilters {
@@ -98,26 +86,22 @@ export function localDate(d: Date): string {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
+/**
+ * The search spans spaces in many zones, so the browser's date is only approximate: allow a day
+ * either side of today..+30 and leave the exact check to the listing page and the server.
+ */
 export function dateRange(today: Date): { min: string; max: string } {
-  const max = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 30);
-  return { min: localDate(today), max: localDate(max) };
-}
-
-function shortDate(iso: string): string {
-  const [y, m, d] = iso.split('-').map(Number);
-  return new Date(Date.UTC(y ?? 0, (m ?? 1) - 1, d ?? 1)).toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    timeZone: 'UTC',
-  });
+  const at = (days: number) =>
+    localDate(new Date(today.getFullYear(), today.getMonth(), today.getDate() + days));
+  return { min: at(-1), max: at(31) };
 }
 
 export function startDateError(value: string, today: Date): string | undefined {
   if (!value) return undefined;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return 'Enter a valid date.';
   const { min, max } = dateRange(today);
   if (value >= min && value <= max) return undefined;
-  return `Choose a date from ${shortDate(min)} to ${shortDate(max)}.`;
+  return 'Choose a date within the next 30 days.';
 }
 
 /** "Pass: Weekly pass · Slot: Day slot · Starting Tue 3 Nov 2026 · With Wi-Fi, Parking". */

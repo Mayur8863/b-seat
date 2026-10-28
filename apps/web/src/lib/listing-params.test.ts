@@ -19,14 +19,19 @@ describe('parseListingParams', () => {
   it('ignores a pass that is not offered or priced', () => {
     expect(parse('pass=week&slot=day&startDate=2026-11-02')).toEqual({
       choice: null,
-      startDate: '',
+      startDate: '2026-11-02',
     });
     expect(parse('pass=year&slot=day').choice).toBeNull();
   });
-  it('ignores a date outside the range or malformed, and a date without a pass', () => {
+  it('keeps a valid date without a pass and preselects the day pass', () => {
+    expect(parse('startDate=2026-11-02')).toEqual({
+      choice: { pass: 'day', slot: 'day' },
+      startDate: '2026-11-02',
+    });
+  });
+  it('ignores a date outside the range or malformed', () => {
     expect(parse('pass=day&slot=day&startDate=2027-01-01').startDate).toBe('');
     expect(parse('pass=day&slot=day&startDate=soon').startDate).toBe('');
-    expect(parse('startDate=2026-11-02').startDate).toBe('');
   });
 });
 

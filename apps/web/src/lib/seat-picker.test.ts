@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { filterSeats, formatInstant, isStartDateAllowed, startDateRange } from './seat-picker';
+import { filterSeats, isStartDateAllowed, slotHasStarted, startDateRange } from './seat-picker';
 
 describe('startDateRange', () => {
   it('uses the space zone, not the viewer zone', () => {
@@ -32,10 +32,16 @@ describe('filterSeats', () => {
   });
 });
 
-describe('formatInstant', () => {
-  it('shows date and time in the zone with its name', () => {
-    expect(formatInstant('2026-10-29T13:30:00Z', 'Asia/Kolkata')).toBe(
-      'Thu 29 Oct 2026, 19:00 (Asia/Kolkata)',
-    );
+describe('slotHasStarted', () => {
+  const now = new Date('2026-10-29T13:30:00Z'); // 19:00 in Kolkata
+  it('compares the slot start with now in the space zone', () => {
+    expect(slotHasStarted('2026-10-29', '07:00', 'Asia/Kolkata', now)).toBe(true);
+    expect(slotHasStarted('2026-10-29', '19:00', 'Asia/Kolkata', now)).toBe(true);
+    expect(slotHasStarted('2026-10-29', '19:01', 'Asia/Kolkata', now)).toBe(false);
+    expect(slotHasStarted('2026-10-30', '00:00', 'Asia/Kolkata', now)).toBe(false);
+    expect(slotHasStarted('2026-10-28', '23:59', 'Asia/Kolkata', now)).toBe(true);
+  });
+  it('uses the zone, not the viewer: the same instant is the next day in Auckland', () => {
+    expect(slotHasStarted('2026-10-30', '02:00', 'Pacific/Auckland', now)).toBe(true);
   });
 });

@@ -4,6 +4,7 @@ import type { ListingLayout, ListingSeatAvailabilitySeatsItem as Seat } from '@b
 import { BanIcon, CalendarXIcon, CheckIcon, CircleCheckIcon } from 'lucide-react';
 import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
 
+import { ScrollRegion } from '@/components/scroll-region';
 import { formatLocalDate } from '@/lib/booking-format';
 import { type Direction, nearestFree, type PlanSeat, readingOrder } from '@/lib/plan-nav';
 
@@ -22,18 +23,28 @@ export interface PlacedSeat extends PlanSeat {
   seat: Seat;
 }
 
-export function placeSeats(layout: ListingLayout, seats: Seat[]): PlacedSeat[] {
+export function placeSeats(layout: ListingLayout, seats: Seat[], started = false): PlacedSeat[] {
   const byId = new Map(seats.map((s) => [s.id, s]));
   return layout.elements.flatMap((e) => {
     const seat = e.seatId ? byId.get(e.seatId) : undefined;
     return e.kind === 'seat' && seat
-      ? [{ id: seat.id, x: e.x, y: e.y, w: e.w, h: e.h, free: seat.status === 'free', seat }]
+      ? [
+          {
+            id: seat.id,
+            x: e.x,
+            y: e.y,
+            w: e.w,
+            h: e.h,
+            free: seat.status === 'free' && !started,
+            seat,
+          },
+        ]
       : [];
   });
 }
 
-function stateWord(seat: Seat, startDate: string): string {
-  if (seat.status === 'free') return 'Free';
+function stateWord(seat: Seat, startDate: string, started: boolean): string {
+  if (seat.status === 'free') return started ? 'Already started' : 'Free';
   if (seat.status === 'taken') return 'Taken';
   return `Closed on ${formatLocalDate(startDate)}`;
 }
@@ -43,6 +54,7 @@ export function ListingPlan({
   layout,
   seats,
   startDate,
+  started = false,
   selectedSeatId,
   labelledBy,
   onSelect,
@@ -50,6 +62,8 @@ export function ListingPlan({
   layout: ListingLayout;
   seats: Seat[];
   startDate: string;
+  /** The slot began earlier today, so no seat can be chosen. */
+  started?: boolean;
   selectedSeatId: string | null;
   labelledBy: string;
   onSelect: (seatId: string) => void;
@@ -72,7 +86,7 @@ export function ListingPlan({
     };
   }, [layout.columns]);
 
-  const placed = readingOrder(placeSeats(layout, seats));
+  const placed = readingOrder(placeSeats(layout, seats, started));
   const selected = placed.find((p) => p.id === selectedSeatId && p.free);
   const firstFree = placed.find((p) => p.free);
   const tabStop = (selected ?? firstFree)?.id;
@@ -103,9 +117,8 @@ export function ListingPlan({
       {areaNames.length > 0 && (
         <p className="sr-only">Areas on this plan: {areaNames.join(', ')}.</p>
       )}
-      <div
+      <ScrollRegion
         ref={regionRef}
-        role="region"
         aria-label={`Floor plan, ${layout.columns} by ${layout.rows} squares`}
         className="bg-card max-h-[70vh] overflow-auto rounded-xl border"
       >
@@ -137,7 +150,7 @@ export function ListingPlan({
           ))}
           {placed.map((p) => {
             const isSelected = p.id === selected?.id;
-            const word = stateWord(p.seat, startDate);
+            const word = stateWord(p.seat, startDate, started);
             const Icon = p.free
               ? CircleCheckIcon
               : p.seat.status === 'taken'
@@ -189,7 +202,7 @@ export function ListingPlan({
             );
           })}
         </div>
-      </div>
+      </ScrollRegion>
       <ul
         aria-label="Legend"
         className="text-muted-foreground flex flex-wrap gap-x-4 gap-y-2 text-sm"
