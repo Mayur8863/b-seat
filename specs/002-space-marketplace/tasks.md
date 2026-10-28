@@ -66,7 +66,7 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 | T034 | Listing search and location suggestions API                  | backend-dev    | T027                   | M    | review — dev done; next: QA (queued)                           | `feat/002-listing-search-api`         |
 | T035 | Seat availability for a pass API                             | backend-dev    | T005, T028             | M    | review — dev done; next: QA (queued)                           | `feat/002-seat-availability-api`      |
 | T036 | Create pass booking API (rules, holds, races)                | backend-dev    | T008, T035             | M    | review — dev done; next: QA (queued)                           | `feat/002-create-pass-booking-api`    |
-| T037 | Renter and owner booking emails                              | backend-dev    | T036                   | S    | todo                                                           | `feat/002-booking-emails`             |
+| T037 | Renter and owner booking emails                              | backend-dev    | T036                   | S    | review — dev done; next: QA (queued)                           | `feat/002-booking-emails`             |
 | T038 | Search availability filter (date, pass, slot)                | backend-dev    | T034, T035             | M    | todo                                                           | `feat/002-search-availability-filter` |
 | T039 | Find a space page                                            | frontend-dev   | T013, T014, T029, T034 | M    | review — dev done; next: QA (queued)                           | `feat/002-find-page`                  |
 | T040 | Listing page: seat availability for a pass                   | frontend-dev   | T031, T035             | M    | review                                                         | `feat/002-listing-seats`              |
@@ -559,7 +559,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given the 201 body, When inspected, Then it has no user id. Given `gen:api`, Then `CreateBookingInput` and `Booking` are committed.
 
 - [ ] T037 [P] [US4] Send renter and owner booking emails: `apps/api/src/bookings/booking-emails.ts` (+ `.spec.ts`), wire into the create service, extend `apps/api/test/pass-bookings.int-spec.ts`
-  - **Owner**: backend-dev · **Branch**: `feat/002-booking-emails` · **Size**: S · **Depends on**: T036 · **Status**: todo
+  - **Owner**: backend-dev · **Branch**: `feat/002-booking-emails` · **Size**: S · **Depends on**: T036 · **Status**: review — dev done; next: QA (queued)
   - **Added (T008 review)**: the mail builder strips CR and LF from the subject as defence in depth (owner-controlled space name and seat label). This task owns rebuilding the bounded enqueue (2 s, errors swallowed, error log with the booking id only) and its unit tests; the 001 tests were deleted with `BookingsService` in T008.
   - **Added (T008 review)**: Given the renter or owner email is enqueued twice with the same job id, Then one job exists (ADR-0008 section 5).
   - **Scope**: contracts/booking-emails.md; research R-14. Replaces `booking-confirmation.mail.ts`.

@@ -1,7 +1,8 @@
 import { Module } from '@nestjs/common';
 
 import { clockProvider } from '../common/time/clock.js';
-import { BookingCreatedHook, NoopBookingCreatedHook } from './booking-created.hook.js';
+import { BookingCreatedHook } from './booking-created.hook.js';
+import { MailBookingCreatedHook } from './booking-emails.hook.js';
 import { BookingsController } from './bookings.controller.js';
 import { BookingsService } from './bookings.service.js';
 
@@ -10,8 +11,7 @@ import { BookingsService } from './bookings.service.js';
   providers: [
     BookingsService,
     clockProvider,
-    // T037 replaces this with the mail-queue implementation.
-    { provide: BookingCreatedHook, useClass: NoopBookingCreatedHook },
+    { provide: BookingCreatedHook, useClass: MailBookingCreatedHook },
   ],
   exports: [BookingsService],
 })
