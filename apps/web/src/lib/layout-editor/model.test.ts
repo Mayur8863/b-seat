@@ -622,8 +622,11 @@ describe('keyboard helpers', () => {
     expect(neighbour(els, 'zz', 'up')).toBeNull();
   });
   it('stays inside a 90 degree cone', () => {
-    const diag = [...els, { id: 'd', kind: 'seat' as const, label: 'd', x: 40, y: 1, w: 2, h: 2 }];
-    expect(neighbour(diag, 'c', 'right')).toBeNull();
-    expect(neighbour(diag, 'a', 'right')).toBe('b');
+    const far = [
+      { id: 'a', kind: 'seat' as const, label: 'a', x: 0, y: 0, w: 2, h: 2 },
+      { id: 'e', kind: 'seat' as const, label: 'e', x: 3, y: 10, w: 2, h: 2 },
+    ];
+    expect(neighbour(far, 'a', 'right')).toBeNull();
+    expect(neighbour(far, 'a', 'down')).toBe('e');
   });
 });

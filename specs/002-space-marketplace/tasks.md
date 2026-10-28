@@ -93,7 +93,7 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 | T061 | UI spec: layout editor and renter plan                       | ui-ux-designer | T018, T029             | M    | review — spec done; next: frontend tasks can start             | `docs/002-ui-layout`                  |
 | T062 | Layout schema and API (owner and renter)                     | backend-dev    | T021                   | M    | review — dev done; next: QA (queued)                           | `feat/002-layout-api`                 |
 | T063 | Seed a sample layout                                         | backend-dev    | T009, T062             | S    | todo                                                           | `feat/002-seed-layout`                |
-| T064 | Layout editor model (pure reducer, TDD)                      | frontend-dev   | T061, T062             | M    | todo                                                           | `feat/002-layout-editor-model`        |
+| T064 | Layout editor model (pure reducer, TDD)                      | frontend-dev   | T061, T062             | M    | review — dev done; next: QA (queued)                           | `feat/002-layout-editor-model`        |
 | T065 | Layout editor page (grid, pointer, keyboard, form)           | frontend-dev   | T023, T064             | M    | todo                                                           | `feat/002-layout-editor`              |
 | T066 | Renter plan view on the listing page                         | frontend-dev   | T040, T061, T062       | M    | todo                                                           | `feat/002-renter-plan`                |
 | T067 | QA US8: layout e2e (keyboard only), axe                      | qa-engineer    | T063, T065, T066       | M    | todo                                                           | `test/002-us8-layout`                 |
@@ -817,7 +817,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given the seed runs twice, Then London HQ has one layout with its 12 seats placed in two cubicles plus "Meeting room", "Kitchen" and "Entrance" areas, and Pune Hub has none (Assumptions "sample layout", AC 8.5 demo).
 
 - [ ] T064 [US8] Layout editor model `apps/web/src/lib/layout-editor/model.ts` (pure reducer) with `model.test.ts` written first
-  - **Owner**: frontend-dev · **Branch**: `feat/002-layout-editor-model` · **Size**: M · **Depends on**: T061, T062 · **Status**: todo
+  - **Owner**: frontend-dev · **Branch**: `feat/002-layout-editor-model` · **Size**: M · **Depends on**: T061, T062 · **Status**: review — dev done; next: QA (queued)
   - **Scope**: actions add, move, resize, rename, delete, place from tray, unplace; grid bounds; cubicle containment; selection; dirty tracking; conversion to `SaveLayoutInput`. No React, no new dependency.
   - **Acceptance criteria**:
     - Given each action, When applied, Then the resulting state matches ui/05 rules, including clamping at grid edges and refusing a seat outside its cubicle (AC 8.1, FR-029).
