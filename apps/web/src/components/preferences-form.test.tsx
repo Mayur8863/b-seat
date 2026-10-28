@@ -1,5 +1,7 @@
 import { getReferenceGetMockHandler } from '@bseat/api-client/mocks';
-import { screen, waitFor } from '@testing-library/react';
+import { getReferenceGetQueryKey } from '@bseat/api-client';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it, vi } from 'vitest';
@@ -69,9 +71,103 @@ describe('PreferencesForm', () => {
     await userEvent.type(screen.getByLabelText('City'), 'Pune');
     await userEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
     await waitFor(() => {
-      expect(onSaved).toHaveBeenCalledWith('saved');
+      expect(onSaved).toHaveBeenCalledWith('saved', expect.anything());
     });
     expect(bodies).toEqual([{ country: null, city: 'Pune', area: null }]);
+  });
+
+  it('keeps the stored country when the list failed to load, and saves it', async () => {
+    server.use(
+      http.get('*/api/reference', () => HttpResponse.json({ status: 500 }, { status: 500 })),
+    );
+    const bodies = capturePut();
+    const { onSaved } = setup('edit', { country: 'IN', city: null, area: null });
+    expect(await screen.findByText('Country unavailable right now.')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Country')).not.toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText('City'), 'Pune');
+    await userEvent.click(screen.getByRole('button', { name: 'Save preferences' }));
+    await waitFor(() => {
+      expect(onSaved).toHaveBeenCalledWith('saved', expect.anything());
+    });
+    expect(bodies).toEqual([{ country: 'IN', city: 'Pune', area: null }]);
+  });
+
+  it('Clear all keeps the stored country when the list failed to load', async () => {
+    server.use(
+      http.get('*/api/reference', () => HttpResponse.json({ status: 500 }, { status: 500 })),
+    );
+    const bodies = capturePut();
+    setup('edit', { country: 'IN', city: 'Pune', area: 'Baner' });
+    await screen.findByText('Country unavailable right now.');
+    await userEvent.click(screen.getByRole('button', { name: 'Clear all' }));
+    expect(screen.getByLabelText('City')).toHaveValue('');
+    await userEvent.click(screen.getByRole('button', { name: 'Save preferences' }));
+    await waitFor(() => {
+      expect(bodies).toHaveLength(1);
+    });
+    expect(bodies).toEqual([{ country: 'IN', city: null, area: null }]);
+  });
+
+  it('shows the stored country once the list arrives after a slow load', async () => {
+    server.use(
+      http.get('*/api/reference', async () => {
+        await new Promise((r) => setTimeout(r, 50));
+        return HttpResponse.json({
+          countries: [
+            { code: 'IN', name: 'India', timeZones: ['Asia/Kolkata'] },
+            { code: 'GB', name: 'United Kingdom', timeZones: ['Europe/London'] },
+          ],
+          currencies: [],
+          utilities: [],
+        });
+      }),
+    );
+    setup('edit', { country: 'IN', city: null, area: null });
+    await waitFor(() => {
+      expect(screen.getByLabelText('Country')).toBeEnabled();
+    });
+    expect(screen.getByLabelText('Country')).toHaveValue('IN');
+  });
+
+  it('edit: focuses City while the list is loading', async () => {
+    server.use(reference);
+    setup('edit');
+    await waitFor(() => {
+      expect(screen.getByLabelText('City')).toHaveFocus();
+    });
+    await waitFor(() => {
+      expect(screen.getByLabelText('Country')).toBeEnabled();
+    });
+    expect(screen.getByLabelText('City')).toHaveFocus();
+  });
+
+  it('edit: focuses Country when the list is already loaded', async () => {
+    server.use(reference);
+    const client = new QueryClient();
+    client.setQueryData(getReferenceGetQueryKey(), {
+      data: {
+        countries: [{ code: 'IN', name: 'India', timeZones: [] }],
+        currencies: [],
+        utilities: [],
+      },
+    });
+    render(
+      <QueryClientProvider client={client}>
+        <PreferencesForm variant="edit" initial={none} onSaved={vi.fn()} onDismiss={vi.fn()} />
+      </QueryClientProvider>,
+    );
+    await waitFor(() => {
+      expect(screen.getByLabelText('Country')).toHaveFocus();
+    });
+  });
+
+  it('edit: focuses City when the list failed to load', async () => {
+    server.use(
+      http.get('*/api/reference', () => HttpResponse.json({ status: 500 }, { status: 500 })),
+    );
+    setup('edit');
+    await screen.findByText('Country unavailable right now.');
+    expect(screen.getByLabelText('City')).toHaveFocus();
   });
 
   it('signup: saves country, city and area; blank becomes null', async () => {
@@ -85,7 +181,7 @@ describe('PreferencesForm', () => {
     await userEvent.type(screen.getByLabelText('City'), '  Pune ');
     await userEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
     await waitFor(() => {
-      expect(onSaved).toHaveBeenCalledWith('saved');
+      expect(onSaved).toHaveBeenCalledWith('saved', expect.anything());
     });
     expect(bodies).toEqual([{ country: 'IN', city: 'Pune', area: null }]);
   });
@@ -141,7 +237,7 @@ describe('PreferencesForm', () => {
     expect(bodies).toHaveLength(0);
     await userEvent.click(screen.getByRole('button', { name: 'Save preferences' }));
     await waitFor(() => {
-      expect(onSaved).toHaveBeenCalledWith('saved');
+      expect(onSaved).toHaveBeenCalledWith('saved', expect.anything());
     });
     expect(bodies).toEqual([{ country: null, city: null, area: null }]);
   });

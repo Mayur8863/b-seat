@@ -10,19 +10,12 @@ vi.mock('@bseat/ui/components/sonner', () => ({ toast: { success: vi.fn(), error
 import { toast } from '@bseat/ui/components/sonner';
 
 import type * as AuthClientModule from '@/lib/auth-client';
+import { sessionIs, sessionStub } from '@/test/auth-client';
 
-const sessionStub = vi.hoisted((): { value: unknown } => ({ value: undefined }));
-// Real client for HTTP calls (MSW); only the session hook can be stubbed.
 vi.mock('@/lib/auth-client', async (importOriginal) => {
-  const { authClient: real } = await importOriginal<typeof AuthClientModule>();
-  return {
-    authClient: new Proxy(real, {
-      get: (target, key, receiver): unknown =>
-        key === 'useSession' && sessionStub.value
-          ? () => sessionStub.value
-          : Reflect.get(target, key, receiver),
-    }),
-  };
+  const { stubAuthClient: stub } = await import('@/test/auth-client');
+  const { authClient } = await importOriginal<typeof AuthClientModule>();
+  return { authClient: stub(authClient) };
 });
 
 import { server } from '@/test/msw';
@@ -60,17 +53,6 @@ async function fill(role: RegExp | null) {
   await userEvent.click(screen.getByRole('button', { name: 'Create account' }));
 }
 
-/** Stubs the session hook: the Better Auth session atom is module-global and would leak between tests. */
-function sessionIs(user: { id: string } | null) {
-  sessionStub.value = {
-    data: user ? { session: { id: 's' }, user } : null,
-    isPending: false,
-    isRefetching: false,
-    error: null,
-    refetch: () => Promise.resolve(),
-  };
-}
-
 describe('SignUpPage', () => {
   beforeEach(() => {
     push.mockReset();
@@ -105,7 +87,12 @@ describe('SignUpPage', () => {
   });
 
   it('renter: sends accountType renter, shows the preferences step, saves them', async () => {
-    const bodies = signUpReturns(HttpResponse.json({ token: 't', user }));
+    sessionIs(null);
+    // The sign-up call creates a session; the stubbed hook then reports it, as the real one would.
+    const bodies = signUpReturns(() => {
+      sessionIs(user);
+      return HttpResponse.json({ token: 't', user });
+    });
     const saved: unknown[] = [];
     server.use(
       reference,
@@ -121,6 +108,8 @@ describe('SignUpPage', () => {
       expect(h1).toHaveFocus();
     });
     expect(bodies).toEqual([expect.objectContaining({ accountType: 'renter' })]);
+    // The new session must not trigger the "already signed in" redirect away from this step.
+    expect(replace).not.toHaveBeenCalled();
     await waitFor(() => {
       expect(screen.getByLabelText('Country')).toBeEnabled();
     });

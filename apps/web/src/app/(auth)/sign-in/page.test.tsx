@@ -1,4 +1,6 @@
 import { screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { http, HttpResponse } from 'msw';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { replace, search } = vi.hoisted(() => ({
@@ -11,37 +13,20 @@ vi.mock('next/navigation', () => ({
 }));
 
 import type * as AuthClientModule from '@/lib/auth-client';
+import { sessionIs, sessionStub } from '@/test/auth-client';
 
-const sessionStub = vi.hoisted((): { value: unknown } => ({ value: undefined }));
-// Real client for HTTP calls (MSW); only the session hook can be stubbed.
 vi.mock('@/lib/auth-client', async (importOriginal) => {
-  const { authClient: real } = await importOriginal<typeof AuthClientModule>();
-  return {
-    authClient: new Proxy(real, {
-      get: (target, key, receiver): unknown =>
-        key === 'useSession' && sessionStub.value
-          ? () => sessionStub.value
-          : Reflect.get(target, key, receiver),
-    }),
-  };
+  const { stubAuthClient: stub } = await import('@/test/auth-client');
+  const { authClient } = await importOriginal<typeof AuthClientModule>();
+  return { authClient: stub(authClient) };
 });
 
+import { server } from '@/test/msw';
 import { renderWithQuery } from '@/test/render';
 
 import SignInPage from './page';
 
 const session = { session: { id: 's' }, user: { id: 'u1', name: 'Ada', email: 'a@example.com' } };
-
-/** Stubs the session hook: the Better Auth session atom is module-global and would leak between tests. */
-function sessionIs(user: { id: string } | null) {
-  sessionStub.value = {
-    data: user ? { session: { id: 's' }, user } : null,
-    isPending: false,
-    isRefetching: false,
-    error: null,
-    refetch: () => Promise.resolve(),
-  };
-}
 
 describe('SignInPage', () => {
   beforeEach(() => {
@@ -74,5 +59,25 @@ describe('SignInPage', () => {
     expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
     await new Promise((r) => setTimeout(r, 50));
     expect(replace).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['INVALID_EMAIL_OR_PASSWORD', 'Email or password is incorrect.'],
+    ['EMAIL_NOT_VERIFIED', 'Confirm your email address, then sign in.'],
+    ['BOOM', "We couldn't sign you in. Try again."],
+  ])('maps %s to a fixed message, never the raw server text', async (code, message) => {
+    sessionIs(null);
+    server.use(
+      http.post('*/api/auth/sign-in/email', () =>
+        HttpResponse.json({ code, message: 'raw server text' }, { status: 401 }),
+      ),
+    );
+    renderWithQuery(<SignInPage />);
+    await userEvent.type(await screen.findByLabelText('Email'), 'ada@example.com');
+    await userEvent.type(screen.getByLabelText('Password'), 'whatever-password');
+    await userEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(message);
+    expect(alert).not.toHaveTextContent('raw server text');
   });
 });

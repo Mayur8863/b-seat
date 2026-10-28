@@ -52,8 +52,10 @@ interface FormValues {
 }
 
 /**
- * Accessible email/password form. `onSubmit` resolves to an error message to
- * show, or undefined on success.
+ * Accessible email/password form. Sign-in `onSubmit` resolves to an error message
+ * to show, or undefined on success. Sign-up `onSubmit` resolves to a `SignUpFailure`
+ * (shown on the role field or as a form alert), or undefined on success.
+ * All fields are disabled while a submit is in flight.
  */
 export function AuthForm(props: Props) {
   const isSignUp = props.mode === 'sign-up';
@@ -132,63 +134,66 @@ export function AuthForm(props: Props) {
           </AlertDescription>
         </Alert>
       )}
-      {isSignUp && field('name', 'Name', 'text', 'name')}
-      {field('email', 'Email', 'email', 'email')}
-      {field('password', 'Password', 'password', isSignUp ? 'new-password' : 'current-password')}
-      {isSignUp && (
-        <fieldset className="grid gap-2" disabled={isSubmitting}>
-          <legend className="mb-2 text-sm font-medium">I want to</legend>
-          <Controller
-            control={control}
-            name="accountType"
-            render={({ field: f, fieldState }) => (
-              <>
-                <RadioGroup
-                  name={f.name}
-                  value={f.value ?? ''}
-                  onValueChange={f.onChange}
-                  onBlur={f.onBlur}
-                  required
-                  aria-required="true"
-                  aria-invalid={fieldState.error ? true : undefined}
-                  aria-describedby={fieldState.error ? `${id}-accountType-error` : undefined}
-                  disabled={isSubmitting}
-                >
-                  {ROLES.map((role, index) => (
-                    <Label
-                      key={role.value}
-                      htmlFor={`${id}-role-${role.value}`}
-                      className="bg-card hover:bg-muted/50 has-data-[state=checked]:border-primary has-data-[state=checked]:ring-primary has-data-[state=checked]:bg-primary/5 has-focus-visible:outline-ring flex min-h-16 items-start gap-3 rounded-lg border p-3 has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-data-[state=checked]:ring-1"
-                    >
-                      <RadioGroupItem
-                        ref={index === 0 ? f.ref : undefined}
-                        id={`${id}-role-${role.value}`}
-                        value={role.value}
-                        aria-describedby={`${id}-role-${role.value}-hint`}
-                        className="mt-0.5"
-                      />
-                      <span className="grid gap-1">
-                        <span>{role.label}</span>
-                        <span
-                          id={`${id}-role-${role.value}-hint`}
-                          className="text-muted-foreground text-sm font-normal"
-                        >
-                          {role.hint}
+      <fieldset disabled={isSubmitting} className="m-0 grid min-w-0 gap-4 border-0 p-0">
+        {isSignUp && field('name', 'Name', 'text', 'name')}
+        {field('email', 'Email', 'email', 'email')}
+        {field('password', 'Password', 'password', isSignUp ? 'new-password' : 'current-password')}
+        {isSignUp && (
+          <fieldset className="grid gap-2" disabled={isSubmitting}>
+            <legend className="mb-2 text-sm font-medium">I want to</legend>
+            <Controller
+              control={control}
+              name="accountType"
+              render={({ field: f, fieldState }) => (
+                <>
+                  <RadioGroup
+                    name={f.name}
+                    value={f.value ?? ''}
+                    onValueChange={f.onChange}
+                    onBlur={f.onBlur}
+                    required
+                    aria-required="true"
+                    aria-invalid={fieldState.error ? true : undefined}
+                    aria-describedby={fieldState.error ? `${id}-accountType-error` : undefined}
+                    disabled={isSubmitting}
+                  >
+                    {ROLES.map((role, index) => (
+                      <Label
+                        key={role.value}
+                        htmlFor={`${id}-role-${role.value}`}
+                        className="bg-card hover:bg-muted/50 has-data-[state=checked]:border-primary has-data-[state=checked]:ring-primary has-data-[state=checked]:bg-primary/5 has-focus-visible:outline-ring flex min-h-16 items-start gap-3 rounded-lg border p-3 has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-data-[state=checked]:ring-1"
+                      >
+                        <RadioGroupItem
+                          ref={index === 0 ? f.ref : undefined}
+                          id={`${id}-role-${role.value}`}
+                          value={role.value}
+                          aria-labelledby={`${id}-role-${role.value}-title`}
+                          aria-describedby={`${id}-role-${role.value}-hint`}
+                          className="mt-0.5"
+                        />
+                        <span className="grid gap-1">
+                          <span id={`${id}-role-${role.value}-title`}>{role.label}</span>
+                          <span
+                            id={`${id}-role-${role.value}-hint`}
+                            className="text-muted-foreground text-sm font-normal"
+                          >
+                            {role.hint}
+                          </span>
                         </span>
-                      </span>
-                    </Label>
-                  ))}
-                </RadioGroup>
-                {fieldState.error && (
-                  <p id={`${id}-accountType-error`} className="text-destructive text-sm">
-                    {fieldState.error.message}
-                  </p>
-                )}
-              </>
-            )}
-          />
-        </fieldset>
-      )}
+                      </Label>
+                    ))}
+                  </RadioGroup>
+                  {fieldState.error && (
+                    <p id={`${id}-accountType-error`} className="text-destructive text-sm">
+                      {fieldState.error.message}
+                    </p>
+                  )}
+                </>
+              )}
+            />
+          </fieldset>
+        )}
+      </fieldset>
       <Button type="submit" disabled={isSubmitting} aria-busy={isSubmitting || undefined}>
         {isSubmitting ? 'Please wait…' : isSignUp ? 'Create account' : 'Sign in'}
       </Button>

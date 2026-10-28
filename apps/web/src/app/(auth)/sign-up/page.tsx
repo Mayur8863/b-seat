@@ -19,6 +19,8 @@ const NONE = { country: null, city: null, area: null };
 
 /** Maps a Better Auth error code to what the form shows; raw server messages are never shown. */
 function failureFor(code: string | undefined): SignUpFailure {
+  // The client already validates every other field, so a server validation error can only be
+  // the account type (ui/01 "on accountType").
   if (code === 'MISSING_FIELD' || code === 'VALIDATION_ERROR') return { accountType: ROLE_ERROR };
   if (code === 'USER_ALREADY_EXISTS' || code === 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL') {
     return { form: 'An account with this email already exists.', signInLink: true };

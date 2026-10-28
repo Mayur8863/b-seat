@@ -8,6 +8,15 @@ import { AuthForm } from '@/components/auth-form';
 import { authClient } from '@/lib/auth-client';
 import { safeNext } from '@/lib/safe-next';
 
+/** Fixed strings only: Better Auth's raw message is never shown. */
+function signInError(code: string | undefined): string {
+  if (code === 'INVALID_EMAIL_OR_PASSWORD' || code === 'INVALID_EMAIL') {
+    return 'Email or password is incorrect.';
+  }
+  if (code === 'EMAIL_NOT_VERIFIED') return 'Confirm your email address, then sign in.';
+  return "We couldn't sign you in. Try again.";
+}
+
 function SignIn() {
   const router = useRouter();
   const next = useSearchParams().get('next');
@@ -27,7 +36,7 @@ function SignIn() {
         mode="sign-in"
         onSubmit={async (values) => {
           const { error } = await authClient.signIn.email(values);
-          if (error) return error.message ?? 'Sign in failed';
+          if (error) return signInError(error.code);
           router.push(target as '/dashboard');
           return undefined;
         }}

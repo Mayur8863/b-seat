@@ -1,6 +1,12 @@
 'use client';
 
-import { ApiError, getMeGetQueryKey, useMeGet, useReferenceGet } from '@bseat/api-client';
+import {
+  ApiError,
+  getMeGetQueryKey,
+  type MeGetQueryResult,
+  useMeGet,
+  useReferenceGet,
+} from '@bseat/api-client';
 import type { Preferences } from '@bseat/api-client';
 import { Button } from '@bseat/ui/components/button';
 import { Card, CardContent } from '@bseat/ui/components/card';
@@ -52,7 +58,13 @@ function PreferencesCard({ preferences }: { preferences: Preferences }) {
               variant="edit"
               initial={preferences}
               onDismiss={close}
-              onSaved={() => {
+              onSaved={(_outcome, saved) => {
+                // Write the response first so the old values do not flash while refetching.
+                if (saved) {
+                  queryClient.setQueryData<MeGetQueryResult>(getMeGetQueryKey(), (old) =>
+                    old ? { ...old, data: { ...old.data, preferences: saved } } : old,
+                  );
+                }
                 void queryClient.invalidateQueries({ queryKey: getMeGetQueryKey() });
                 toast.success('Preferences saved');
                 close();

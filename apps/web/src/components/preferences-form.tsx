@@ -1,6 +1,6 @@
 'use client';
 
-import { useMeUpdatePreferences, useReferenceGet } from '@bseat/api-client';
+import { type Preferences, useMeUpdatePreferences, useReferenceGet } from '@bseat/api-client';
 import { Alert, AlertDescription, AlertTitle } from '@bseat/ui/components/alert';
 import { Button } from '@bseat/ui/components/button';
 import { Input } from '@bseat/ui/components/input';
@@ -33,7 +33,7 @@ interface Props {
   variant: 'signup' | 'edit';
   initial: PreferenceValues;
   /** `skipped` means nothing was sent because every field was empty (signup only). */
-  onSaved: (outcome: 'saved' | 'skipped') => void;
+  onSaved: (outcome: 'saved' | 'skipped', saved?: Preferences) => void;
   /** Signup only: the save failed but the account stands, so the caller moves on. */
   onFailed?: () => void;
   /** "Skip for now" (signup) or "Cancel" (edit). */
@@ -88,8 +88,8 @@ export function PreferencesForm({ variant, initial, onSaved, onFailed, onDismiss
     save.mutate(
       { data },
       {
-        onSuccess: () => {
-          onSaved('saved');
+        onSuccess: (response) => {
+          onSaved('saved', response.data);
         },
         onError: () => {
           if (onFailed) onFailed();
@@ -134,9 +134,13 @@ export function PreferencesForm({ variant, initial, onSaved, onFailed, onDismiss
       )}
       <div className={isEdit ? 'grid gap-4 md:grid-cols-3' : 'grid gap-4'}>
         <div className="grid content-start gap-2">
-          <Label htmlFor={`${id}-country`}>Country</Label>
           {reference.isError ? (
-            <p id={`${id}-country-error`} className="text-muted-foreground text-sm">
+            <span className="text-sm leading-none font-medium">Country</span>
+          ) : (
+            <Label htmlFor={`${id}-country`}>Country</Label>
+          )}
+          {reference.isError ? (
+            <p id={`${id}-country-help`} className="text-muted-foreground text-sm">
               {isEdit
                 ? 'Country unavailable right now.'
                 : "We couldn't load the country list. You can add it later from your dashboard."}{' '}
@@ -153,6 +157,8 @@ export function PreferencesForm({ variant, initial, onSaved, onFailed, onDismiss
             </p>
           ) : (
             <NativeSelect
+              // Remount when the list arrives so the stored country is applied to the new options.
+              key={reference.isPending ? 'loading' : 'ready'}
               id={`${id}-country`}
               disabled={saving || reference.isPending}
               aria-busy={reference.isPending || undefined}
@@ -200,7 +206,12 @@ export function PreferencesForm({ variant, initial, onSaved, onFailed, onDismiss
             size="sm"
             disabled={saving}
             onClick={() => {
-              reset({ country: '', city: '', area: '' });
+              // Without the list the country cannot be edited, so it is kept (ui/01 6.2).
+              reset({
+                country: reference.isError ? (initial.country ?? '') : '',
+                city: '',
+                area: '',
+              });
             }}
           >
             Clear all

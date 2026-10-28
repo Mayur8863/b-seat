@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -106,5 +106,27 @@ describe('AuthForm', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Sign in' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Invalid email or password');
+  });
+
+  it('disables every field while submitting', async () => {
+    let finish: () => void = () => undefined;
+    const onSubmit = vi.fn(
+      () =>
+        new Promise<undefined>((r) => {
+          finish = () => {
+            r(undefined);
+          };
+        }),
+    );
+    render(<AuthForm mode="sign-in" onSubmit={onSubmit} />);
+    await userEvent.type(screen.getByLabelText('Email'), 'ada@example.com');
+    await userEvent.type(screen.getByLabelText('Password'), 'whatever');
+    await userEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+    expect(await screen.findByLabelText('Email')).toBeDisabled();
+    expect(screen.getByLabelText('Password')).toBeDisabled();
+    finish();
+    await waitFor(() => {
+      expect(screen.getByLabelText('Email')).toBeEnabled();
+    });
   });
 });
