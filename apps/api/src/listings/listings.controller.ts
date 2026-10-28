@@ -5,6 +5,7 @@ import {
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiTags,
+  ApiUnprocessableEntityResponse,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { z } from 'zod';
@@ -18,12 +19,16 @@ import {
   ListingSchema,
   type ListingSearchResults,
   ListingSearchResultsSchema,
+  type ListingSeatAvailability,
+  ListingSeatAvailabilitySchema,
   type LocationSuggestions,
   type LocationSuggestionsInput,
   LocationSuggestionsInputSchema,
   LocationSuggestionsSchema,
   type SearchListingsInput,
   SearchListingsInputSchema,
+  type SeatAvailabilityInput,
+  SeatAvailabilityInputSchema,
 } from './listings.schemas.js';
 import { ListingsService } from './listings.service.js';
 
@@ -67,5 +72,20 @@ export class ListingsController {
     @Param('spaceId', { schema: z.uuid() }) spaceId: string,
   ): Promise<Listing> {
     return this.listings.get(session.user.id, spaceId);
+  }
+
+  @Get(':spaceId/seats')
+  @ApiOkResponse({ standardSchema: ListingSeatAvailabilitySchema })
+  @ApiBadRequestResponse({ standardSchema: ProblemSchema })
+  @ApiNotFoundResponse({ standardSchema: ProblemSchema })
+  @ApiUnprocessableEntityResponse({
+    standardSchema: ProblemSchema,
+    description: 'booking-rule:pass-not-offered',
+  })
+  seats(
+    @Param('spaceId', { schema: z.uuid() }) spaceId: string,
+    @Query({ schema: SeatAvailabilityInputSchema }) query: SeatAvailabilityInput,
+  ): Promise<ListingSeatAvailability> {
+    return this.listings.seatAvailability(spaceId, query);
   }
 }
