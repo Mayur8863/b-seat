@@ -52,6 +52,7 @@ docker compose up          # installs deps, migrates + seeds the DB, starts ever
 | Web app            | http://localhost:3000                                                |
 | API + Swagger UI   | http://localhost:3001/docs                                           |
 | Caught email       | http://localhost:8025                                                |
+| Object storage     | http://localhost:9000 (S3 API, private; signed URLs only)            |
 | Tracing (optional) | http://localhost:16686 (`docker compose --profile observability up`) |
 
 Code changes hot-reload in both apps. Optionally copy `.env.example` to `.env` to

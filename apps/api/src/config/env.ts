@@ -30,10 +30,32 @@ export const EnvSchema = z
     TRUSTED_ORIGINS: commaList.default(['http://localhost:3000']),
     NEXT_PUBLIC_APP_URL: z.url().default('http://localhost:3000'),
 
+    // Object storage for space photos (ADR-0011). Unset endpoints mean AWS S3, where the task
+    // role supplies credentials, so the key pair is dev-only and must be set together.
+    S3_ENDPOINT: z.url().optional(),
+    S3_PUBLIC_ENDPOINT: z.url().optional(),
+    S3_REGION: z.string().min(1).default('us-east-1'),
+    S3_BUCKET_PHOTOS: z.string().min(3).default('bseat-photos'),
+    S3_FORCE_PATH_STYLE: z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((v) => v === 'true'),
+    S3_ACCESS_KEY_ID: z.string().min(1).optional(),
+    S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
+    // FR-019 caps a photo address's life at one hour; the low end exists for expiry tests.
+    PHOTO_URL_TTL_SECONDS: z.coerce.number().int().min(2).max(3600).default(3600),
+
     // Read by the seed script only; optional so the API itself boots without it. A blank
     // value (e.g. `SEED_DEMO_PASSWORD=` in .env) counts as unset.
     SEED_DEMO_PASSWORD: seedDemoPasswordField,
   })
+  .refine(
+    (env) => (env.S3_ACCESS_KEY_ID === undefined) === (env.S3_SECRET_ACCESS_KEY === undefined),
+    {
+      message: 'S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY must be set together',
+      path: ['S3_SECRET_ACCESS_KEY'],
+    },
+  )
   // Demo accounts must never exist in production, so its presence there is a misconfiguration.
   .refine((env) => env.NODE_ENV !== 'production' || env.SEED_DEMO_PASSWORD === undefined, {
     message: 'SEED_DEMO_PASSWORD must not be set in production',

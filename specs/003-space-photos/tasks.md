@@ -37,7 +37,7 @@ only a human merges.
 | ---- | ---------------------------------------------------------------- | ----------------- | ---------------------------- | ---- | ------ | -------------------------------------- |
 | T001 | Approve plan; write ADR-0011; amend ADR-0007 and ADR-0009 9.3    | architect         | none                         | M    | done   | `spec/003-space-photos`                |
 | T002 | Bump multer ≥ 2.5.0 and body-parser ≥ 2.4.0 (CVEs)               | devops            | T001                         | S    | review | `chore/003-multer-body-parser-cves`    |
-| T003 | Local S3 storage service, bucket init, e2e forwarder and S3 env  | devops            | T001                         | M    | todo   | `chore/003-local-storage`              |
+| T003 | Local S3 storage service, bucket init, e2e forwarder and S3 env  | devops            | T001                         | M    | review | `chore/003-local-storage`              |
 | T004 | Storage module, S3 env and windowed URL signing (TDD)            | backend-dev       | T003                         | M    | todo   | `feat/003-object-storage`              |
 | T005 | Photo schema and migration, constraint tests first               | backend-dev       | T001                         | S    | todo   | `feat/003-photo-schema`                |
 | T006 | Image processing module with sharp (TDD)                         | backend-dev       | T001                         | M    | todo   | `feat/003-photo-processing`            |
@@ -100,7 +100,7 @@ first (T002, T003). After T001: T002, T003, T005, T006, T011 and T012 can start 
     - Given `bin/pnpm check`, Then it passes with no behaviour change (the JSON body limit of 100 kB still applies; the existing integration tests pass).
 
 - [ ] T003 [P] Add `storage` (a maintained S3-compatible server chosen per ADR-0011 section 1, with a version-pinned image, a healthcheck, a `storagedata` volume and port 9000), a one-shot `storage-init` (pinned) that creates the private bucket `bseat-photos` idempotently, and a `storage-forward` TCP forwarder (pinned) in the `e2e` profile with `network_mode: service:web` to `docker-compose.yml`; add the S3 variables to the shared node environment; make `migrate` and `api` depend on `storage-init`; document every variable in `.env.example`; update `docs/runbooks/local-development.md` and the README test prerequisites
-  - **Owner**: devops · **Branch**: `chore/003-local-storage` · **Size**: M · **Depends on**: T001 · **Status**: todo
+  - **Owner**: devops · **Branch**: `chore/003-local-storage` · **Size**: M · **Depends on**: T001 · **Status**: review (2026-10-29; SeaweedFS 4.51 passes all six conformance points; no MinIO fallback)
   - **Scope**: ADR-0011 sections 1 and 10; research R-1, R-4 (e2e reachability), R-12; contracts/photos.md "Environment".
     - **(T001)** Do not use MinIO by default: upstream archived on 2026-04-25 and publishes no new community binaries. Try SeaweedFS (Apache-2.0) first. Use MinIO's last community image only if no maintained candidate passes the conformance list, and say so in the PR.
     - The compose service is named `storage`, and `S3_ENDPOINT` is `http://storage:9000`.
