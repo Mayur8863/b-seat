@@ -98,7 +98,7 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 | T066 | Renter plan view on the listing page                         | frontend-dev   | T040, T061, T062       | M    | review                                                         | `feat/002-renter-plan`                |
 | T067 | QA US8: layout e2e (keyboard only), axe                      | qa-engineer    | T063, T065, T066       | M    | todo                                                           | `test/002-us8-layout`                 |
 | T068 | Docs US8                                                     | docs-writer    | T067                   | S    | todo                                                           | `docs/002-us8-layout`                 |
-| T069 | Booking hardening carried over from 001 reviews              | backend-dev    | T037                   | S    | todo                                                           | `chore/002-booking-hardening`         |
+| T069 | Booking hardening carried over from 001 reviews              | backend-dev    | T037                   | S    | review — dev done; next: QA (queued)                           | `chore/002-booking-hardening`         |
 | T070 | QA final regression, SC-001/SC-002 timing, traceability      | qa-engineer    | see task               | S    | todo                                                           | `test/002-final-regression`           |
 | T071 | Docs release: README overview, ADR index, changesets         | docs-writer    | T070                   | S    | todo                                                           | `docs/002-release`                    |
 
@@ -856,7 +856,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 ## Phase 11: Polish and release
 
 - [ ] T069 [P] Booking hardening carried over from the 001 reviews: producer fail-fast when Redis is not ready (`apps/api/src/mail/`), `MAILPIT_URL` for the test helper (`apps/api/test/fixtures.ts`, `.env.example`), age-based `removeOnComplete` comment or change
-  - **Owner**: backend-dev · **Branch**: `chore/002-booking-hardening` · **Size**: S · **Depends on**: T037 · **Status**: todo
+  - **Owner**: backend-dev · **Branch**: `chore/002-booking-hardening` · **Size**: S · **Depends on**: T037 · **Status**: review — dev done; next: QA (queued)
   - **Scope**: 001 T012 review follow-ups (c), (g), (h), now that each booking queues two emails. Only if a human confirms OQ-2 (001 T012 superseded); otherwise they stay with 001.
   - **Acceptance criteria**:
     - Given Redis is not ready (unit test), When a booking is created, Then both enqueues reject at once, 201 returns well inside the bound, and `booking.*_not_queued` is logged for each (FR-021).

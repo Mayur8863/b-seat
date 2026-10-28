@@ -26,6 +26,7 @@ x-node: &node
     DATABASE_URL_TEST: postgres://${POSTGRES_USER:-bseat}:${POSTGRES_PASSWORD:-bseat}@postgres:5432/${POSTGRES_DB:-bseat}_test
     REDIS_URL: redis://redis:6379
     SMTP_HOST: mailpit
+    MAILPIT_URL: http://mailpit:8025
     SMTP_PORT: '1025'
     API_INTERNAL_URL: http://api:3001
     LOG_LEVEL: ${LOG_LEVEL:-debug}
