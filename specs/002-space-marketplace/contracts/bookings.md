@@ -61,9 +61,13 @@ Always books for the caller. Processing:
 2. `evaluatePassBookingRules(...)` in the order of [README](./README.md#problem-types-introduced-by-this-feature)
    → 422 with the rule's `type`.
 3. Compute occurrences with `pass-period.ts` (research R-5).
-4. Transaction: `SET LOCAL lock_timeout = '5s'` and `lockSeats` first (ADR-0009 section 9; `55P03` → log
-   `booking.lock_timeout` with ids only and rethrow, no retry), then `SELECT … FROM seat WHERE id = $seat AND removed_at IS NULL FOR SHARE`; insert the `booking`
-   header (`kind 'pass'`, envelope, price snapshot); insert all holds in chronological order. Map
+4. Transaction, in the lock order of ADR-0009 section 9.3: `SET LOCAL lock_timeout = '5s'`; then the space row
+   `SELECT 1 FROM space WHERE id = $space FOR SHARE` (`withSeatLocks` option `beforeLocks`; this keeps one order
+   with seat removal, which locks the space row `FOR UPDATE` before its seat locks); then `lockSeats([seatId])`;
+   then `SELECT … FROM seat JOIN space … WHERE seat.id = $seat AND removed_at IS NULL FOR SHARE OF seat, space`
+   (re-reads the space status, so an unpublish or removal that committed after step 1 is refused); insert the
+   `booking` header (`kind 'pass'`, envelope, price snapshot); insert all holds in chronological order. `55P03` →
+   log `booking.lock_timeout` with ids only and rethrow, no retry. Map
    `DrizzleQueryError.cause`: `23P01` + `seat_hold_seat_no_overlap` → 409 `booking:seat-unavailable`;
    `23P01` + `seat_hold_user_no_overlap` → 409 `booking:user-overlap`; `40P01` → retry the transaction (at most 3
    attempts; `warn` log `booking.insert_deadlock_retry { seatId, attempt }`); anything else → rethrow.
@@ -84,7 +88,8 @@ is needed: the renter overlap rule and the 30-day horizon bound the list to a fe
 
 ## POST /api/bookings/{bookingId}/cancel
 
-`Bookings_cancel`, hook `useBookingsCancel`. One statement:
+`Bookings_cancel`, hook `useBookingsCancel`. One transaction in the same lock order as create (ADR-0009 section
+9.3: `lock_timeout`, the booking's space row `FOR SHARE`, then `lockSeats([seatId])`), around one statement:
 `UPDATE booking SET status='cancelled', cancelled_at=$now WHERE id=$1 AND user_id=$caller AND kind='pass' AND status='active' AND starts_at > $now RETURNING *`.
 `seat_hold_booking_fk` (`ON UPDATE CASCADE` from the generated `holds_active`) deactivates every hold of the
 booking in the same statement (AQ-7, ADR-0009 section 3). The service never updates `seat_hold` itself. If no row

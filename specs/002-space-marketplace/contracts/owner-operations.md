@@ -70,7 +70,10 @@ const OccupancyMark = z
 | `POST /api/owner/spaces/{spaceId}/occupancy/{markId}/end` |                            | 200 `OccupancyMark` (`status: ended`; idempotent) · 404                                                                                                                            |
 
 The hold range follows research R-11: day boundary to day boundary, open-ended when `endDate` is null. All seats
-go in one transaction that starts with `lock_timeout` + `lockSeats` first (ADR-0009 section 9; `55P03` → log and rethrow), with holds inserted in `(seat_id, starts_at)` order. On `40P01` the whole transaction
+go in one transaction in the lock order of ADR-0009 section 9.3: `lock_timeout`, then the caller's space row
+`FOR SHARE` (`beforeLocks`; the order seat removal and booking create use), then `lockSeats` over every requested
+seat, then the seat reads and the inserts, with holds inserted in `(seat_id, starts_at)` order. `55P03` → log and
+rethrow. Ending a mark takes the same locks for the mark's seat, then the hold and mark `FOR UPDATE`. On `40P01` the whole transaction
 retries, at most 3 attempts in total (ADR-0009 section 2). On `23P01` it rolls back, then the overlapping holds
 are read to build `conflicts`:
 
