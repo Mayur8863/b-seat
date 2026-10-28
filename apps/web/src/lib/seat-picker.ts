@@ -30,6 +30,23 @@ export function isStartDateAllowed(value: string, range: { min: string; max: str
   return value !== '' && value >= range.min && value <= range.max;
 }
 
+/** True when the first slot of a pass starting on `startDate` began at or before `now` in the space's zone. */
+export function slotHasStarted(
+  startDate: string,
+  startTime: string,
+  timeZone: string,
+  now = new Date(),
+): boolean {
+  const clock = new Intl.DateTimeFormat('en-GB', {
+    timeZone,
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).format(now);
+  // ISO date and zero-padded 24-hour time compare correctly as plain strings.
+  return `${startDate} ${startTime}` <= `${todayIn(timeZone, now)} ${clock}`;
+}
+
 export function filterSeats<T extends { status: string }>(
   seats: T[],
   hideUnavailable: boolean,

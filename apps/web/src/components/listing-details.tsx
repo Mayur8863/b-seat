@@ -20,9 +20,9 @@ import { StartDateField } from '@/components/start-date-field';
 import { type BookingSelection, YourSelection } from '@/components/your-selection';
 import { slotTitle, utilityLabel } from '@/lib/format';
 import { parseListingParams, withListingParams } from '@/lib/listing-params';
-import { describeBookProblem } from '@/lib/marketplace-problems';
+import { describeBookProblem, SLOT_STARTED } from '@/lib/marketplace-problems';
 import type { ProblemCopy } from '@/lib/problem-copy';
-import { isStartDateAllowed, startDateRange } from '@/lib/seat-picker';
+import { isStartDateAllowed, slotHasStarted, startDateRange } from '@/lib/seat-picker';
 
 const FRAME = 'mx-auto grid w-full max-w-6xl gap-4 px-4 py-8 sm:px-6';
 
@@ -164,6 +164,9 @@ function Body({ listing, onRefetch }: { listing: Listing; onRefetch: () => void 
 
   const validDate = isStartDateAllowed(startDate, startDateRange(listing.timeZone));
   const offer = choice ? listing.offers.find((o) => o.slot === choice.slot) : undefined;
+  const started = Boolean(
+    offer && validDate && slotHasStarted(startDate, offer.startTime, listing.timeZone),
+  );
   return (
     <div className="grid gap-8">
       <Details listing={listing} />
@@ -208,6 +211,11 @@ function Body({ listing, onRefetch }: { listing: Listing; onRefetch: () => void 
                     value={startDate}
                     onChange={setStartDate}
                     timeZone={listing.timeZone}
+                    note={
+                      started
+                        ? `${SLOT_STARTED.title}. ${SLOT_STARTED.description.map((d) => (typeof d === 'string' ? d : d.text)).join(' ')}`
+                        : undefined
+                    }
                   />
                 )}
                 <div ref={seatsRef}>
