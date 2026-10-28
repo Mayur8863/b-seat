@@ -15,6 +15,8 @@ const config: NextConfig = {
   transpilePackages: ['@bseat/ui', '@bseat/api-client'],
   typedRoutes: true,
   poweredByHeader: false,
+  redirects: () =>
+    Promise.resolve([{ source: '/book/:path*', destination: '/find', permanent: true }]),
   rewrites: () => Promise.resolve([{ source: '/api/:path*', destination: `${apiUrl}/api/:path*` }]),
 };
 

@@ -71,7 +71,7 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 | T039 | Find a space page                                            | frontend-dev   | T013, T014, T029, T034 | M    | review — dev done; next: QA (queued)                           | `feat/002-find-page`                  |
 | T040 | Listing page: seat availability for a pass                   | frontend-dev   | T031, T035             | M    | review                                                         | `feat/002-listing-seats`              |
 | T041 | Book a pass, confirmation, problem copy                      | frontend-dev   | T036, T040             | M    | review — dev done; next: QA (queued)                           | `feat/002-book-pass-ui`               |
-| T042 | Retire `/book`: redirect to `/find`, remove 001 components   | frontend-dev   | T039, T041             | S    | todo                                                           | `chore/002-retire-book-page`          |
+| T042 | Retire `/book`: redirect to `/find`, remove 001 components   | frontend-dev   | T039, T041             | S    | review — dev done; next: QA (queued)                           | `chore/002-retire-book-page`          |
 | T043 | Retire legacy `GET /api/spaces` routes                       | backend-dev    | T042                   | S    | todo                                                           | `chore/002-retire-legacy-spaces-api`  |
 | T044 | QA US4: search and book e2e, races, performance, axe         | qa-engineer    | T009, T037, T038, T042 | M    | todo                                                           | `test/002-us4-search-book-e2e`        |
 | T045 | Docs US4                                                     | docs-writer    | T043, T044             | S    | todo                                                           | `docs/002-us4-search-book`            |
@@ -605,7 +605,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given `isOwnSpace`, When the page renders, Then booking controls are replaced by the "mark it occupied instead" note (edge).
 
 - [ ] T042 [US4] Retire `/book`: replace `apps/web/src/app/(app)/book/page.tsx` with a permanent redirect to `/find`, remove `book-view`, `booking-window-form`, `seat-availability`, `space-list`, `lib/booking-problems.ts` and their tests, and update `apps/web/e2e/book.spec.ts`
-  - **Owner**: frontend-dev · **Branch**: `chore/002-retire-book-page` · **Size**: S · **Depends on**: T039, T041 · **Status**: todo
+  - **Owner**: frontend-dev · **Branch**: `chore/002-retire-book-page` · **Size**: S · **Depends on**: T039, T041 · **Status**: review — dev done; next: QA (queued)
   - **Follow-up (T015 merge)**: `e2e/book.spec.ts` "/book can be completed with the keyboard only" is intermittent in full-suite runs (2 of 4 runs on 2026-10-28, chromium once, mobile once; `toBeChecked()` after ArrowDown fails), but passes when the spec runs alone. Likely a re-render clearing the arrow-key selection under load. Retiring `/book` removes it; if T042 is far off, QA should stabilise it (wait for the space list query to settle before pressing keys).
   - **Acceptance criteria**:
     - Given a signed-in user, When visiting `/book`, Then they land on `/find` (R-7 step 5).

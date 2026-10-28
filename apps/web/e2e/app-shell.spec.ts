@@ -6,7 +6,7 @@ import { signOut } from './helpers';
 const WCAG_AA = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
 
 // Every route in the proxy matcher (T014); FR-005.
-for (const path of ['/dashboard', '/book', '/find', '/spaces', '/bookings', '/owner/spaces/new']) {
+for (const path of ['/dashboard', '/find', '/spaces', '/bookings', '/owner/spaces/new']) {
   test(`${path} redirects signed-out visitors to sign-in with next`, async ({ page }) => {
     await page.goto(path);
     await expect(page).toHaveURL(new RegExp(`/sign-in\\?next=${encodeURIComponent(path)}$`));
@@ -74,7 +74,7 @@ test('signed-in shell: nav, current page, keyboard walk, mobile menu axe', async
     'page',
   );
   await page.keyboard.press('Enter');
-  await expect(page).toHaveURL(/\/book$/);
+  await expect(page).toHaveURL(/\/find$/);
   if (mobile) await menu.click();
   await expect(nav.getByRole('link', { name: 'Find a space' })).toHaveAttribute(
     'aria-current',

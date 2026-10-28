@@ -4,7 +4,7 @@ export type NavRole = 'renter' | 'owner';
 export interface NavLink {
   label: string;
   /** Literal union so `typedRoutes` rejects a link to a page that does not exist. */
-  href: '/dashboard' | '/book' | '/find' | '/owner/spaces/new';
+  href: '/dashboard' | '/find' | '/owner/spaces/new';
   /** Pathnames where this link is the current page (`aria-current="page"`). */
   exact: readonly string[];
   /** Path prefixes where the user is inside this area (`aria-current="true"`). */
@@ -50,7 +50,6 @@ export type PageAudience = NavRole | 'both';
 /** Who may use each `(app)` page. Every page, static or dynamic, must be listed (FR-004). */
 export const PAGE_ROLES: Record<string, PageAudience> = {
   '/dashboard': 'both',
-  '/book': 'both',
   '/find': 'both',
   '/spaces/[spaceId]': 'both',
   '/owner/spaces/new': 'owner',
@@ -71,7 +70,6 @@ export const REACHED_FROM: Record<string, NavLink['href']> = {
   '/owner/spaces/[spaceId]/pricing': '/dashboard',
   '/owner/spaces/[spaceId]/layout': '/dashboard',
   '/spaces/[spaceId]': '/find',
-  '/book': '/find',
 };
 
 export function navActive(link: NavLink, pathname: string): 'page' | 'true' | undefined {
