@@ -13,4 +13,13 @@ export function proxy(request: NextRequest) {
   return NextResponse.redirect(signIn);
 }
 
-export const config = { matcher: ['/dashboard/:path*', '/book/:path*', '/bookings/:path*'] };
+export const config = {
+  matcher: [
+    '/dashboard/:path*',
+    '/book/:path*',
+    '/find/:path*',
+    '/spaces/:path*',
+    '/bookings/:path*',
+    '/owner/:path*',
+  ],
+};
