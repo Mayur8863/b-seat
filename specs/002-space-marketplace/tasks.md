@@ -202,8 +202,8 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given the PR, When reviewed, Then the failing tests were committed first and changed-line coverage is ≥ 80% (Constitution II).
 
 - [ ] T007 Implement `apps/api/src/common/money/money.ts`, `apps/api/src/common/errors/problem-types.ts` and `apps/api/src/marketplace/booking-rules.ts`, with unit tests written first
-  - **Owner**: backend-dev · **Branch**: `feat/002-pass-rules` · **Size**: M · **Depends on**: T006 · **Status**: review
-  - **Added (T004 review)**: money parsing follows the same rule as T027: Zod string `^\d{1,10}(\.\d{1,2})?$`, value > 0, explicit upper bound, never `z.coerce.number()`; `pass_price.updated_at` is set by the service on update.
+  - **Owner**: backend-dev · **Branch**: `feat/002-pass-rules` · **Size**: M · **Depends on**: T006 · **Status**: review — done: review fixes (leading zeros, date guards, reserved extension keys, typed problem factories, rule-order and detail tests); next: QA re-run, then reviewers
+  - **Added (T004 review)**: money parsing follows the same rule as T027: Zod string `^(0|[1-9]\d{0,9})(\.\d{1,2})?$`, value > 0, explicit upper bound, never `z.coerce.number()`; `pass_price.updated_at` is set by the service on update.
   - **Scope**: research R-8; contracts/README.md problem types, rule order and extension schemas (AQ-3, ADR-0009 section 8). `parseDecimal`, `formatDecimal`, `fullDaySaving(day, night, fullDay)` → `{ amount, percent } | null` (percent rounded half-up). `evaluatePassBookingRules({ space, isOwner, offered, startDayOpen, firstStartsAt }, now)` returns the first violation in the documented order or `null`. Problem type constants for every row of the contracts README table. `ProblemException` gains an optional `extensions` record and `ProblemFilter` spreads it before the standard members; export `PublishIncompleteProblem`, `LabelTakenProblem` and `OccupancyConflictProblem` (`ProblemSchema.extend(...)`, response only) for T020, T021 and T047. `ProblemSchema` itself is unchanged.
   - **Boundary assumptions (T006 security review)**: dates `YYYY-MM-DD` within years 0100-9998; server-side max span for any iterated date range and max seats per request; `slot`/`pass` as `z.enum` matching the opening mode; calendar weekdays 1-127 and `endDate >= startDate`; services catch `RangeError` from the slot modules and map it to a typed problem or treat the date as closed.
   - **Added (T006 review)**: the service checks `offeredSlots(...).includes(slot)` and returns 422 `pass-not-offered` before calling `passPeriod`.
@@ -520,6 +520,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 
 - [ ] T036 [US4] Add `POST /api/listings/{spaceId}/bookings` to `apps/api/src/bookings/` (schemas, service, controller, `bookings.service.spec.ts`) with `apps/api/test/pass-bookings.int-spec.ts`; regenerate `apps/api/openapi.json`
   - **Owner**: backend-dev · **Branch**: `feat/002-create-pass-booking-api` · **Size**: M · **Depends on**: T008, T035 · **Status**: todo
+  - **Follow-up (T007 review)**: the duplicate problem URNs in `apps/api/src/bookings/booking-conflicts.ts` and `bookings/booking-rules.ts` should import from `PROBLEM_TYPES` (`common/errors/problem-types.ts`); use the `labelTaken`, `publishIncomplete` and `occupancyConflict` factories, never raw extension objects.
   - **Added (T008 review)**: inside the lock's `work`, re-read the seat (`FOR SHARE`) joined to its space with `seat.removed_at IS NULL`: an unknown, removed or other-space seat, or a seat of a `draft` space, gets the same 404 as a random UUID; an `unpublished` space gets 422 `booking-rule:space-not-published` (contracts/bookings.md, FR-020), so an unpublish that commits between the rule check and the insert is still refused (int test). T008 removed `BookingsModule`, the `Caller` type and the `clockProvider` wiring: create a new module.
   - **Added (T008 security)**: decide every 404 (draft space, unknown, removed or other-space seat) before any `booking-rule:*` 422, including `own-space` and `pass-not-offered`, so a draft id gets the same 404 body (minus `instance`) as a random UUID even when the caller owns it or the slot is not offered (int test). The in-lock re-read locks both rows (`… FROM seat JOIN space … FOR SHARE OF seat, space`) so a concurrent unpublish waits and is refused, not raced.
   - **Added (T004 review)**: when the space has no shared calendar, every start day is closed (fail closed): `startDayOpen` and the pass-period dates never assume an open calendar.
@@ -590,6 +591,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 
 - [ ] T043 [US4] Retire the legacy spaces API: remove `apps/api/src/spaces/` (move or delete `resolveWindow`), its tests and registration; regenerate `apps/api/openapi.json`
   - **Owner**: backend-dev · **Branch**: `chore/002-retire-legacy-spaces-api` · **Size**: S · **Depends on**: T042 · **Status**: todo
+  - **Follow-up (T007 review)**: when the legacy files are removed or touched, make any remaining problem URNs import from `PROBLEM_TYPES` instead of duplicating the literals.
   - **Acceptance criteria**:
     - Given the API, When `GET /api/spaces` or `GET /api/spaces/{id}/availability` is called, Then 404 (R-7 step 6).
     - Given `gen:api`, Then `Space`, `SpaceList`, `AvailabilityQueryInput`, `SpaceAvailability` and `SeatAvailability` are gone from `openapi.json`, and the web typecheck passes.
@@ -1011,6 +1013,8 @@ Level 12: T071
 - `docker-compose.yml` and other files have uncommitted local changes on the planning machine that are not part of this feature; tasks work from their base branch.
 
 ## Open questions (human decision needed)
+
+- Open follow-up (T007 security review): `X-Request-Id` in `apps/api/src/app.module.ts:32` is trusted without a length or format check, and an empty header yields `''`. Needs a decision (owner: devops/backend-dev) on a format limit and a fallback to a generated id.
 
 See [plan.md → Open questions](./plan.md#open-questions) (OQ-1 to OQ-12) and the architect questions (AQ-1 to AQ-8).
 Tasks that depend on an answer: OQ-1 all; OQ-2 T069; OQ-3 T005, T055; OQ-4 T038, T039; OQ-5 T047, T048;
