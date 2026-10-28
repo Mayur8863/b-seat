@@ -16,7 +16,7 @@ import {
   spaceSlot,
 } from '../db/schema/index.js';
 import { openingHoursOf } from '../owner-spaces/owner-spaces.service.js';
-import { BookingCreatedHook } from './booking-created.hook.js';
+import { BookingCreatedHook, type BookingCreatedEvent } from './booking-created.hook.js';
 import { classifyInsertError } from './booking-conflicts.js';
 import type { Booking, CreateBookingInput } from './bookings.schemas.js';
 import {
@@ -67,8 +67,15 @@ export class BookingsService {
     );
 
     this.logger.info({ bookingId: header.id, seatId: input.seatId, spaceId }, 'booking.created');
-    await this.notify({ bookingId: header.id, seatId: input.seatId, spaceId });
-    return toBooking(header, facts, plan, input);
+    const created = toBooking(header, facts, plan, input);
+    await this.notify({
+      bookingId: header.id,
+      seatId: input.seatId,
+      spaceId,
+      userId,
+      booking: created,
+    });
+    return created;
   }
 
   /** Step 1: space (any status; a draft is refused by the plan), the active seat of that space, price, slot flag, calendar. */
@@ -181,7 +188,7 @@ export class BookingsService {
   }
 
   /** After commit: bounded, and a failure is logged (ids only) and swallowed. */
-  private async notify(event: { bookingId: string; seatId: string; spaceId: string }) {
+  private async notify(event: BookingCreatedEvent) {
     let timer: NodeJS.Timeout | undefined;
     const timeout = new Promise<never>((_, reject) => {
       timer = setTimeout(() => {
@@ -191,7 +198,10 @@ export class BookingsService {
     try {
       await Promise.race([this.created.onCreated(event), timeout]);
     } catch {
-      this.logger.warn(event, 'booking.notify_failed');
+      this.logger.warn(
+        { bookingId: event.bookingId, seatId: event.seatId, spaceId: event.spaceId },
+        'booking.notify_failed',
+      );
     } finally {
       clearTimeout(timer);
     }
