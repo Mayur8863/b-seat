@@ -54,8 +54,7 @@ import { OwnUtilitiesFieldset } from './space-form/own-utilities-fieldset';
 type Props = { mode: 'create'; space?: undefined } | { mode: 'edit'; space: OwnerSpace };
 
 /**
- * Space details form (ui/02 section 4). Create goes to the dashboard until the space
- * overview (T023) exists; edit sends only the changed fields.
+ * Space details form (ui/02 section 4). Create opens the new space's overview; edit sends only the changed fields.
  */
 export function SpaceForm(props: Props) {
   const { mode, space } = props;
@@ -173,11 +172,10 @@ export function SpaceForm(props: Props) {
         create.mutate(
           { data: createBody(values) },
           {
-            onSuccess: () => {
+            onSuccess: (res) => {
               void queryClient.invalidateQueries({ queryKey: getOwnerSpacesListQueryKey() });
               toast.success('Space created');
-              // T023 changes this to the new space's overview.
-              router.push('/dashboard');
+              router.push(`/owner/spaces/${res.data.id}`);
             },
             onError: applyServerErrors,
           },

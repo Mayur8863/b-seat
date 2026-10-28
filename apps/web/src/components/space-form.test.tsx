@@ -254,7 +254,7 @@ describe('SpaceForm (create)', () => {
     expect(screen.getByText('Removed Gym.')).toBeInTheDocument();
   });
 
-  it('creates the space with trimmed values, toasts and goes to the dashboard (until T023)', async () => {
+  it('creates the space with trimmed values, toasts and opens the new overview', async () => {
     useReference();
     const bodies = captureCreate();
     const user = userEvent.setup();
@@ -266,7 +266,7 @@ describe('SpaceForm (create)', () => {
     await user.click(screen.getByRole('button', { name: 'Create space' }));
 
     await waitFor(() => {
-      expect(push).toHaveBeenCalledWith('/dashboard');
+      expect(push).toHaveBeenCalledWith(`/owner/spaces/${stored.id}`);
     });
     expect(bodies[0]).toEqual({
       name: 'Pune Hub',
