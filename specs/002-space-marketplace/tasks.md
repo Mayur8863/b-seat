@@ -51,7 +51,7 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 | T019 | Reference data API (countries, currencies, utilities)        | backend-dev    | T001                   | S    | done   | `feat/002-reference-api`              |
 | T020 | Owner spaces API: CRUD, publish, unpublish                   | backend-dev    | T002, T004, T019       | M    | review | `feat/002-owner-spaces-api`           |
 | T021 | Seats and cubicles API                                       | backend-dev    | T005, T020             | M    | todo   | `feat/002-seats-cubicles-api`         |
-| T022 | Space details form and create page                           | frontend-dev   | T014, T018, T019, T020 | M    | todo   | `feat/002-space-form`                 |
+| T022 | Space details form and create page                           | frontend-dev   | T014, T018, T019, T020 | M    | review | `feat/002-space-form`                 |
 | T023 | Owner dashboard spaces, space overview, publish              | frontend-dev   | T022                   | M    | todo   | `feat/002-owner-dashboard`            |
 | T024 | Seats management page                                        | frontend-dev   | T021, T023             | M    | todo   | `feat/002-seats-page`                 |
 | T025 | QA US2: listing e2e, axe, owner scoping                      | qa-engineer    | T009, T011, T023, T024 | M    | todo   | `test/002-us2-listing-e2e`            |
@@ -391,7 +391,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given owner B, When B touches A's seats or cubicles, Then 404 parity (FR-009). Given `gen:api`, Then the seat and cubicle schemas are committed.
 
 - [ ] T022 [US2] Build `apps/web/src/components/space-form.tsx` (+ test) and `apps/web/src/app/(app)/owner/spaces/new/page.tsx`; add "List a space" to the owner nav
-  - **Owner**: frontend-dev · **Branch**: `feat/002-space-form` · **Size**: M · **Depends on**: T014, T018, T019, T020 · **Status**: todo
+  - **Owner**: frontend-dev · **Branch**: `feat/002-space-form` · **Size**: M · **Depends on**: T014, T018, T019, T020 · **Status**: review
   - **Scope**: ui/02. RHF + Zod (mirrors `CreateSpaceInput`), `useReferenceGet`, `useOwnerSpacesCreate`. Time zone suggested from the country and changeable among the offered zones: the union of `countries[].timeZones` in `/api/reference` plus `UTC`, never `Intl.supportedValuesOf('timeZone')` (OQ-B, decided in T018; ui/02 4.2). The form is reused for editing in T023.
   - **Acceptance criteria**:
     - Given the form, When submitted empty, Then each required field shows its error tied by `aria-describedby`, and no request is sent (AC 2.1).

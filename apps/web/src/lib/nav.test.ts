@@ -106,15 +106,22 @@ describe('routeOf', () => {
 });
 
 describe('navLinksFor', () => {
-  it('lists Dashboard and Find a space for both roles', () => {
-    for (const role of ROLES) {
-      expect(navLinksFor(role).map((l) => l.label)).toEqual(['Dashboard', 'Find a space']);
-    }
+  it('lists Dashboard and Find a space for a renter', () => {
+    expect(navLinksFor('renter').map((l) => l.label)).toEqual(['Dashboard', 'Find a space']);
+  });
+
+  it('adds List a space for an owner, once its page exists', () => {
+    expect(navLinksFor('owner').map((l) => [l.label, l.href])).toEqual([
+      ['Dashboard', '/dashboard'],
+      ['List a space', '/owner/spaces/new'],
+      ['Find a space', '/book'],
+    ]);
+    expect(PAGE_ROLES['/owner/spaces/new']).toBe('owner');
   });
 });
 
 describe('navActive', () => {
-  const [dashboard, find] = navLinksFor('owner');
+  const [dashboard, list, find] = navLinksFor('owner');
   it('is page on an exact match', () => {
     expect(navActive(dashboard!, '/dashboard')).toBe('page');
     expect(navActive(find!, '/book')).toBe('page');
@@ -122,6 +129,10 @@ describe('navActive', () => {
   it('is true on a parent match', () => {
     expect(navActive(dashboard!, '/owner/spaces/abc/seats')).toBe('true');
     expect(navActive(find!, '/spaces/abc')).toBe('true');
+  });
+  it('marks List a space current only on its own page', () => {
+    expect(navActive(list!, '/owner/spaces/new')).toBe('page');
+    expect(navActive(list!, '/owner/spaces/abc')).toBeUndefined();
   });
   it('is undefined elsewhere, and owner/spaces/new is not a Dashboard parent', () => {
     expect(navActive(dashboard!, '/owner/spaces/new')).toBeUndefined();

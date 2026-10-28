@@ -61,6 +61,20 @@ describe('AppNav', () => {
     },
   );
 
+  it('shows List a space to owners only', async () => {
+    server.use(me('owner'));
+    const { unmount } = renderWithQuery(<AppNav />);
+    expect(await screen.findByRole('link', { name: 'List a space' })).toHaveAttribute(
+      'href',
+      '/owner/spaces/new',
+    );
+    unmount();
+    server.use(me('renter'));
+    renderWithQuery(<AppNav />);
+    await screen.findByRole('link', { name: 'Find a space' });
+    expect(screen.queryByRole('link', { name: 'List a space' })).not.toBeInTheDocument();
+  });
+
   it('marks the area link current with true on a parent path', async () => {
     pathname = '/owner/spaces/abc/seats';
     server.use(me('owner'));
