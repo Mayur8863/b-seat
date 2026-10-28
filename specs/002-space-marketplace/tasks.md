@@ -57,7 +57,7 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 | T025 | QA US2: listing e2e, axe, owner scoping                      | qa-engineer    | T009, T011, T023, T024 | M    | todo                                                           | `test/002-us2-listing-e2e`            |
 | T026 | Docs US2                                                     | docs-writer    | T025                   | S    | todo                                                           | `docs/002-us2-listing`                |
 | T027 | Slots and pricing API                                        | backend-dev    | T007, T020             | M    | review — dev done; next: QA (queued)                           | `feat/002-pricing-api`                |
-| T028 | Listing detail API with offers and 24-hour saving            | backend-dev    | T027                   | S    | todo                                                           | `feat/002-listing-detail-api`         |
+| T028 | Listing detail API with offers and 24-hour saving            | backend-dev    | T027                   | S    | review — dev done; next: QA (queued)                           | `feat/002-listing-detail-api`         |
 | T029 | UI spec: search, listing page, booking, my bookings          | ui-ux-designer | T010                   | M    | todo                                                           | `docs/002-ui-renter-booking`          |
 | T030 | Owner pricing page                                           | frontend-dev   | T023, T027             | M    | todo                                                           | `feat/002-pricing-page`               |
 | T031 | Listing page v1: details and pass options                    | frontend-dev   | T014, T028, T029       | M    | todo                                                           | `feat/002-listing-page`               |
@@ -458,7 +458,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given another owner, Then 404 parity. Given `gen:api`, Then `SpacePricing` and `UpdatePricingInput` are committed.
 
 - [ ] T028 [US3] Build `apps/api/src/listings/` with `GET /api/listings/{spaceId}` (published only, offers, `fullDaySavings`, `isOwnSpace`) and `apps/api/test/listings-detail.int-spec.ts`; regenerate `apps/api/openapi.json`
-  - **Owner**: backend-dev · **Branch**: `feat/002-listing-detail-api` · **Size**: S · **Depends on**: T027 · **Status**: todo
+  - **Owner**: backend-dev · **Branch**: `feat/002-listing-detail-api` · **Size**: S · **Depends on**: T027 · **Status**: review — dev done; next: QA (queued)
   - **Acceptance criteria**:
     - Given a published 24-hour space with day 500.00, night 400.00 and full_day 800.00 day passes, When a renter `GET`s it, Then `offers` lists exactly the enabled, priced slots and `fullDaySavings.day` is `{ amount: "100.00", percent: 11 }` (AC 3.5, FR-012).
     - Given a disabled slot or an unpriced pass, When fetched, Then it is absent (AC 3.3).

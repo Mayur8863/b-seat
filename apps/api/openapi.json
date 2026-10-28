@@ -880,6 +880,73 @@
           "owner-spaces"
         ]
       }
+    },
+    "/api/listings/{spaceId}": {
+      "get": {
+        "operationId": "Listings_get",
+        "parameters": [
+          {
+            "name": "spaceId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Listing"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ],
+        "tags": [
+          "listings"
+        ]
+      }
     }
   },
   "info": {
@@ -2102,6 +2169,283 @@
         },
         "required": [
           "slots"
+        ],
+        "additionalProperties": false
+      },
+      "Listing": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string",
+            "pattern": "^[A-Z]{2}$",
+            "description": "ISO 3166-1 alpha-2 country code, e.g. IN"
+          },
+          "city": {
+            "type": "string"
+          },
+          "area": {
+            "type": "string"
+          },
+          "streetAddress": {
+            "type": "string"
+          },
+          "timeZone": {
+            "type": "string",
+            "description": "IANA time zone, e.g. Europe/London"
+          },
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$",
+            "description": "ISO 4217 currency code, e.g. INR"
+          },
+          "utilities": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "wifi",
+                "air_conditioning",
+                "power_backup",
+                "parking",
+                "meeting_room",
+                "tea_coffee",
+                "printer",
+                "lockers",
+                "security_24h",
+                "cafeteria",
+                "accessible_entrance"
+              ]
+            }
+          },
+          "customUtilities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "hasLayout": {
+            "type": "boolean"
+          },
+          "openingHours": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "always_open"
+                    ]
+                  },
+                  "shiftChangeAt": {
+                    "type": "string",
+                    "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+                    "description": "Wall-clock time in the space's time zone (HH:mm)"
+                  }
+                },
+                "required": [
+                  "mode",
+                  "shiftChangeAt"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "fixed_hours"
+                    ]
+                  },
+                  "opensAt": {
+                    "type": "string",
+                    "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+                    "description": "Wall-clock time in the space's time zone (HH:mm)"
+                  },
+                  "closesAt": {
+                    "type": "string",
+                    "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+                    "description": "Wall-clock time in the space's time zone (HH:mm)"
+                  }
+                },
+                "required": [
+                  "mode",
+                  "opensAt",
+                  "closesAt"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "offers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "slot": {
+                  "type": "string",
+                  "enum": [
+                    "day",
+                    "night",
+                    "full_day",
+                    "working_hours"
+                  ]
+                },
+                "startTime": {
+                  "type": "string",
+                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+                  "description": "Wall-clock time in the space's time zone (HH:mm)"
+                },
+                "endTime": {
+                  "type": "string",
+                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+                  "description": "Wall-clock time in the space's time zone (HH:mm)"
+                },
+                "endsNextDay": {
+                  "type": "boolean"
+                },
+                "prices": {
+                  "type": "object",
+                  "properties": {
+                    "day": {
+                      "nullable": true,
+                      "type": "string",
+                      "description": "Decimal amount with two fraction digits"
+                    },
+                    "week": {
+                      "nullable": true,
+                      "type": "string",
+                      "description": "Decimal amount with two fraction digits"
+                    },
+                    "month": {
+                      "nullable": true,
+                      "type": "string",
+                      "description": "Decimal amount with two fraction digits"
+                    }
+                  },
+                  "required": [
+                    "day",
+                    "week",
+                    "month"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "slot",
+                "startTime",
+                "endTime",
+                "endsNextDay",
+                "prices"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "fullDaySavings": {
+            "nullable": true,
+            "type": "object",
+            "properties": {
+              "day": {
+                "nullable": true,
+                "type": "object",
+                "properties": {
+                  "amount": {
+                    "type": "string",
+                    "description": "Decimal amount with two fraction digits"
+                  },
+                  "percent": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "amount",
+                  "percent"
+                ],
+                "additionalProperties": false
+              },
+              "week": {
+                "nullable": true,
+                "type": "object",
+                "properties": {
+                  "amount": {
+                    "type": "string",
+                    "description": "Decimal amount with two fraction digits"
+                  },
+                  "percent": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "amount",
+                  "percent"
+                ],
+                "additionalProperties": false
+              },
+              "month": {
+                "nullable": true,
+                "type": "object",
+                "properties": {
+                  "amount": {
+                    "type": "string",
+                    "description": "Decimal amount with two fraction digits"
+                  },
+                  "percent": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "amount",
+                  "percent"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "day",
+              "week",
+              "month"
+            ],
+            "additionalProperties": false
+          },
+          "isOwnSpace": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description",
+          "country",
+          "city",
+          "area",
+          "streetAddress",
+          "timeZone",
+          "currency",
+          "utilities",
+          "customUtilities",
+          "hasLayout",
+          "openingHours",
+          "offers",
+          "fullDaySavings",
+          "isOwnSpace"
         ],
         "additionalProperties": false
       }

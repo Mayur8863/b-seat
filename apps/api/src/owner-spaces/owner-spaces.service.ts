@@ -46,7 +46,7 @@ const hasOfferedPass = sql<boolean>`exists (
     and (("space"."opening_mode" = 'always_open' and "space_slot"."slot" in (${slotList('always_open')}))
       or ("space"."opening_mode" = 'fixed_hours' and "space_slot"."slot" in (${slotList('fixed_hours')}))))`;
 
-function openingHoursOf(row: {
+export function openingHoursOf(row: {
   openingMode: 'always_open' | 'fixed_hours' | null;
   shiftChangeAt: string | null;
   opensAt: string | null;
@@ -63,7 +63,7 @@ const plusHalfDay = (time: string): string =>
   `${String((Number(time.slice(0, 2)) + 12) % 24).padStart(2, '0')}${time.slice(2)}`;
 
 /** Slot times in the space's local wall clock; the day boundary is the shift change (R-4). */
-function slotTimes(hours: OwnerSpace['openingHours'], slot: SlotKind) {
+export function slotTimes(hours: OwnerSpace['openingHours'], slot: SlotKind) {
   if (hours.mode === 'fixed_hours') {
     return { startTime: hours.opensAt, endTime: hours.closesAt, endsNextDay: false };
   }
