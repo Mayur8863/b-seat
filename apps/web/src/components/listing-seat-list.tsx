@@ -20,7 +20,8 @@ import { useEffect, useId, useState } from 'react';
 import { ListingPlan, placeSeats } from '@/components/listing-plan';
 import type { PassChoice } from '@/components/pass-options';
 import { formatLocalDate } from '@/lib/booking-format';
-import { filterSeats, formatInstant } from '@/lib/seat-picker';
+import { formatInstant } from '@/lib/format';
+import { filterSeats } from '@/lib/seat-picker';
 
 export interface SeatSelection {
   seat: Seat;

@@ -69,3 +69,22 @@ export function slotTitle(slot: {
 export function savingText(saving: { amount: string; percent: number }, currency: string): string {
   return `Save ${formatMoney({ amount: saving.amount, currency })} (${saving.percent}%) compared with day and night passes`;
 }
+
+const instantFormat = (timeZone: string) =>
+  new Intl.DateTimeFormat('en-GB', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+    timeZone,
+  });
+
+/** "Thu 29 Oct 2026, 19:00 (Asia/Kolkata)": one format for renter and owner views. */
+export function formatInstant(iso: string, timeZone: string): string {
+  const p = instantFormat(timeZone).formatToParts(new Date(iso));
+  const get = (type: string) => p.find((x) => x.type === type)?.value ?? '';
+  return `${get('weekday')} ${get('day')} ${get('month')} ${get('year')}, ${get('hour')}:${get('minute')} (${timeZone})`;
+}

@@ -9,9 +9,8 @@ import { Skeleton } from '@bseat/ui/components/skeleton';
 import { CalendarIcon } from 'lucide-react';
 import Link from 'next/link';
 
-import { PASS_LABELS, slotTitle } from '@/lib/format';
+import { formatInstant, PASS_LABELS, slotTitle } from '@/lib/format';
 import { bookingStatus } from '@/lib/my-bookings';
-import { formatInstant } from '@/lib/seat-picker';
 
 /** Dashboard "Next booking" card (ui/03 section 7). */
 export function NextBooking() {

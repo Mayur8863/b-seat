@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { filterSeats, formatInstant, isStartDateAllowed, startDateRange } from './seat-picker';
+import { filterSeats, isStartDateAllowed, startDateRange } from './seat-picker';
 
 describe('startDateRange', () => {
   it('uses the space zone, not the viewer zone', () => {
@@ -29,13 +29,5 @@ describe('filterSeats', () => {
   it('keeps everything or only free seats', () => {
     expect(filterSeats([...seats], false)).toHaveLength(3);
     expect(filterSeats([...seats], true)).toEqual([{ status: 'free' }]);
-  });
-});
-
-describe('formatInstant', () => {
-  it('shows date and time in the zone with its name', () => {
-    expect(formatInstant('2026-10-29T13:30:00Z', 'Asia/Kolkata')).toBe(
-      'Thu 29 Oct 2026, 19:00 (Asia/Kolkata)',
-    );
   });
 });

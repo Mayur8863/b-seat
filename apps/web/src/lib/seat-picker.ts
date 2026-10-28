@@ -36,22 +36,3 @@ export function filterSeats<T extends { status: string }>(
 ): T[] {
   return hideUnavailable ? seats.filter((s) => s.status === 'free') : seats;
 }
-
-const instantFormat = (timeZone: string) =>
-  new Intl.DateTimeFormat('en-GB', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-    timeZone,
-  });
-
-/** "Thu 29 Oct 2026, 19:00 (Asia/Kolkata)". */
-export function formatInstant(iso: string, timeZone: string): string {
-  const p = instantFormat(timeZone).formatToParts(new Date(iso));
-  const get = (type: string) => p.find((x) => x.type === type)?.value ?? '';
-  return `${get('weekday')} ${get('day')} ${get('month')} ${get('year')}, ${get('hour')}:${get('minute')} (${timeZone})`;
-}
