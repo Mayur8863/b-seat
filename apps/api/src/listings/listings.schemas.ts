@@ -64,7 +64,9 @@ export const SearchListingsInputSchema = z
     country: CountryCode,
     city: z.string().trim().max(100).optional(),
     area: z.string().trim().max(100).optional(),
-    startDate: LocalDate.optional().describe('Availability filter (applied by T038)'),
+    startDate: LocalDate.optional().describe(
+      'Only spaces with a seat free for the whole pass from this date; no pass means a day pass, no slot any offered slot',
+    ),
     pass: PASS_TYPES.optional(),
     slot: SLOT_KINDS.optional(),
     utilities: UtilityList.optional().describe('Repeat the parameter; every one must be present'),

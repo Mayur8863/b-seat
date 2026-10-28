@@ -67,7 +67,7 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 | T035 | Seat availability for a pass API                             | backend-dev    | T005, T028             | M    | review — dev done; next: QA (queued)                           | `feat/002-seat-availability-api`      |
 | T036 | Create pass booking API (rules, holds, races)                | backend-dev    | T008, T035             | M    | review — dev done; next: QA (queued)                           | `feat/002-create-pass-booking-api`    |
 | T037 | Renter and owner booking emails                              | backend-dev    | T036                   | S    | todo                                                           | `feat/002-booking-emails`             |
-| T038 | Search availability filter (date, pass, slot)                | backend-dev    | T034, T035             | M    | todo                                                           | `feat/002-search-availability-filter` |
+| T038 | Search availability filter (date, pass, slot)                | backend-dev    | T034, T035             | M    | review — dev done; next: QA (queued)                           | `feat/002-search-availability-filter` |
 | T039 | Find a space page                                            | frontend-dev   | T013, T014, T029, T034 | M    | review — dev done; next: QA (queued)                           | `feat/002-find-page`                  |
 | T040 | Listing page: seat availability for a pass                   | frontend-dev   | T031, T035             | M    | review                                                         | `feat/002-listing-seats`              |
 | T041 | Book a pass, confirmation, problem copy                      | frontend-dev   | T036, T040             | M    | review — dev done; next: QA (queued)                           | `feat/002-book-pass-ui`               |
@@ -570,7 +570,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given a night pass in `Europe/London` across a DST change, When the email is built, Then local times match the slot wall-clock (FR-033, edge DST).
 
 - [ ] T038 [US4] Add the availability filter to `GET /api/listings` (`startDate`, `pass`, `slot`) and `apps/api/test/listings-search-availability.int-spec.ts`
-  - **Owner**: backend-dev · **Branch**: `feat/002-search-availability-filter` · **Size**: M · **Depends on**: T034, T035 · **Status**: todo
+  - **Owner**: backend-dev · **Branch**: `feat/002-search-availability-filter` · **Size**: M · **Depends on**: T034, T035 · **Status**: review — dev done; next: QA (queued)
   - **Scope**: research R-10 (prefilter in SQL, evaluate candidates in batches until the page fills). Behaviour without pass or slot per **OQ-4**.
   - **Acceptance criteria**:
     - Given space P with one seat free for the week and space Q with every seat taken on one day of that week, When searching with `startDate`, `pass=week`, `slot=day`, Then only P returns (AC 4.3).
