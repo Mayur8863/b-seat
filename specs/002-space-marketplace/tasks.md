@@ -656,7 +656,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given every problem type these screens receive, Then exact copy is given (FR-023).
 
 - [ ] T047 [US5] Add occupancy to `apps/api/src/owner-operations/` (`GET`/`POST …/occupancy`, `POST …/occupancy/{markId}/end`) and fill `OwnerSeat.today` in `apps/api/src/owner-spaces/`, with `apps/api/test/occupancy.int-spec.ts`; regenerate `apps/api/openapi.json`
-  - **Owner**: backend-dev · **Branch**: `feat/002-occupancy-api` · **Size**: M · **Depends on**: T006, T021 · **Status**: todo
+  - **Owner**: backend-dev · **Branch**: `feat/002-occupancy-api` · **Size**: M · **Depends on**: T006, T021 · **Status**: review — dev done; next: QA (queued)
   - **Note (T005 security review)**: validate the occupancy seat list with `z.uuid()` and `.max(200)` at the boundary (the lock cap is 200, ADR-0009 section 9.2).
   - **Problem factories (T007 review)**: Create problems with extensions only through the factories in `common/errors/problem-types.ts`; don't call `new ProblemException` with extensions directly.
   - **Added (T008 review)**: inside the lock's `work`, re-read each seat with `seat.removed_at IS NULL`, `seat.space_id = :spaceId` and `space.owner_id = caller`; any miss gets 404 (int test). Occupancy is allowed on draft and unpublished spaces the caller owns, as contracts/owner-operations.md states (unpublishing leaves bookings and marks untouched).
@@ -704,7 +704,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 **Independent test**: shared calendar Mon–Fri 1 Nov to 31 Dec, one seat Saturday-only; renters can book only on those days, seat by seat.
 
 - [ ] T051 [US6] Add calendars to `apps/api/src/owner-operations/` (`GET …/calendars`, `PUT …/calendars/shared`, `PUT`/`DELETE …/seats/{seatId}/calendar`) and `OwnerSeat.calendar`, with `apps/api/test/calendars.int-spec.ts`; regenerate `apps/api/openapi.json`
-  - **Owner**: backend-dev · **Branch**: `feat/002-calendar-api` · **Size**: M · **Depends on**: T006, T021 · **Status**: todo
+  - **Owner**: backend-dev · **Branch**: `feat/002-calendar-api` · **Size**: M · **Depends on**: T006, T021 · **Status**: review — dev done; next: QA (queued)
   - **Added (T004 review)**: a space without a shared calendar is never treated as open: `GET …/calendars` does not invent one, and `DELETE …/seats/{seatId}/calendar` reverts the seat to the space's shared calendar (fail closed if it is missing).
   - **Acceptance criteria**:
     - Given a new space, When `GET …/calendars`, Then shared = from creation date, no end, all 7 days, and no seat has its own (AC 6.1, FR-024).

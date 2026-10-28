@@ -9,6 +9,7 @@ import {
   seatLimit,
 } from '../common/errors/problem-types.js';
 import { Clock } from '../common/time/clock.js';
+import { seatsToday } from '../owner-operations/occupancy.queries.js';
 import type { Database } from '../db/db.js';
 import { DB } from '../db/db.module.js';
 import { booking, cubicle, layoutElement, seat, space } from '../db/schema/index.js';
@@ -86,6 +87,11 @@ export class OwnerSeatsService {
             .from(cubicle)
             .where(inArray(cubicle.id, ids));
     const names = new Map(cubs.map((c) => [c.id, c.name]));
+    const today = await seatsToday(
+      this.db,
+      rows.map((r) => r.id),
+      this.clock.now(),
+    );
     return rows.map((r) => ({
       id: r.id,
       label: r.label,
@@ -94,9 +100,9 @@ export class OwnerSeatsService {
         r.cubicleId && names.has(r.cubicleId)
           ? { id: r.cubicleId, name: names.get(r.cubicleId) ?? '' }
           : null,
-      // T051 fills 'own' and T047 the real state of today.
+      // T051 fills 'own'.
       calendar: 'shared',
-      today: { state: 'vacant', note: null, markId: null },
+      today: today.get(r.id) ?? { state: 'vacant', note: null, markId: null },
     }));
   }
 
