@@ -1,6 +1,6 @@
 import * as matchers from '@testing-library/jest-dom/matchers';
 import { cleanup } from '@testing-library/react';
-import { afterAll, afterEach, beforeAll, expect, vi } from 'vitest';
+import { afterAll, afterEach, expect, vi } from 'vitest';
 
 import { server } from './msw';
 
@@ -20,9 +20,9 @@ if (!('ResizeObserver' in globalThis)) {
 // jsdom does not implement scrolling; a spy lets tests assert it.
 Element.prototype.scrollIntoView = vi.fn();
 
-beforeAll(() => {
-  server.listen({ onUnhandledFrame: 'error' });
-});
+// Listen at import time, not in beforeAll: Better Auth's client captures `fetch` when it is
+// created (customFetchImpl), so MSW must have patched the global before any test module loads.
+server.listen({ onUnhandledFrame: 'error' });
 afterEach(() => {
   cleanup();
   vi.mocked(Element.prototype.scrollIntoView).mockClear();
