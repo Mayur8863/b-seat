@@ -90,7 +90,7 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 | T058 | Owner bookings page with date filter                         | frontend-dev   | T023, T046, T056       | M    | todo                                                           | `feat/002-owner-bookings-page`        |
 | T059 | QA US7: bookings lists e2e, axe                              | qa-engineer    | T057, T058             | S    | todo                                                           | `test/002-us7-bookings`               |
 | T060 | Docs US7                                                     | docs-writer    | T059                   | S    | todo                                                           | `docs/002-us7-bookings`               |
-| T061 | UI spec: layout editor and renter plan                       | ui-ux-designer | T018, T029             | M    | todo                                                           | `docs/002-ui-layout`                  |
+| T061 | UI spec: layout editor and renter plan                       | ui-ux-designer | T018, T029             | M    | review — spec done; next: frontend tasks can start             | `docs/002-ui-layout`                  |
 | T062 | Layout schema and API (owner and renter)                     | backend-dev    | T021                   | M    | todo                                                           | `feat/002-layout-api`                 |
 | T063 | Seed a sample layout                                         | backend-dev    | T009, T062             | S    | todo                                                           | `feat/002-seed-layout`                |
 | T064 | Layout editor model (pure reducer, TDD)                      | frontend-dev   | T061, T062             | M    | todo                                                           | `feat/002-layout-editor-model`        |
@@ -793,7 +793,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 **Independent test**: place 6 seats in two cubicles and a "Meeting room" area, save, and book from the renter's plan.
 
 - [ ] T061 [P] [US8] Write `specs/002-space-marketplace/ui/05-layout.md`
-  - **Owner**: ui-ux-designer · **Branch**: `docs/002-ui-layout` · **Size**: M · **Depends on**: T018, T029 · **Status**: todo
+  - **Owner**: ui-ux-designer · **Branch**: `docs/002-ui-layout` · **Size**: M · **Depends on**: T018, T029 · **Status**: review — spec done; next: frontend tasks can start
   - **Scope**: editor surface (grid size, R-12 proposal), selection, pointer drag and resize, the full keyboard model (select, move with arrows, resize, rename, delete, escape), the form alternative for every action, the unplaced tray, save and stale-version conflict, cubicle containment feedback; renter plan with free/taken by text or icon, plan/list toggle, choosing a seat to start booking, small-screen behaviour (list view by default on narrow screens is a designer call).
   - **Acceptance criteria**:
     - Given each editor action in AC 8.1, When read, Then it has a pointer, a keyboard and a form path (FR-030, AC 8.3).
