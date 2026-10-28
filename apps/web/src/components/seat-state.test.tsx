@@ -26,6 +26,15 @@ describe('SeatState', () => {
   });
 });
 
+describe('SeatState calendar badge', () => {
+  it('shows "Own calendar" only for seats on their own calendar', () => {
+    const { rerender } = render(<SeatState seat={booked} />);
+    expect(screen.queryByText('Own calendar')).not.toBeInTheDocument();
+    rerender(<SeatState seat={{ ...booked, calendar: 'own' }} />);
+    expect(screen.getByText('Own calendar')).toBeInTheDocument();
+  });
+});
+
 describe('OccupancyConflicts', () => {
   it('caps seats and date ranges', () => {
     const dates = Array.from(

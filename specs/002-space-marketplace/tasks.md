@@ -81,7 +81,7 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 | T049 | QA US5: occupancy e2e, booking-vs-mark race, axe             | qa-engineer    | T036, T048             | M    | todo                                                           | `test/002-us5-occupancy`              |
 | T050 | Docs US5                                                     | docs-writer    | T049                   | S    | todo                                                           | `docs/002-us5-occupancy`              |
 | T051 | Availability calendars API                                   | backend-dev    | T006, T021             | M    | review — dev done; next: QA (queued)                           | `feat/002-calendar-api`               |
-| T052 | Availability calendar page                                   | frontend-dev   | T023, T046, T051       | M    | todo                                                           | `feat/002-availability-page`          |
+| T052 | Availability calendar page                                   | frontend-dev   | T023, T046, T051       | M    | review — dev done; next: QA (queued)                           | `feat/002-availability-page`          |
 | T053 | QA US6: calendar e2e, axe                                    | qa-engineer    | T036, T052             | S    | todo                                                           | `test/002-us6-calendar`               |
 | T054 | Docs US6                                                     | docs-writer    | T053                   | S    | todo                                                           | `docs/002-us6-calendar`               |
 | T055 | My bookings and cancel API                                   | backend-dev    | T036                   | M    | todo                                                           | `feat/002-my-bookings-api`            |
@@ -713,8 +713,8 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given two future bookings with a Wednesday occurrence, When Wednesday is removed from the shared calendar, Then 200 with `bookingsOutsideCalendar: 2`, and both bookings and their holds are unchanged (AC 6.5, FR-025).
     - Given `endDate < startDate` or no weekdays, Then 400. Given another owner, Then 404 parity. Given `gen:api`, Then the schemas are committed.
 
-- [ ] T052 [US6] Availability page `apps/web/src/app/(app)/owner/spaces/[spaceId]/availability/page.tsx` with `components/calendar-form.tsx` (+ test); add "Availability" to the sub-nav
-  - **Owner**: frontend-dev · **Branch**: `feat/002-availability-page` · **Size**: M · **Depends on**: T023, T046, T051 · **Status**: todo
+- [x] T052 [US6] Availability page `apps/web/src/app/(app)/owner/spaces/[spaceId]/availability/page.tsx` with `components/calendar-form.tsx` (+ test); add "Availability" to the sub-nav
+  - **Owner**: frontend-dev · **Branch**: `feat/002-availability-page` · **Size**: M · **Depends on**: T023, T046, T051 · **Status**: review — dev done; next: QA (queued)
   - **Acceptance criteria**:
     - Given the shared calendar, When dates and weekdays are saved, Then the success state shows, and when bookings fall outside, the "N bookings…" notice shows (AC 6.2, AC 6.5).
     - Given a seat, When switched to its own calendar and back, Then the UI reflects each state (AC 6.3).
