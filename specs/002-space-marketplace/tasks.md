@@ -202,7 +202,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given the PR, When reviewed, Then the failing tests were committed first and changed-line coverage is ≥ 80% (Constitution II).
 
 - [ ] T007 Implement `apps/api/src/common/money/money.ts`, `apps/api/src/common/errors/problem-types.ts` and `apps/api/src/marketplace/booking-rules.ts`, with unit tests written first
-  - **Owner**: backend-dev · **Branch**: `feat/002-pass-rules` · **Size**: M · **Depends on**: T006 · **Status**: review — done: review fixes (leading zeros, date guards, reserved extension keys, typed problem factories, rule-order and detail tests); next: QA re-run, then reviewers
+  - **Owner**: backend-dev · **Branch**: `feat/002-pass-rules` · **Size**: M · **Depends on**: T006 · **Status**: review — done: review fixes and final polish (factories strip undocumented fields, non-empty tuples, alreadyOccupied factory, money cap safety net); next: human merge decision
   - **Added (T004 review)**: money parsing follows the same rule as T027: Zod string `^(0|[1-9]\d{0,9})(\.\d{1,2})?$`, value > 0, explicit upper bound, never `z.coerce.number()`; `pass_price.updated_at` is set by the service on update.
   - **Scope**: research R-8; contracts/README.md problem types, rule order and extension schemas (AQ-3, ADR-0009 section 8). `parseDecimal`, `formatDecimal`, `fullDaySaving(day, night, fullDay)` → `{ amount, percent } | null` (percent rounded half-up). `evaluatePassBookingRules({ space, isOwner, offered, startDayOpen, firstStartsAt }, now)` returns the first violation in the documented order or `null`. Problem type constants for every row of the contracts README table. `ProblemException` gains an optional `extensions` record and `ProblemFilter` spreads it before the standard members; export `PublishIncompleteProblem`, `LabelTakenProblem` and `OccupancyConflictProblem` (`ProblemSchema.extend(...)`, response only) for T020, T021 and T047. `ProblemSchema` itself is unchanged.
   - **Boundary assumptions (T006 security review)**: dates `YYYY-MM-DD` within years 0100-9998; server-side max span for any iterated date range and max seats per request; `slot`/`pass` as `z.enum` matching the opening mode; calendar weekdays 1-127 and `endDate >= startDate`; services catch `RangeError` from the slot modules and map it to a typed problem or treat the date as closed.
@@ -346,6 +346,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 
 - [ ] T020 [US2] Build `apps/api/src/owner-spaces/` (schemas, service, controller, module; spaces only) with `apps/api/test/owner-spaces.int-spec.ts`; regenerate `apps/api/openapi.json`
   - **Owner**: backend-dev · **Branch**: `feat/002-owner-spaces-api` · **Size**: M · **Depends on**: T002, T004, T019 · **Status**: todo
+  - **Problem factories (T007 review)**: Create problems with extensions only through the factories in `common/errors/problem-types.ts`; don't call `new ProblemException` with extensions directly.
   - **Carry-over (T003 review)**: `ownerId`, `status` and `spaceId` come only from the session or route, never the request body, and the service maintains `space.updated_at`.
   - **Added (T004 review)**: every space has exactly one shared calendar (created with the space); the integration test asserts it.
   - **Scope**: contracts/owner-spaces.md "Listing". Create also inserts the shared calendar (AC 6.1). Publish check: at least one active seat and one offered pass (enabled slot valid for the mode with a price). Scope every query by `owner_id`. Integration tests first.
@@ -363,6 +364,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 
 - [ ] T021 [US2] Add seats and cubicles to `apps/api/src/owner-spaces/` with `apps/api/test/owner-seats.int-spec.ts`; regenerate `apps/api/openapi.json`
   - **Owner**: backend-dev · **Branch**: `feat/002-seats-cubicles-api` · **Size**: M · **Depends on**: T005, T020 · **Status**: todo
+  - **Problem factories (T007 review)**: Create problems with extensions only through the factories in `common/errors/problem-types.ts`; don't call `new ProblemException` with extensions directly.
   - **Carry-over (T003 review)**: every seat read and booking path filters `removed_at IS NULL` (legacy availability, list and create already do).
   - **Scope**: contracts/owner-spaces.md "Seats and cubicles"; research R-15 (space row `FOR UPDATE` for the cap, seat `FOR UPDATE` for removal). Cubicle delete per **OQ-6** is a **soft** removal of the cubicle and its seats in one transaction (architect, T001). Label conflicts use `LabelTakenProblem`; duplicate cubicle names are 409 `listing:cubicle-name-taken`. `OwnerSeat.today` returns `vacant` with null note until T047; `calendar` returns `shared` until T051.
   - **Acceptance criteria**:
@@ -428,7 +430,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 
 - [ ] T027 [US3] Add pricing to `apps/api/src/owner-spaces/` (`GET`/`PUT …/pricing`) with `apps/api/test/owner-pricing.int-spec.ts`; regenerate `apps/api/openapi.json`
   - **Owner**: backend-dev · **Branch**: `feat/002-pricing-api` · **Size**: M · **Depends on**: T007, T020 · **Status**: todo
-  - **Added (T004 review)**: the money input is a Zod string matching `^\d{1,10}(\.\d{1,2})?$`, value > 0, with an explicit upper bound. Never `z.coerce.number()`. Postgres rounds sub-cent values silently (`10.005` becomes `10.01`) and a value >= 10^10 raises 22003. The service must set `pass_price.updated_at` on update.
+  - **Added (T004 review)**: the money input is a Zod string matching `^(0|[1-9]\d{0,9})(\.\d{1,2})?$`, value > 0, with an explicit upper bound. Never `z.coerce.number()`. Postgres rounds sub-cent values silently (`10.005` becomes `10.01`) and a value >= 10^10 raises 22003. The service must set `pass_price.updated_at` on update.
   - **Scope**: contracts/owner-spaces.md "Pricing". Slot times come from `slots.ts`. Changing `shiftChangeAt` or `openingHours` never touches bookings (edge).
   - **Boundary assumptions (T006 security review)**: see T007.
   - **Acceptance criteria**:
@@ -633,6 +635,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 
 - [ ] T047 [US5] Add occupancy to `apps/api/src/owner-operations/` (`GET`/`POST …/occupancy`, `POST …/occupancy/{markId}/end`) and fill `OwnerSeat.today` in `apps/api/src/owner-spaces/`, with `apps/api/test/occupancy.int-spec.ts`; regenerate `apps/api/openapi.json`
   - **Owner**: backend-dev · **Branch**: `feat/002-occupancy-api` · **Size**: M · **Depends on**: T006, T021 · **Status**: todo
+  - **Problem factories (T007 review)**: Create problems with extensions only through the factories in `common/errors/problem-types.ts`; don't call `new ProblemException` with extensions directly.
   - **Added (T008 review)**: inside the lock's `work`, re-read each seat with `seat.removed_at IS NULL`, `seat.space_id = :spaceId` and `space.owner_id = caller`; any miss gets 404 (int test). Occupancy is allowed on draft and unpublished spaces the caller owns, as contracts/owner-operations.md states (unpublishing leaves bookings and marks untouched).
   - **Added (T008 security)**: a miss returns one generic 404 that never lists which `seatIds` were not found (they may belong to another owner): compare rows found with the count of distinct ids. The `{spaceId}` path itself is also checked against `space.owner_id = caller`.
   - **Scope**: contracts/owner-operations.md "Occupancy"; research R-11 (`dayBoundary` from T006; all seats in one transaction, holds inserted in `(seat_id, starts_at)` order; `40P01` retries the whole transaction, at most 3 attempts, with the booking create's helper; on `23P01` roll back, then build `OccupancyConflictProblem.conflicts` from the overlapping holds). Mark status comes from its hold (ADR-0009 section 3). **OQ-5** for vacate.
@@ -1014,6 +1017,7 @@ Level 12: T071
 
 ## Open questions (human decision needed)
 
+- Label-taken detail and all problem titles aren't in contracts/README.md; architect to add them so copy has one source.
 - Open follow-up (T007 security review): `X-Request-Id` in `apps/api/src/app.module.ts:32` is trusted without a length or format check, and an empty header yields `''`. Needs a decision (owner: devops/backend-dev) on a format limit and a fallback to a generated id.
 
 See [plan.md → Open questions](./plan.md#open-questions) (OQ-1 to OQ-12) and the architect questions (AQ-1 to AQ-8).
