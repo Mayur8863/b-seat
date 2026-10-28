@@ -1,4 +1,5 @@
 import {
+  getBookingsListMineMockHandler,
   getMeGetMockHandler,
   getOwnerSpacesListMockHandler,
   getReferenceGetMockHandler,
@@ -34,7 +35,7 @@ const reference = getReferenceGetMockHandler({
 
 describe('DashboardView', () => {
   beforeEach(() => {
-    server.use(reference);
+    server.use(reference, getBookingsListMineMockHandler({ items: [] }));
   });
 
   it('shows the h1 and a busy loading state while loading', () => {
@@ -54,7 +55,7 @@ describe('DashboardView', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
-  it('renter: greeting, Find a space links and a neutral next-booking card', async () => {
+  it('renter: greeting, Find a space links and a empty next-booking card', async () => {
     server.use(me('renter'));
     renderWithQuery(<DashboardView />);
     expect(await screen.findByText('Signed in as Ada')).toBeInTheDocument();
@@ -64,6 +65,7 @@ describe('DashboardView', () => {
       '/find',
     );
     const section = screen.getByRole('region', { name: 'Next booking' });
+    expect(await within(section).findByText('You have no upcoming bookings.')).toBeInTheDocument();
     expect(within(section).getByText(/Find a space and book a seat/)).toBeInTheDocument();
     expect(within(section).getByRole('link', { name: 'Find a space' })).toHaveAttribute(
       'href',

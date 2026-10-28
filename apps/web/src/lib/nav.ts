@@ -4,7 +4,7 @@ export type NavRole = 'renter' | 'owner';
 export interface NavLink {
   label: string;
   /** Literal union so `typedRoutes` rejects a link to a page that does not exist. */
-  href: '/dashboard' | '/find' | '/owner/spaces/new';
+  href: '/dashboard' | '/find' | '/bookings' | '/owner/spaces/new';
   /** Pathnames where this link is the current page (`aria-current="page"`). */
   exact: readonly string[];
   /** Path prefixes where the user is inside this area (`aria-current="true"`). */
@@ -35,10 +35,16 @@ const LIST_SPACE: NavLink = {
   parents: [],
 };
 
-// "My bookings" (T057) is added when its page ships.
+const MY_BOOKINGS: NavLink = {
+  label: 'My bookings',
+  href: '/bookings',
+  exact: ['/bookings'],
+  parents: [],
+};
+
 const LINKS: Record<NavRole, readonly NavLink[]> = {
-  renter: [DASHBOARD, FIND],
-  owner: [DASHBOARD, LIST_SPACE, FIND],
+  renter: [DASHBOARD, FIND, MY_BOOKINGS],
+  owner: [DASHBOARD, LIST_SPACE, FIND, MY_BOOKINGS],
 };
 
 export function navLinksFor(role: NavRole): readonly NavLink[] {
@@ -51,6 +57,7 @@ export type PageAudience = NavRole | 'both';
 export const PAGE_ROLES: Record<string, PageAudience> = {
   '/dashboard': 'both',
   '/find': 'both',
+  '/bookings': 'both',
   '/spaces/[spaceId]': 'both',
   '/owner/spaces/new': 'owner',
   '/owner/spaces/[spaceId]': 'owner',

@@ -86,7 +86,7 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 | T054 | Docs US6                                                     | docs-writer    | T053                   | S    | todo                                                           | `docs/002-us6-calendar`               |
 | T055 | My bookings and cancel API                                   | backend-dev    | T036                   | M    | review                                                         | `feat/002-my-bookings-api`            |
 | T056 | Owner bookings list API                                      | backend-dev    | T036                   | S    | review                                                         | `feat/002-owner-bookings-api`         |
-| T057 | My bookings page, cancel, dashboard next booking             | frontend-dev   | T014, T029, T055       | M    | todo                                                           | `feat/002-my-bookings-page`           |
+| T057 | My bookings page, cancel, dashboard next booking             | frontend-dev   | T014, T029, T055       | M    | review — dev done; next: QA (queued)                           | `feat/002-my-bookings-page`           |
 | T058 | Owner bookings page with date filter                         | frontend-dev   | T023, T046, T056       | M    | todo                                                           | `feat/002-owner-bookings-page`        |
 | T059 | QA US7: bookings lists e2e, axe                              | qa-engineer    | T057, T058             | S    | todo                                                           | `test/002-us7-bookings`               |
 | T060 | Docs US7                                                     | docs-writer    | T059                   | S    | todo                                                           | `docs/002-us7-bookings`               |
@@ -759,7 +759,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given B requests A's space bookings, Then 404 parity; a renter gets 403 (AC 7.4, FR-028).
 
 - [ ] T057 [US7] My bookings page `apps/web/src/app/(app)/bookings/page.tsx` with `components/my-bookings.tsx` (+ test), renter dashboard `components/next-booking.tsx` (+ test); add "My bookings" to both roles' nav (OQ-9)
-  - **Owner**: frontend-dev · **Branch**: `feat/002-my-bookings-page` · **Size**: M · **Depends on**: T014, T029, T055 · **Status**: todo
+  - **Owner**: frontend-dev · **Branch**: `feat/002-my-bookings-page` · **Size**: M · **Depends on**: T014, T029, T055 · **Status**: review — dev done; next: QA (queued)
   - **Acceptance criteria**:
     - Given two bookings, When `/bookings` renders, Then both show in API order with space, area, seat, pass, slot, local period labelled with the zone and price (AC 7.1, FR-033).
     - Given an upcoming booking, When cancelled with the ui/03 confirmation, Then it disappears after refetch; Given 409 `already-started`, Then the alert copy shows (AC 7.2).
