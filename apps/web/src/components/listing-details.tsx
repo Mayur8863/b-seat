@@ -12,8 +12,12 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 
+import { ListingSeatList, type SeatSelection } from '@/components/listing-seat-list';
 import { type PassChoice, PassOptions } from '@/components/pass-options';
-import { utilityLabel } from '@/lib/format';
+import { StartDateField } from '@/components/start-date-field';
+import { YourSelection } from '@/components/your-selection';
+import { slotTitle, utilityLabel } from '@/lib/format';
+import { isStartDateAllowed, startDateRange } from '@/lib/seat-picker';
 
 const FRAME = 'mx-auto grid w-full max-w-6xl gap-4 px-4 py-8 sm:px-6';
 
@@ -59,9 +63,21 @@ function Details({ listing }: { listing: Listing }) {
   );
 }
 
-function Body({ listing }: { listing: Listing }) {
-  // T040 reads this to fetch seats, T041 to review the booking.
-  const [choice, setChoice] = useState<PassChoice | null>(null);
+function Body({ listing, onRefetch }: { listing: Listing; onRefetch: () => void }) {
+  // The selection T041 books: pass and slot, start date, seat. Changing any earlier piece clears the later ones.
+  const [choice, setChoiceState] = useState<PassChoice | null>(null);
+  const [startDate, setStartDateState] = useState('');
+  const [seat, setSeat] = useState<SeatSelection | null>(null);
+  const setChoice = (c: PassChoice) => {
+    setChoiceState(c);
+    setSeat(null);
+  };
+  const setStartDate = (d: string) => {
+    setStartDateState(d);
+    setSeat(null);
+  };
+  const validDate = isStartDateAllowed(startDate, startDateRange(listing.timeZone));
+  const offer = choice ? listing.offers.find((o) => o.slot === choice.slot) : undefined;
   return (
     <div className="grid gap-8">
       <Details listing={listing} />
@@ -90,7 +106,43 @@ function Body({ listing }: { listing: Listing }) {
           </CardContent>
         </Card>
       ) : (
-        <PassOptions listing={listing} value={choice} onChange={setChoice} />
+        <div className="grid gap-8 lg:grid-cols-[1fr_20rem]">
+          <div className="grid gap-8">
+            <PassOptions listing={listing} value={choice} onChange={setChoice} />
+            {choice && (
+              <StartDateField
+                value={startDate}
+                onChange={setStartDate}
+                timeZone={listing.timeZone}
+              />
+            )}
+            {choice && validDate ? (
+              <ListingSeatList
+                spaceId={listing.id}
+                choice={choice}
+                startDate={startDate}
+                timeZone={listing.timeZone}
+                selectedSeatId={seat?.seat.id ?? null}
+                onSelect={setSeat}
+                onPassNotOffered={onRefetch}
+              />
+            ) : (
+              <p className="text-muted-foreground">
+                Choose a pass and a start date to see which seats are free.
+              </p>
+            )}
+          </div>
+          <div className="lg:sticky lg:top-4 lg:self-start">
+            <YourSelection
+              choice={choice}
+              startDate={validDate ? startDate : ''}
+              selection={seat}
+              currency={listing.currency}
+              timeZone={listing.timeZone}
+              slotText={offer ? slotTitle(offer) : null}
+            />
+          </div>
+        </div>
       )}
     </div>
   );
@@ -180,7 +232,7 @@ export function ListingDetails({ spaceId }: { spaceId: string }) {
           {listing.area}, {listing.city}, {countryName(listing.country)}
         </p>
       </div>
-      <Body listing={listing} />
+      <Body listing={listing} onRefetch={() => void refetch()} />
     </main>
   );
 }
