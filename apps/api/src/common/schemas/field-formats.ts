@@ -32,13 +32,32 @@ export const OfferedTimeZone = z
   .describe('IANA time zone offered by GET /api/reference, e.g. Europe/London');
 
 /**
- * Free text without control characters (NUL makes Postgres reject the row with 22021) or the
- * bidi override and isolate characters U+202A-U+202E and U+2066-U+2069 (display spoofing).
+ * Free text without control characters (NUL makes Postgres reject the row with 22021), bidi
+ * override and isolate characters (display spoofing), or invisible format characters (\p{Cf}:
+ * zero-width spaces, LRM/RLM, U+061C, BOM) and U+2028/U+2029, which let two names look identical.
+ * U+200D (zero-width joiner) stays because emoji sequences need it.
  * Chain `.trim().min().max()` as needed.
  */
 export const PlainText = z
   .string()
-  .regex(/^[^\p{Cc}\u202A-\u202E\u2066-\u2069]*$/u, 'Contains control or bidi override characters');
+  .regex(
+    /^(?:[^\p{Cc}\p{Cf}\u2028\u2029]|\u200D)*$/u,
+    'Contains control, invisible or bidi override characters',
+  );
+
+/**
+ * PlainText that may span lines: CRLF becomes LF, and `\n` is the only control character allowed.
+ * Pipe into a trimmed, length-bounded string for the field: `MultilineText.pipe(z.string()...)`.
+ */
+export const MultilineText = z.preprocess(
+  (v) => (typeof v === 'string' ? v.replace(/\r\n/g, '\n') : v),
+  z
+    .string()
+    .regex(
+      /^(?:[^\p{Cc}\p{Cf}\u2028\u2029]|\u200D|\n)*$/u,
+      'Contains control, invisible or bidi override characters',
+    ),
+);
 
 export const CountryCode = z
   .string()

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { OfferedTimeZone, PlainText } from './field-formats.js';
+import { MultilineText, OfferedTimeZone, PlainText } from './field-formats.js';
 
 describe('OfferedTimeZone', () => {
   it('accepts canonical offered zones and UTC', () => {
@@ -39,6 +39,33 @@ describe('PlainText', () => {
   it('rejects bidi override and isolate characters', () => {
     for (const cp of [0x202a, 0x202b, 0x202c, 0x202d, 0x202e, 0x2066, 0x2067, 0x2068, 0x2069]) {
       expect(PlainText.safeParse(`a${String.fromCodePoint(cp)}b`).success).toBe(false);
+    }
+  });
+});
+
+describe('PlainText format characters', () => {
+  it('rejects zero-width, directional mark, BOM and line separator characters', () => {
+    for (const cp of [0x200b, 0x200c, 0x200e, 0x200f, 0x061c, 0xfeff, 0x2028, 0x2029, 0x00ad]) {
+      expect(PlainText.safeParse(`a${String.fromCodePoint(cp)}b`).success).toBe(false);
+    }
+  });
+
+  it('keeps the zero-width joiner so emoji sequences work', () => {
+    expect(PlainText.safeParse('👩\u200D💻').success).toBe(true);
+  });
+});
+
+describe('MultilineText', () => {
+  const parse = (v: string) => MultilineText.safeParse(v);
+
+  it('allows newlines and normalises CRLF to LF', () => {
+    expect(parse('a\nb').data).toBe('a\nb');
+    expect(parse('a\r\nb\r\nc').data).toBe('a\nb\nc');
+  });
+
+  it('rejects NUL, a lone CR, tab, C1 controls, bidi characters and format characters', () => {
+    for (const v of ['a\u0000b', 'a\rb', 'a\tb', 'a\u0085b', 'a\u202eb', 'a\u2067b', 'a\u200bb']) {
+      expect(parse(v).success).toBe(false);
     }
   });
 });
