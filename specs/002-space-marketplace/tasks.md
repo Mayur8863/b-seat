@@ -60,7 +60,7 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 | T028 | Listing detail API with offers and 24-hour saving            | backend-dev    | T027                   | S    | review — dev done; next: QA (queued)                           | `feat/002-listing-detail-api`         |
 | T029 | UI spec: search, listing page, booking, my bookings          | ui-ux-designer | T010                   | M    | review — spec done; next: frontend tasks can start             | `docs/002-ui-renter-booking`          |
 | T030 | Owner pricing page                                           | frontend-dev   | T023, T027             | M    | todo                                                           | `feat/002-pricing-page`               |
-| T031 | Listing page v1: details and pass options                    | frontend-dev   | T014, T028, T029       | M    | todo                                                           | `feat/002-listing-page`               |
+| T031 | Listing page v1: details and pass options                    | frontend-dev   | T014, T028, T029       | M    | review — dev done; next: QA (queued)                           | `feat/002-listing-page`               |
 | T032 | QA US3: pricing e2e, axe                                     | qa-engineer    | T030, T031             | S    | todo                                                           | `test/002-us3-pricing-e2e`            |
 | T033 | Docs US3                                                     | docs-writer    | T032                   | S    | todo                                                           | `docs/002-us3-pricing`                |
 | T034 | Listing search and location suggestions API                  | backend-dev    | T027                   | M    | todo                                                           | `feat/002-listing-search-api`         |
@@ -484,7 +484,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given a successful save, Then the success state shows and empty prices read "Not offered" (AC 3.3). All states per ui/02.
 
 - [ ] T031 [US3] Listing page v1 `apps/web/src/app/(app)/spaces/[spaceId]/page.tsx` with `components/listing-details.tsx` and `components/pass-options.tsx` (+ tests); declare the route "reached from" Find a space in `lib/nav.ts`
-  - **Owner**: frontend-dev · **Branch**: `feat/002-listing-page` · **Size**: M · **Depends on**: T014, T028, T029 · **Status**: todo
+  - **Owner**: frontend-dev · **Branch**: `feat/002-listing-page` · **Size**: M · **Depends on**: T014, T028, T029 · **Status**: review — dev done; next: QA (queued)
   - **Acceptance criteria**:
     - Given a listing with day, night and full_day offers, When the page renders, Then each slot shows its local times labelled with the time zone and its prices per pass (AC 3.5, FR-033).
     - Given a `fullDaySavings` entry, When rendered, Then the 24-hour option shows the saving as an amount and a percentage (AC 3.5, FR-012).
