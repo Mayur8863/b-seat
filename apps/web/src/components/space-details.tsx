@@ -207,7 +207,7 @@ export function SpaceDetails({ spaceId }: { spaceId: string }) {
   const { data, error, refetch } = useOwnerSpacesGet(spaceId);
   const space = data?.data;
   return (
-    <main id="main" className="mx-auto grid w-full max-w-2xl gap-6 px-4 py-6 sm:px-6">
+    <div className="grid max-w-3xl gap-6">
       <h1 className="text-2xl font-semibold tracking-tight">Details</h1>
       {space ? (
         <>
@@ -228,6 +228,6 @@ export function SpaceDetails({ spaceId }: { spaceId: string }) {
           Loading details…
         </p>
       )}
-    </main>
+    </div>
   );
 }

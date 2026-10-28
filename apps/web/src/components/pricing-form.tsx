@@ -219,7 +219,7 @@ function Form({ spaceId, pricing, timeZone }: FormProps) {
         <FormField
           id="shiftChangeAt"
           label="Shift change time"
-          className="max-w-48"
+          className="max-w-xs"
           hint="The day slot starts at this time and runs for 12 hours. The night slot runs for the next 12. The 24-hour slot runs from this time to the same time the next day."
           error={errors.shiftChangeAt?.message}
         >
@@ -324,7 +324,7 @@ function Form({ spaceId, pricing, timeZone }: FormProps) {
                         inputMode="decimal"
                         autoComplete="off"
                         placeholder="Not offered"
-                        className="pl-12"
+                        style={{ paddingLeft: `${currency.length * 0.8 + 1.5}rem` }}
                         disabled={busy}
                         aria-invalid={error ? true : undefined}
                         aria-describedby={describedBy}
@@ -390,7 +390,7 @@ export function PricingForm({ spaceId }: { spaceId: string }) {
     ) ?? false;
 
   return (
-    <main id="main" className="mx-auto grid w-full max-w-3xl gap-4 px-4 py-6 sm:px-6">
+    <div className="grid max-w-3xl gap-4">
       <h1 className="text-2xl font-semibold tracking-tight">Passes and prices</h1>
       <p className="text-muted-foreground">
         Choose which slots you offer and set a price for each pass. Renters pay you directly,
@@ -433,6 +433,6 @@ export function PricingForm({ spaceId }: { spaceId: string }) {
           </div>
         </div>
       )}
-    </main>
+    </div>
   );
 }

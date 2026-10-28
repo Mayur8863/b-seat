@@ -20,7 +20,7 @@ export function FormField({ id, label, hint, error, className, children }: FormF
     .filter(Boolean)
     .join(' ');
   return (
-    <div className={`grid gap-2 ${className ?? ''}`}>
+    <div className={`grid content-start gap-2 ${className ?? ''}`}>
       <Label htmlFor={id}>{label}</Label>
       {children({
         id,

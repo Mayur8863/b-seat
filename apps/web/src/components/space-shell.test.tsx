@@ -39,6 +39,8 @@ describe('SpaceShell', () => {
     expect(screen.getByText('Hub One')).toBeInTheDocument();
     expect(screen.getByText('Draft')).toBeInTheDocument();
     expect(screen.getByRole('navigation', { name: 'Space management' })).toBeInTheDocument();
+    expect(screen.getAllByRole('main')).toHaveLength(1);
+    expect(screen.getByRole('main')).toContainElement(screen.getByText('child content'));
   });
 
   it('404: identical not-found state, no children', async () => {

@@ -33,7 +33,9 @@ export function SpaceManageNav({ spaceId }: { spaceId: string }) {
                 aria-current={current ? 'page' : undefined}
                 className={cn(
                   'hover:bg-muted focus-visible:outline-ring inline-flex min-h-11 items-center px-3 whitespace-nowrap focus-visible:outline-2 md:min-h-9',
-                  current && 'border-primary border-b-2 font-medium',
+                  current
+                    ? 'border-primary text-foreground border-b-2 font-medium'
+                    : 'text-muted-foreground',
                 )}
               >
                 {label}

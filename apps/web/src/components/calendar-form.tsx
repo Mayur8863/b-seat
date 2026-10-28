@@ -133,7 +133,15 @@ export function CalendarForm({
           hint="The first day seats can be booked."
           error={errors.start?.message}
         >
-          {(aria) => <Input {...aria} type="date" disabled={pending} {...register('start')} />}
+          {(aria) => (
+            <Input
+              {...aria}
+              type="date"
+              className="max-w-xs"
+              disabled={pending}
+              {...register('start')}
+            />
+          )}
         </FormField>
         {ends === 'date' && (
           <FormField
@@ -142,7 +150,15 @@ export function CalendarForm({
             hint="The last day seats can be booked."
             error={errors.end?.message}
           >
-            {(aria) => <Input {...aria} type="date" disabled={pending} {...register('end')} />}
+            {(aria) => (
+              <Input
+                {...aria}
+                type="date"
+                className="max-w-xs"
+                disabled={pending}
+                {...register('end')}
+              />
+            )}
           </FormField>
         )}
       </div>

@@ -252,7 +252,7 @@ export function SpaceForm(props: Props) {
         </Alert>
       )}
 
-      <fieldset disabled={locked} className="grid min-w-0 gap-4 md:grid-cols-2">
+      <fieldset disabled={locked} className="grid min-w-0 items-start gap-4 md:grid-cols-2">
         <FormField id={fid('name')} label="Name" error={text('name')} className="md:col-span-2">
           {(aria) => (
             <Input {...aria} className={inputSize} autoComplete="off" {...register('name')} />

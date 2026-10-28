@@ -14,6 +14,7 @@ import { SpaceManageNav } from '@/components/space-manage-nav';
 import { describeOwnerProblem } from '@/lib/marketplace-problems';
 
 const FRAME = 'mx-auto grid w-full max-w-6xl gap-4 px-4 py-8 sm:px-6';
+const PAGE = 'mx-auto grid w-full max-w-6xl gap-6 px-4 py-6 sm:px-6';
 
 /** Header, sub-nav and 404/error/loading states shared by every page of one space (ui/02 section 5). */
 export function SpaceShell({ spaceId, children }: { spaceId: string; children: ReactNode }) {
@@ -91,7 +92,9 @@ export function SpaceShell({ spaceId, children }: { spaceId: string; children: R
         </div>
         <SpaceManageNav spaceId={spaceId} />
       </div>
-      {children}
+      <main id="main" className={PAGE}>
+        {children}
+      </main>
     </>
   );
 }
