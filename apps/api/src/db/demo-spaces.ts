@@ -9,9 +9,11 @@ import { SeedError } from './seed-error.js';
 import {
   availabilityCalendar,
   cubicle,
+  layoutElement,
   passPrice,
   seat,
   space,
+  spaceLayout,
   spaceSlot,
 } from './schema/index.js';
 
@@ -41,7 +43,51 @@ export interface SeedSpace extends SeedListing {
   /** IANA zone; checked with isValidTimeZone because PostgreSQL cannot. */
   timeZone: string;
   seats: { label: string; features?: string[]; cubicle?: string }[];
+  /** A sample floor plan, saved once and only when the space has none (T063). */
+  layout?: SeedLayout;
 }
+
+interface Rect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/** Cubicles and seats are placed by name and label; a seat must lie inside its cubicle. */
+export interface SeedLayout {
+  columns: number;
+  rows: number;
+  cubicles: (Rect & { name: string })[];
+  seats: (Rect & { label: string })[];
+  areas: (Rect & { label: string })[];
+}
+
+/** Six 2x2 seats in a 3x2 block inside a cubicle whose origin is (x, y). */
+function seatBlock(prefix: string, first: number, x: number, y: number): SeedLayout['seats'] {
+  return Array.from({ length: 6 }, (_, i) => ({
+    label: `${prefix}-${String(first + i).padStart(2, '0')}`,
+    x: x + 1 + (i % 3) * 2,
+    y: y + 1 + Math.floor(i / 3) * 2,
+    w: 2,
+    h: 2,
+  }));
+}
+
+const LONDON_LAYOUT: SeedLayout = {
+  columns: 24,
+  rows: 16,
+  cubicles: [
+    { name: 'Quiet Zone', x: 1, y: 1, w: 8, h: 6 },
+    { name: 'Collaboration Zone', x: 11, y: 1, w: 8, h: 6 },
+  ],
+  seats: [...seatBlock('A', 1, 1, 1), ...seatBlock('A', 7, 11, 1)],
+  areas: [
+    { label: 'Meeting room', x: 1, y: 9, w: 10, h: 5 },
+    { label: 'Kitchen', x: 13, y: 9, w: 6, h: 5 },
+    { label: 'Entrance', x: 21, y: 1, w: 2, h: 6 },
+  ],
+};
 
 const STANDING = 'standing desk';
 const DUAL = 'dual monitor';
@@ -89,6 +135,7 @@ export const DEMO_SPACES: readonly SeedSpace[] = [
       { 1: [STANDING], 2: [DUAL], 5: [STANDING, DUAL], 9: [DUAL], 12: [STANDING] },
       (n) => (n <= 6 ? 'Quiet Zone' : 'Collaboration Zone'),
     ),
+    layout: LONDON_LAYOUT,
   },
   {
     name: 'Pune Hub',
@@ -144,7 +191,7 @@ export async function seedSpaces(
   assertSeedSpaces(spaces);
 
   for (const demo of spaces) {
-    const { seats: seatList, slots, prices, name, location, timeZone, ...listing } = demo;
+    const { seats: seatList, slots, prices, name, location, timeZone, layout, ...listing } = demo;
     // space.name is not unique (OQ-11), so look the demo space up before inserting.
     const candidates = await db
       .select({ id: space.id, ownerId: space.ownerId })
@@ -277,5 +324,46 @@ export async function seedSpaces(
         weekdays: 127,
       });
     }
+
+    if (layout) await seedLayout(db, spaceId, layout);
   }
+}
+
+/**
+ * Saves the sample plan only when the space has no layout row, so an owner's edits (even an
+ * emptied plan) are never replaced. Seats and cubicles the owner removed are skipped.
+ */
+async function seedLayout(db: DbExecutor, spaceId: string, layout: SeedLayout): Promise<void> {
+  const [existing] = await db
+    .select({ spaceId: spaceLayout.spaceId })
+    .from(spaceLayout)
+    .where(eq(spaceLayout.spaceId, spaceId));
+  if (existing) return;
+
+  const seats = await db
+    .select({ id: seat.id, label: seat.label })
+    .from(seat)
+    .where(and(eq(seat.spaceId, spaceId), isNull(seat.removedAt)));
+  const cubicles = await db
+    .select({ id: cubicle.id, name: cubicle.name })
+    .from(cubicle)
+    .where(and(eq(cubicle.spaceId, spaceId), isNull(cubicle.removedAt)));
+  const seatId = new Map(seats.map((x) => [x.label, x.id]));
+  const cubicleId = new Map(cubicles.map((c) => [c.name, c.id]));
+
+  await db
+    .insert(spaceLayout)
+    .values({ spaceId, columns: layout.columns, rows: layout.rows, version: 1 });
+  const elements: (typeof layoutElement.$inferInsert)[] = [
+    ...layout.cubicles.flatMap(({ name, ...r }) => {
+      const id = cubicleId.get(name);
+      return id ? [{ spaceId, kind: 'cubicle' as const, cubicleId: id, ...r }] : [];
+    }),
+    ...layout.seats.flatMap(({ label, ...r }) => {
+      const id = seatId.get(label);
+      return id ? [{ spaceId, kind: 'seat' as const, seatId: id, ...r }] : [];
+    }),
+    ...layout.areas.map((a) => ({ spaceId, kind: 'area' as const, ...a })),
+  ];
+  await db.insert(layoutElement).values(elements);
 }
