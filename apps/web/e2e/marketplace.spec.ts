@@ -8,8 +8,8 @@ import {
 } from './marketplace-helpers';
 
 // The journeys drive the desktop layout; the mobile project is covered by the 375px checks below.
-test.beforeEach((_fixtures, testInfo) => {
-  test.skip(testInfo.project.name !== 'chromium', 'desktop journeys');
+test.beforeEach(({ isMobile }) => {
+  test.skip(isMobile, 'desktop journeys');
 });
 
 test('owner lists a space; renter books a pass; owner sees it; renter cancels and the seat is free', async ({
