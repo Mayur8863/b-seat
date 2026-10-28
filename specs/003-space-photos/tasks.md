@@ -39,7 +39,7 @@ only a human merges.
 | T002 | Bump multer ≥ 2.5.0 and body-parser ≥ 2.4.0 (CVEs)               | devops            | T001                         | S    | todo   | `chore/003-multer-body-parser-cves`    |
 | T003 | Local S3 storage service, bucket init, e2e forwarder and S3 env  | devops            | T001                         | M    | todo   | `chore/003-local-storage`              |
 | T004 | Storage module, S3 env and windowed URL signing (TDD)            | backend-dev       | T003                         | M    | todo   | `feat/003-object-storage`              |
-| T005 | Photo schema and migration, constraint tests first               | backend-dev       | T001                         | S    | todo   | `feat/003-photo-schema`                |
+| T005 | Photo schema and migration, constraint tests first               | backend-dev       | T001                         | S    | review | `feat/003-photo-schema`                |
 | T006 | Image processing module with sharp (TDD)                         | backend-dev       | T001                         | M    | todo   | `feat/003-photo-processing`            |
 | T007 | Production image loads sharp; AWS storage runbook                | devops            | T006                         | S    | todo   | `chore/003-photo-runtime`              |
 | T008 | Upload API: validate, process, store, insert                     | backend-dev       | T002, T004, T005, T006       | M    | todo   | `feat/003-photo-upload-api`            |
@@ -129,7 +129,7 @@ first (T002, T003). After T001: T002, T003, T005, T006, T011 and T012 can start 
     - Given `S3_PUBLIC_ENDPOINT` differs from `S3_ENDPOINT`, Then signed URLs use the public host and put and delete use the internal one.
 
 - [ ] T005 [P] Add `apps/api/src/db/schema/photo.ts` (`space_photo`, `photo_object_purge`), export it from `schema/index.ts`, generate the migration (plus a `--custom` one for the deferrable unique constraint if drizzle-kit cannot express it), and write `apps/api/test/photo-constraints.int-spec.ts` first
-  - **Owner**: backend-dev · **Branch**: `feat/003-photo-schema` · **Size**: S · **Depends on**: T001 · **Status**: todo
+  - **Owner**: backend-dev · **Branch**: `feat/003-photo-schema` · **Size**: S · **Depends on**: T001 · **Status**: review
   - **Scope**: data-model.md verbatim (**(T001)**: there is no `byte_size` column; `last_attempt_at` is the sweep lease). Generate on the latest `dev/003-integration`. If 002 lands a migration before this merges, regenerate (R-13).
   - **Acceptance criteria**:
     - Given a space with photos at positions 1–10, When an 11th row is inserted at position 11, Then `23514` on `space_photo_position_range`; at an existing position, Then `23505` on `space_photo_position_unique` (FR-002, SC-006 in the database).
