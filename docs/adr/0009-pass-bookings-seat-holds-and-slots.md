@@ -1,7 +1,8 @@
 # ADR-0009: Pass bookings, seat holds and the slot time model
 
 - **Status:** Accepted. Amended 2026-10-27 by section 9 (seat-hold write locks, after the 001 race fix in
-  ADR-0008 section 2); section 2's write steps and `40P01` note are updated to match.
+  ADR-0008 section 2); section 2's write steps and `40P01` note are updated to match. Amended 2026-10-28 in
+  section 3 (booking header identity is immutable, T005 review follow-up).
 - **Date:** 2026-10-27
 - **Deciders:** architect agent (002 T001); the requester for the product decisions OQ-1 to OQ-12 (accepted 2026-10-27)
 - **Amends:** [ADR-0008](0008-booking-time-and-conflict-model.md) section 1 (DST at owner-set slot boundaries only)
@@ -98,6 +99,31 @@ For occupancy marks, the **hold is the single source of truth** for blocking and
 
 Remaining limit (service plus test, not DB): the header envelope must equal the first hold's start and the last
 hold's end, and a mark must have its hold. Both are written in one transaction from the same computed list.
+
+**Header identity is immutable (amendment 2026-10-28, T005 review follow-up).** `ON UPDATE CASCADE` on
+`seat_hold_booking_fk` exists only so that cancelling (`holds_active` true → false) turns the holds off. The same
+cascade would also carry the holds along if a header's `seat_id` or `user_id` changed: the booking would silently
+move to another seat or renter with no booking rule, lock, email or audit. The exclusions would still re-check the
+moved holds, so no overlap could be committed, but the move itself would be wrong. So:
+
+- After insert, a booking header changes only by the cancel transition (`status`, `cancelled_at`; the generated
+  `holds_active` follows). `id`, `seat_id`, `user_id` and `space_id` are **immutable**, and so are the pass,
+  slot, dates, envelope and price snapshot (FR-013). No route moves a booking to another seat or renter (spec:
+  owners cannot move bookings), and a future feature that needs one cancels and re-books.
+- **DB guard for the key columns (T036).** A custom migration adds `booking_identity_immutable`: a
+  `BEFORE UPDATE OF id, seat_id, user_id, space_id ON booking FOR EACH ROW` trigger whose function raises
+  `check_violation` (`23514`) with `CONSTRAINT = 'booking_identity_immutable'` when
+  `(NEW.id, NEW.seat_id, NEW.user_id, NEW.space_id) IS DISTINCT FROM (OLD.id, OLD.seat_id, OLD.user_id,
+OLD.space_id)`. Under section 2's mapping that is "other → 500", which is right: only a bug can reach it. These
+  are the columns that the hold FK cascades or the composite FKs pin. The snapshot columns stay a service rule
+  (no update path writes them), so the trigger does not depend on columns a later contract migration may drop.
+- Why a trigger, when the alternatives below reject triggers: those were for cross-row overlap and consistency
+  logic, which is not concurrency-safe without locks. This one reads only `OLD` and `NEW` of its own row, so it
+  is concurrency-safe and has no hidden reads. Column privileges (`REVOKE UPDATE (seat_id, user_id)`) were
+  considered and rejected: they do not bind the table owner, which is the role the API connects as. Changing the
+  FK to `ON UPDATE NO ACTION` would make every cancel fail, because cancel changes the referenced
+  `holds_active`.
+- T005's migrations are not changed and T005 is not reopened; the guard is a new migration in T036.
 
 ### 4. Slot time model and DST at owner-set boundaries (AQ-2; amends ADR-0008 section 1)
 
