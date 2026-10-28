@@ -58,7 +58,7 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 | T026 | Docs US2                                                     | docs-writer    | T025                   | S    | todo                                                           | `docs/002-us2-listing`                |
 | T027 | Slots and pricing API                                        | backend-dev    | T007, T020             | M    | todo                                                           | `feat/002-pricing-api`                |
 | T028 | Listing detail API with offers and 24-hour saving            | backend-dev    | T027                   | S    | todo                                                           | `feat/002-listing-detail-api`         |
-| T029 | UI spec: search, listing page, booking, my bookings          | ui-ux-designer | T010                   | M    | todo                                                           | `docs/002-ui-renter-booking`          |
+| T029 | UI spec: search, listing page, booking, my bookings          | ui-ux-designer | T010                   | M    | review — spec done; next: frontend tasks can start             | `docs/002-ui-renter-booking`          |
 | T030 | Owner pricing page                                           | frontend-dev   | T023, T027             | M    | todo                                                           | `feat/002-pricing-page`               |
 | T031 | Listing page v1: details and pass options                    | frontend-dev   | T014, T028, T029       | M    | todo                                                           | `feat/002-listing-page`               |
 | T032 | QA US3: pricing e2e, axe                                     | qa-engineer    | T030, T031             | S    | todo                                                           | `test/002-us3-pricing-e2e`            |
@@ -467,7 +467,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given the response, When inspected, Then it has no owner contact or occupancy notes (R-3). Given `gen:api`, Then `Listing` is committed.
 
 - [ ] T029 [P] [US3] Write `specs/002-space-marketplace/ui/03-renter-booking.md`
-  - **Owner**: ui-ux-designer · **Branch**: `docs/002-ui-renter-booking` · **Size**: M · **Depends on**: T010 · **Status**: todo
+  - **Owner**: ui-ux-designer · **Branch**: `docs/002-ui-renter-booking` · **Size**: M · **Depends on**: T010 · **Status**: review — spec done; next: frontend tasks can start
   - **Scope**: Find a space (filters, prefill, accessible city/area suggestions combobox, results with lowest prices, paging, "widen to the whole country" empty state), listing page (details, utilities, pass/slot options with prices and the 24-hour saving, start date picker limited to 30 days, seat list with free / taken / closed by text and icon, closed days, end date and time, price, "no seat free for the whole period" state), booking confirmation step and confirmation with the offline-payment note, My bookings (items, cancel confirmation, already-started refusal), the renter dashboard next-booking summary, and copy for every booking problem type.
   - **Acceptance criteria**:
     - Given each screen, When read, Then all eight states are specified (FR-032).
