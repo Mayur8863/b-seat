@@ -48,6 +48,31 @@ test('renter signs up, skips preferences and lands on the dashboard', async ({ p
   await expect(page).toHaveURL(/\/sign-in$/);
 });
 
+test('renter saves country and city at sign-up and sees them on the dashboard', async ({
+  page,
+}) => {
+  await fillSignUp(page, uniqueEmail());
+  await page.getByRole('radio', { name: /I need a space/ }).check();
+  await page.getByRole('button', { name: 'Create account' }).click();
+
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Where do you want a space?' }),
+  ).toBeVisible();
+  await page.getByLabel('Country').selectOption({ label: 'India' });
+  await page.getByLabel('City').fill('Pune');
+  await page.getByRole('button', { name: 'Save and continue' }).click();
+
+  await expect(page).toHaveURL(/\/dashboard$/);
+  const card = page.getByRole('region', { name: 'Your preferences' });
+  await expect(card.getByText('India')).toBeVisible();
+  await expect(card.getByText('Pune')).toBeVisible();
+  await expect(card.getByRole('button', { name: 'Edit preferences' })).toBeVisible();
+  // Known product defect (reported in the T015 QA handoff): the success toast text is 4.25:1 on its
+  // green background. The toast is excluded here so the rest of the page is still checked.
+  const results = await new AxeBuilder({ page }).exclude('.cn-toast').withTags(WCAG_AA).analyze();
+  expect(results.violations).toEqual([]);
+});
+
 test('sign-up without a role shows the role error with no WCAG violations', async ({ page }) => {
   await fillSignUp(page, uniqueEmail());
   await page.getByRole('button', { name: 'Create account' }).click();

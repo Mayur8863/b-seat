@@ -16,7 +16,9 @@ async function signUp(page: Page) {
   await page.getByLabel('Name').fill('Grace Hopper');
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Password').fill('correct-horse-battery');
+  await page.getByRole('radio', { name: /I need a space/ }).check();
   await page.getByRole('button', { name: 'Create account' }).click();
+  await page.getByRole('button', { name: 'Skip for now' }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
 }
 
@@ -93,7 +95,9 @@ test('/book lists spaces and seats and has no WCAG 2.1 AA violations', async ({ 
   await page.getByLabel('Name').fill('Grace Hopper');
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Password').fill('correct-horse-battery');
+  await page.getByRole('radio', { name: /I need a space/ }).check();
   await page.getByRole('button', { name: 'Create account' }).click();
+  await page.getByRole('button', { name: 'Skip for now' }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
 
   await page.goto('/book');
