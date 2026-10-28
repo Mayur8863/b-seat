@@ -2,7 +2,7 @@
 
 import { Input } from '@bseat/ui/components/input';
 import { Label } from '@bseat/ui/components/label';
-import { useId } from 'react';
+import { type Ref, useId } from 'react';
 
 import { formatLocalDate } from '@/lib/booking-format';
 import { isStartDateAllowed, startDateRange } from '@/lib/seat-picker';
@@ -12,10 +12,12 @@ export function StartDateField({
   value,
   onChange,
   timeZone,
+  ref,
 }: {
   value: string;
   onChange: (date: string) => void;
   timeZone: string;
+  ref?: Ref<HTMLInputElement>;
 }) {
   const id = useId();
   const hintId = `${id}-hint`;
@@ -28,6 +30,7 @@ export function StartDateField({
       <Label htmlFor={id}>Start date</Label>
       <Input
         id={id}
+        ref={ref}
         type="date"
         min={range.min}
         max={range.max}

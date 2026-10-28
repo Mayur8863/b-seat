@@ -1,6 +1,6 @@
 'use client';
 
-import { ApiError, type Listing, useListingsGet } from '@bseat/api-client';
+import { ApiError, type Booking, type Listing, useListingsGet, useMeGet } from '@bseat/api-client';
 import { Alert, AlertDescription, AlertTitle } from '@bseat/ui/components/alert';
 import { Badge } from '@bseat/ui/components/badge';
 import { Button } from '@bseat/ui/components/button';
@@ -10,13 +10,18 @@ import { ArrowLeftIcon, InfoIcon } from 'lucide-react';
 import type { Route } from 'next';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef, useState } from 'react';
 
+import { BookingConfirmation, BookProblemAlert, ReviewDialog } from '@/components/book-pass';
 import { ListingSeatList, type SeatSelection } from '@/components/listing-seat-list';
 import { type PassChoice, PassOptions } from '@/components/pass-options';
 import { StartDateField } from '@/components/start-date-field';
-import { YourSelection } from '@/components/your-selection';
+import { type BookingSelection, YourSelection } from '@/components/your-selection';
 import { slotTitle, utilityLabel } from '@/lib/format';
+import { parseListingParams, searchOnly, withListingParams } from '@/lib/listing-params';
+import { describeBookProblem } from '@/lib/marketplace-problems';
+import type { ProblemCopy } from '@/lib/problem-copy';
 import { isStartDateAllowed, startDateRange } from '@/lib/seat-picker';
 
 const FRAME = 'mx-auto grid w-full max-w-6xl gap-4 px-4 py-8 sm:px-6';
@@ -64,18 +69,99 @@ function Details({ listing }: { listing: Listing }) {
 }
 
 function Body({ listing, onRefetch }: { listing: Listing; onRefetch: () => void }) {
-  // The selection T041 books: pass and slot, start date, seat. Changing any earlier piece clears the later ones.
-  const [choice, setChoiceState] = useState<PassChoice | null>(null);
-  const [startDate, setStartDateState] = useState('');
-  const [seat, setSeat] = useState<SeatSelection | null>(null);
-  const setChoice = (c: PassChoice) => {
+  const params = useSearchParams();
+  const queryClient = useQueryClient();
+  const me = useMeGet();
+  // The selection: pass and slot, start date, seat. A search that carried them preselects (OQ-T29-3).
+  const [initial] = useState(() =>
+    parseListingParams(params, listing.offers, startDateRange(listing.timeZone)),
+  );
+  const [choice, setChoiceState] = useState<PassChoice | null>(initial.choice);
+  const [startDate, setStartDateState] = useState(initial.startDate);
+  const [seat, setSeatState] = useState<SeatSelection | null>(null);
+  const [reviewing, setReviewing] = useState<BookingSelection | null>(null);
+  const [confirmed, setConfirmed] = useState<Booking | null>(null);
+  const [problem, setProblem] = useState<ProblemCopy | null>(null);
+  const reviewButton = useRef<HTMLElement | null>(null);
+  const alertRef = useRef<HTMLDivElement>(null);
+  const dateRef = useRef<HTMLInputElement>(null);
+  const passesRef = useRef<HTMLDivElement>(null);
+  const seatsRef = useRef<HTMLDivElement>(null);
+
+  // Changing an earlier piece clears the later ones and any booking problem.
+  const setChoice = (c: PassChoice | null) => {
     setChoiceState(c);
-    setSeat(null);
+    setSeatState(null);
+    setProblem(null);
   };
   const setStartDate = (d: string) => {
     setStartDateState(d);
-    setSeat(null);
+    setSeatState(null);
+    setProblem(null);
   };
+  const setSeat = (s: SeatSelection | null) => {
+    setSeatState(s);
+    if (s) setProblem(null);
+  };
+
+  // The URL mirrors pass, slot and date with replace, so the history has one entry (ui/03 4.3).
+  useEffect(() => {
+    const query = withListingParams(new URLSearchParams(window.location.search), choice, startDate);
+    if (query !== window.location.search.slice(1)) {
+      window.history.replaceState(
+        window.history.state,
+        '',
+        `${window.location.pathname}${query ? `?${query}` : ''}`,
+      );
+    }
+  }, [choice, startDate]);
+
+  useEffect(() => {
+    if (problem) alertRef.current?.focus();
+  }, [problem]);
+
+  const refetchSeats = () =>
+    queryClient.invalidateQueries({ queryKey: [`/api/listings/${listing.id}/seats`] });
+
+  const onBooked = (booking: Booking) => {
+    setReviewing(null);
+    setConfirmed(booking);
+    void refetchSeats();
+    void queryClient.invalidateQueries({
+      predicate: (q) =>
+        typeof q.queryKey[0] === 'string' && q.queryKey[0].startsWith('/api/bookings'),
+    });
+  };
+
+  const onFailed = (error: unknown) => {
+    const result = describeBookProblem(error, {
+      spaceId: listing.id,
+      seatLabel: reviewing?.selection.seat.label,
+      path: window.location.pathname,
+    });
+    setReviewing(null);
+    setProblem(result.copy);
+    if (result.clearSeat) setSeatState(null);
+    if (result.clearPass) {
+      setChoiceState(null);
+      setSeatState(null);
+    }
+    if (result.refetch === 'seats') void refetchSeats();
+    if (result.refetch === 'listing') onRefetch();
+  };
+
+  const focusMissing = (missing: 'pass' | 'date' | 'seat') => {
+    if (missing === 'date') dateRef.current?.focus();
+    else {
+      const root = missing === 'pass' ? passesRef.current : seatsRef.current;
+      const target =
+        root?.querySelector<HTMLElement>('[role="radio"][aria-checked="true"]') ??
+        root?.querySelector<HTMLElement>('[role="radio"]:not([disabled])') ??
+        root?.querySelector<HTMLElement>('button:not([disabled])');
+      target?.focus();
+    }
+  };
+
   const validDate = isStartDateAllowed(startDate, startDateRange(listing.timeZone));
   const offer = choice ? listing.offers.find((o) => o.slot === choice.slot) : undefined;
   return (
@@ -106,44 +192,75 @@ function Body({ listing, onRefetch }: { listing: Listing; onRefetch: () => void 
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-8 lg:grid-cols-[1fr_20rem]">
-          <div className="grid gap-8">
-            <PassOptions listing={listing} value={choice} onChange={setChoice} />
-            {choice && (
-              <StartDateField
-                value={startDate}
-                onChange={setStartDate}
-                timeZone={listing.timeZone}
-              />
-            )}
-            {choice && validDate ? (
-              <ListingSeatList
-                spaceId={listing.id}
-                hasLayout={listing.hasLayout}
-                choice={choice}
-                startDate={startDate}
-                timeZone={listing.timeZone}
-                selectedSeatId={seat?.seat.id ?? null}
-                onSelect={setSeat}
-                onPassNotOffered={onRefetch}
-              />
-            ) : (
-              <p className="text-muted-foreground">
-                Choose a pass and a start date to see which seats are free.
-              </p>
-            )}
-          </div>
-          <div className="lg:sticky lg:top-4 lg:self-start">
-            <YourSelection
-              choice={choice}
-              startDate={validDate ? startDate : ''}
-              selection={seat}
-              currency={listing.currency}
-              timeZone={listing.timeZone}
-              slotText={offer ? slotTitle(offer) : null}
-            />
-          </div>
-        </div>
+        <>
+          {problem && <BookProblemAlert copy={problem} ref={alertRef} />}
+          {confirmed ? (
+            <BookingConfirmation booking={confirmed} email={me.data?.data.email} />
+          ) : (
+            <div className="grid gap-8 lg:grid-cols-[1fr_20rem]">
+              <div className="grid gap-8">
+                <div ref={passesRef}>
+                  <PassOptions listing={listing} value={choice} onChange={setChoice} />
+                </div>
+                {choice && (
+                  <StartDateField
+                    ref={dateRef}
+                    value={startDate}
+                    onChange={setStartDate}
+                    timeZone={listing.timeZone}
+                  />
+                )}
+                <div ref={seatsRef}>
+                  {choice && validDate ? (
+                    <ListingSeatList
+                      spaceId={listing.id}
+                      hasLayout={listing.hasLayout}
+                      choice={choice}
+                      startDate={startDate}
+                      timeZone={listing.timeZone}
+                      selectedSeatId={seat?.seat.id ?? null}
+                      onSelect={setSeat}
+                      onPassNotOffered={onRefetch}
+                    />
+                  ) : (
+                    <p className="text-muted-foreground">
+                      Choose a pass and a start date to see which seats are free.
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="lg:sticky lg:top-4 lg:self-start">
+                <YourSelection
+                  choice={choice}
+                  startDate={validDate ? startDate : ''}
+                  selection={seat}
+                  currency={listing.currency}
+                  timeZone={listing.timeZone}
+                  slotText={offer ? slotTitle(offer) : null}
+                  onReview={(b) => {
+                    reviewButton.current =
+                      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+                    setReviewing(b);
+                  }}
+                  onMissing={focusMissing}
+                />
+              </div>
+            </div>
+          )}
+          <ReviewDialog
+            spaceId={listing.id}
+            booking={reviewing}
+            currency={listing.currency}
+            timeZone={listing.timeZone}
+            slotText={offer ? slotTitle(offer) : ''}
+            onClose={() => {
+              setReviewing(null);
+            }}
+            restoreFocus={() => reviewButton.current?.focus()}
+            onBooked={onBooked}
+            onFailed={onFailed}
+          />
+        </>
       )}
     </div>
   );
@@ -155,7 +272,7 @@ export function ListingDetails({ spaceId }: { spaceId: string }) {
   const listing = data?.data;
   // The search that led here; a link without one (or a shared deep link) just says "Find a space".
   const params = useSearchParams();
-  const carried = params.get('country') ? params.toString() : '';
+  const carried = params.get('country') ? searchOnly(params) : '';
 
   const back = (
     <Button variant="link" size="sm" asChild className="justify-self-start px-0">

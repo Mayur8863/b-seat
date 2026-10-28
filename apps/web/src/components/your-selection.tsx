@@ -25,6 +25,7 @@ export function YourSelection({
   timeZone,
   slotText,
   onReview,
+  onMissing,
 }: {
   choice: PassChoice | null;
   startDate: string;
@@ -33,6 +34,8 @@ export function YourSelection({
   timeZone: string;
   slotText: string | null;
   onReview?: (booking: BookingSelection) => void;
+  /** Called with the first missing piece so the page can move focus to its control (ui/03 5.1). */
+  onMissing?: (missing: 'pass' | 'date' | 'seat') => void;
 }) {
   const headingId = useId();
   const errorId = useId();
@@ -86,14 +89,17 @@ export function YourSelection({
             onClick={() => {
               if (!choice) {
                 setError('Choose a pass.');
+                onMissing?.('pass');
                 return;
               }
               if (!startDate) {
                 setError('Choose a start date.');
+                onMissing?.('date');
                 return;
               }
               if (!complete) {
                 setError('Choose a seat.');
+                onMissing?.('seat');
                 return;
               }
               setError('');
