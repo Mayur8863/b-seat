@@ -56,6 +56,8 @@ export interface SeatLockOptions {
   onRetry?: (attempt: number) => void;
   /** Called on a lock timeout (log `warn`, ids only). A throw is swallowed. */
   onLockTimeout?: () => void;
+  /** Runs after `lock_timeout` is set and before the seat locks: the space row lock goes here (deleteSeat's order). */
+  beforeLocks?: (tx: SeatLockTx) => Promise<void>;
 }
 
 function swallow(hook: () => void): void {
@@ -81,12 +83,13 @@ export async function withSeatLocks<T>(
   db: Database,
   seatIds: readonly string[],
   work: (tx: SeatLockTx) => Promise<T>,
-  { classify, onRetry, onLockTimeout }: SeatLockOptions,
+  { classify, onRetry, onLockTimeout, beforeLocks }: SeatLockOptions,
 ): Promise<T> {
   for (let attempt = 1; ; attempt += 1) {
     try {
       return await db.transaction(async (tx) => {
         await tx.execute(sql`select set_config('lock_timeout', ${LOCK_TIMEOUT}, true)`);
+        if (beforeLocks) await beforeLocks(tx);
         await lockSeats(tx, seatIds);
         return work(tx);
       });
