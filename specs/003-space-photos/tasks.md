@@ -228,7 +228,7 @@ first (T002, T003). After T001: T002, T003, T005, T006, T011 and T012 can start 
     - Given the large view, Then keyboard (arrows, Escape, Tab order), pointer and touch behaviour and focus return are specified, and contrast for captions and controls over photos meets 4.5:1 (FR-026).
 
 - [ ] T013 [US1] Add `apps/web/src/lib/photo-upload/queue.ts` (pure reducer) with `queue.test.ts` written first
-  - **Owner**: frontend-dev · **Branch**: `feat/003-upload-queue-model` · **Size**: S · **Depends on**: T011 · **Status**: todo
+  - **Owner**: frontend-dev · **Branch**: `feat/003-upload-queue-model` · **Size**: S · **Depends on**: T011 · **Status**: review (done: queue.ts reducer + 16 tests; next: qa-engineer, then T014 wires it)
   - **Scope**: research R-9. No React, no new dependency. States `waiting`, `uploading(percent)`, `processing`, `added`, `failed(reason)`, `not-added(limit)`, `cancelled`; at most 2 concurrent uploads; client pre-check for type and size.
   - **Acceptance criteria**:
     - Given 8 photos and 4 selected files, When queued, Then the first 2 in selection order are `waiting` and the last 2 are `not-added(limit)` (AC 4.3, FR-004).
