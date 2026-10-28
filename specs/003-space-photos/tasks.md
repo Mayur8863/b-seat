@@ -45,7 +45,7 @@ only a human merges.
 | T008 | Upload API: validate, process, store, insert                     | backend-dev       | T002, T004, T005, T006       | M    | todo   | `feat/003-photo-upload-api`            |
 | T009 | Owner photo list and describe API                                | backend-dev       | T008                         | S    | todo   | `feat/003-photo-list-api`              |
 | T010 | `uploadSpacePhoto` XHR helper in the api-client                  | frontend-dev      | T008                         | S    | todo   | `feat/003-upload-helper`               |
-| T011 | UI spec: owner Photos section                                    | ui-ux-designer    | T001                         | M    | todo   | `docs/003-ui-owner-photos`             |
+| T011 | UI spec: owner Photos section                                    | ui-ux-designer    | T001                         | M    | review | `docs/003-ui-owner-photos`             |
 | T012 | UI spec: cover, placeholder, gallery and large view              | ui-ux-designer    | T001                         | S    | todo   | `docs/003-ui-renter-photos`            |
 | T013 | Upload-queue model (pure reducer, TDD)                           | frontend-dev      | T011                         | S    | todo   | `feat/003-upload-queue-model`          |
 | T014 | Owner Photos page: nav, list, empty state, count, upload queue   | frontend-dev      | T009, T010, T011, T013       | M    | todo   | `feat/003-owner-photos-page`           |
@@ -214,7 +214,7 @@ first (T002, T003). After T001: T002, T003, T005, T006, T011 and T012 can start 
     - Given the signal aborts mid-upload, Then the request is aborted and the promise rejects with an `AbortError` (AC 1.5).
 
 - [ ] T011 [P] [US1] Write `specs/003-space-photos/ui/01-owner-photos.md` and `specs/003-space-photos/ui.md` (index): the Photos section (navigation position, empty state, list with cover badge, "n of 10", add control, upload queue rows and their states, limit states, description editing, reorder controls, delete dialog copy, leave warning, live-region copy, problem-type copy)
-  - **Owner**: ui-ux-designer · **Branch**: `docs/003-ui-owner-photos` · **Size**: M · **Depends on**: T001 · **Status**: todo
+  - **Owner**: ui-ux-designer · **Branch**: `docs/003-ui-owner-photos` · **Size**: M · **Depends on**: T001 · **Status**: review (specs/003-space-photos/ui/01-owner-photos.md and ui.md written; awaiting frontend-dev T013/T014)
   - **Scope**: follows 002 ui/01 conventions (copy, sub-nav pattern section 3.2) and semantic tokens. Every state: default, hover, focus, disabled, loading, empty, error, success (FR-026). Card thumbnails use the 4:3 `card` variant (AQ-3 as decided).
   - **Acceptance criteria**:
     - Given the spec, Then every scenario of US1, US3 and US4 and FR-001 to FR-010 has a described state with exact copy, including each problem type in contracts/README.md and "connection lost".
