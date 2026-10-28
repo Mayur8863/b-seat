@@ -12,7 +12,14 @@ import { Clock } from '../common/time/clock.js';
 import { seatsToday } from '../owner-operations/occupancy.queries.js';
 import type { Database } from '../db/db.js';
 import { DB } from '../db/db.module.js';
-import { booking, cubicle, layoutElement, seat, space } from '../db/schema/index.js';
+import {
+  availabilityCalendar,
+  booking,
+  cubicle,
+  layoutElement,
+  seat,
+  space,
+} from '../db/schema/index.js';
 import { LOCK_TIMEOUT, lockSeats, type SeatLockTx } from '../bookings/seat-lock.js';
 import {
   type CreateCubicleInput,
@@ -92,6 +99,21 @@ export class OwnerSeatsService {
       rows.map((r) => r.id),
       this.clock.now(),
     );
+    const ownCal = new Set(
+      rows.length === 0
+        ? []
+        : (
+            await tx
+              .select({ seatId: availabilityCalendar.seatId })
+              .from(availabilityCalendar)
+              .where(
+                inArray(
+                  availabilityCalendar.seatId,
+                  rows.map((r) => r.id),
+                ),
+              )
+          ).map((c) => c.seatId),
+    );
     return rows.map((r) => ({
       id: r.id,
       label: r.label,
@@ -100,8 +122,7 @@ export class OwnerSeatsService {
         r.cubicleId && names.has(r.cubicleId)
           ? { id: r.cubicleId, name: names.get(r.cubicleId) ?? '' }
           : null,
-      // T051 fills 'own'.
-      calendar: 'shared',
+      calendar: ownCal.has(r.id) ? 'own' : 'shared',
       today: today.get(r.id) ?? { state: 'vacant', note: null, markId: null },
     }));
   }

@@ -27,3 +27,11 @@ export function resolveCalendar(own: Calendar | null, shared: Calendar): Calenda
 
 /** Fail closed: a space without a shared calendar offers no open day (T004 review). */
 export const CLOSED_CALENDAR: Calendar = { startDate: '0001-01-01', endDate: null, weekdays: 0 };
+
+export type WeekdayName = keyof typeof WEEKDAY_BITS;
+export const WEEKDAY_NAMES = Object.keys(WEEKDAY_BITS) as [WeekdayName, ...WeekdayName[]];
+
+/** Inverse of `weekdayMask`, in Monday-first order. */
+export function weekdaysOf(mask: number): WeekdayName[] {
+  return WEEKDAY_NAMES.filter((day) => (mask & WEEKDAY_BITS[day]) !== 0);
+}
