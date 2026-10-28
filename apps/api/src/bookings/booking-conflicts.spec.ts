@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { DrizzleQueryError } from 'drizzle-orm';
 import pg from 'pg';
 import { describe, expect, it } from 'vitest';
@@ -22,7 +22,7 @@ describe('classifyInsertError (ADR-0009 section 2)', () => {
     expect(problem.getStatus()).toBe(409);
     expect(problem.type).toBe('urn:bseat:problem:booking:seat-unavailable');
     expect(problem.title).toBe('Seat unavailable');
-    expect(problem.detail).toBe('This seat is no longer available for that time.');
+    expect(problem.detail).toBe('This seat is no longer available for that period.');
   });
 
   it('maps 23P01 on seat_hold_user_no_overlap to 409 user-overlap', () => {
@@ -33,6 +33,11 @@ describe('classifyInsertError (ADR-0009 section 2)', () => {
       detail: 'You already have a booking at that time.',
     });
     expect((problem as ProblemException).getStatus()).toBe(409);
+  });
+
+  it('maps a statement timeout (57014) to a retryable 503', () => {
+    const outcome = classifyInsertError(driverError('57014'));
+    expect(outcome).toBeInstanceOf(ServiceUnavailableException);
   });
 
   it('flags a lock timeout (55P03) so it is logged and not retried', () => {
@@ -46,14 +51,14 @@ describe('classifyInsertError (ADR-0009 section 2)', () => {
   it('maps 23503 on the seat foreign key to 404 Seat not found', () => {
     const outcome = classifyInsertError(driverError('23503', 'booking_seat_id_seat_id_fk'));
     expect(outcome).toBeInstanceOf(NotFoundException);
-    expect((outcome as NotFoundException).message).toBe('Seat not found');
+    expect((outcome as NotFoundException).message).toBe('Not Found');
   });
 
   it.each([
     ['a CHECK violation (TS rules and DB disagree)', driverError('23514', 'booking_quarter_hour')],
     ['23P01 on an unknown constraint', driverError('23P01', 'something_else')],
     ['23503 on the user foreign key', driverError('23503', 'booking_user_id_user_id_fk')],
-    ['an unrelated SQLSTATE', driverError('57014')],
+    ['an unrelated SQLSTATE', driverError('42P01')],
     ['a plain Error', new Error('boom')],
     ['a DrizzleQueryError without a driver cause', new DrizzleQueryError('q', [])],
     ['a non-error value', 'nope'],

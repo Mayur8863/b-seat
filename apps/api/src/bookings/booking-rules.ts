@@ -3,6 +3,7 @@
  * legacy availability read until T043 removes it. The evaluator itself went with the hourly create
  * (T008); pass rules live in `marketplace/booking-rules.ts`.
  */
+import { PROBLEM_TYPES } from '../common/errors/problem-types.js';
 
 /** Evaluation order; the first broken rule wins. */
 export const BOOKING_RULE_ORDER = [
@@ -27,7 +28,7 @@ export const BOOKING_RULE_PROBLEM_TYPE = {
   'too-long': 'urn:bseat:problem:booking-rule:too-long',
   'outside-working-hours': 'urn:bseat:problem:booking-rule:outside-working-hours',
   'starts-in-past': 'urn:bseat:problem:booking-rule:starts-in-past',
-  'too-far-ahead': 'urn:bseat:problem:booking-rule:too-far-ahead',
+  'too-far-ahead': PROBLEM_TYPES.tooFarAhead,
 } as const satisfies Record<BookingRule, string>;
 
 export const INVALID_BOOKING_WINDOW_TITLE = 'Invalid booking window';

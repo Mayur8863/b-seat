@@ -12,6 +12,7 @@ import { AuthModule } from './auth/auth.module.js';
 import { ProblemFilter } from './common/errors/problem.filter.js';
 import { validationPipe } from './common/errors/validation.js';
 import { type Env, loadEnv } from './config/env.js';
+import { BookingsModule } from './bookings/bookings.module.js';
 import { DbModule } from './db/db.module.js';
 import { HealthController } from './health/health.controller.js';
 import { ListingsModule } from './listings/listings.module.js';
@@ -60,6 +61,7 @@ import { SpacesModule } from './spaces/spaces.module.js';
     MeModule,
     OwnerSpacesModule,
     ListingsModule,
+    BookingsModule,
   ],
   controllers: [HealthController, ReferenceController],
   providers: [

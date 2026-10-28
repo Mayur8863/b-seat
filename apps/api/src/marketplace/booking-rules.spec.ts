@@ -18,6 +18,15 @@ const ok: PassBookingFacts = {
   firstStartsAt: new Date(now.getTime() + DAY_MS),
 };
 
+const TITLES = {
+  'space-not-published': 'Space not listed',
+  'own-space': 'Your own space',
+  'pass-not-offered': 'Pass not offered',
+  'start-day-closed': 'Start date closed',
+  'slot-started': 'Slot already started',
+  'too-far-ahead': 'Too far ahead',
+} as const;
+
 describe('evaluatePassBookingRules', () => {
   it('passes when every rule holds', () => {
     expect(evaluatePassBookingRules(ok, now)).toBeNull();
@@ -38,7 +47,7 @@ describe('evaluatePassBookingRules', () => {
   ] as const)('returns %s when only that rule is broken', (rule, patch, key) => {
     const violation = evaluatePassBookingRules({ ...ok, ...patch }, now);
     expect(violation).toMatchObject({ rule, type: PROBLEM_TYPES[key], status: 422 });
-    expect(violation?.title).toBeTruthy();
+    expect(violation?.title).toBe(TITLES[rule]);
     expect(violation?.detail).toBeTruthy();
   });
 

@@ -85,6 +85,13 @@
       "when": 1793182330930,
       "tag": "0011_seat_features_max",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1793184550587,
+      "tag": "0012_booking_identity_immutable",
+      "breakpoints": true
     }
   ]
 }
