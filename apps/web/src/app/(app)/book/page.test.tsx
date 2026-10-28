@@ -9,7 +9,7 @@ import { renderWithQuery } from '@/test/render';
 import BookPage, { metadata } from './page';
 
 describe('/book page', () => {
-  it('has a metadata title, one h1, main#main and a link back to the dashboard', async () => {
+  it('has a metadata title, one h1, main#main', async () => {
     server.use(getSpacesListMockHandler(twoSpaces));
     const { container } = renderWithQuery(<BookPage />);
 
@@ -17,7 +17,7 @@ describe('/book page', () => {
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
     expect(screen.getByRole('heading', { level: 1, name: 'Book a seat' })).toBeInTheDocument();
     expect(container.querySelector('main#main')).not.toBeNull();
-    expect(screen.getByRole('link', { name: 'Dashboard' })).toHaveAttribute('href', '/dashboard');
+    expect(screen.queryByRole('link', { name: 'Dashboard' })).not.toBeInTheDocument();
     expect(await screen.findByRole('radio', { name: 'London HQ' })).toBeInTheDocument();
   });
 });

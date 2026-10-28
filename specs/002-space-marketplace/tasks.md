@@ -43,7 +43,7 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 | T011 | Test plan and traceability skeleton                          | qa-engineer    | T001                   | S    | done   | `test/002-test-plan`                  |
 | T012 | Wire `SEED_DEMO_PASSWORD` into compose and CI                | devops         | T001                   | S    | done   | `chore/002-seed-env`                  |
 | T013 | Renter preferences API                                       | backend-dev    | T002                   | S    | done   | `feat/002-renter-preferences-api`     |
-| T014 | Signed-in shell, role-aware nav, role dashboards             | frontend-dev   | T002, T010             | M    | todo   | `feat/002-app-nav`                    |
+| T014 | Signed-in shell, role-aware nav, role dashboards             | frontend-dev   | T002, T010             | M    | done   | `feat/002-app-nav`                    |
 | T015 | Sign-up role choice and optional preferences                 | frontend-dev   | T002, T013, T014, T019 | M    | todo   | `feat/002-sign-up-role`               |
 | T016 | QA US1: accounts and navigation e2e, axe                     | qa-engineer    | T011, T014, T015       | M    | todo   | `test/002-us1-accounts-e2e`           |
 | T017 | Docs US1                                                     | docs-writer    | T016                   | S    | todo   | `docs/002-us1-accounts`               |
@@ -279,8 +279,8 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given an owner, When it calls the PUT, Then 403. Given `country: "XX"` or a 101-char city, Then 400.
     - Given `bin/pnpm gen:api`, Then `UpdatePreferencesInput`, `Preferences` and the new `Me` field are committed.
 
-- [ ] T014 [US1] Add the signed-in shell `apps/web/src/app/(app)/layout.tsx`, `apps/web/src/components/app-nav.tsx` (+ test), `apps/web/src/lib/nav.ts` (+ route-manifest test), role dashboards in `apps/web/src/app/(app)/dashboard/page.tsx`, and widen the matcher in `apps/web/src/proxy.ts`
-  - **Owner**: frontend-dev · **Branch**: `feat/002-app-nav` · **Size**: M · **Depends on**: T002, T010 · **Status**: todo
+- [x] T014 [US1] Add the signed-in shell `apps/web/src/app/(app)/layout.tsx`, `apps/web/src/components/app-nav.tsx` (+ test), `apps/web/src/lib/nav.ts` (+ route-manifest test), role dashboards in `apps/web/src/app/(app)/dashboard/page.tsx`, and widen the matcher in `apps/web/src/proxy.ts`
+  - **Owner**: frontend-dev · **Branch**: `feat/002-app-nav` · **Size**: M · **Depends on**: T002, T010 · **Status**: done
   - **Scope**: research R-16; ui/01. This is the early navigation fix the requester asked for: it links only pages that exist (typedRoutes), so "Find a space" points at the existing `/book` until T039 switches it to `/find`. Renter dashboard: "Find a space" link and an empty state that points to search (the next-booking summary arrives in T057). Owner dashboard: heading and the slot for the spaces list (T023). Matcher covers `/dashboard`, `/book`, `/find`, `/spaces`, `/bookings`, `/owner`.
   - **Acceptance criteria**:
     - Given `useMeGet` returns a renter, When any `(app)` page renders, Then the main nav shows the renter links with `aria-current` on the active one; Given an owner, Then the owner links (FR-004, AC 1.5, OQ-9).
@@ -304,6 +304,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 
 - [ ] T016 [US1] QA: `apps/web/e2e/accounts-nav.spec.ts` (journeys + axe); set T002, T013, T014 and T015 to `done` when green
   - **Owner**: qa-engineer · **Branch**: `test/002-us1-accounts-e2e` · **Size**: M · **Depends on**: T011, T014, T015 · **Status**: todo
+  - **Follow-up**: Sign out has no pending state; disable it while signing out so a double click doesn't send two requests (T014 code-review follow-up)
   - **Scope**: test-plan.md sections 6 and 7.1 to 7.3. Until T057 lands, the renter dashboard is asserted by its neutral card and the "Find a space" link, never by "You have no upcoming bookings" (T059 asserts that text).
   - **Acceptance criteria**:
     - Given a new visitor, When they sign up as a renter and then as an owner (two accounts), Then each lands on its dashboard and every nav page opens by clicking and by keyboard only (AC 1.1–1.5, FR-004).
