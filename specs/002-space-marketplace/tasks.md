@@ -84,7 +84,7 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 | T052 | Availability calendar page                                   | frontend-dev   | T023, T046, T051       | M    | todo                                                           | `feat/002-availability-page`          |
 | T053 | QA US6: calendar e2e, axe                                    | qa-engineer    | T036, T052             | S    | todo                                                           | `test/002-us6-calendar`               |
 | T054 | Docs US6                                                     | docs-writer    | T053                   | S    | todo                                                           | `docs/002-us6-calendar`               |
-| T055 | My bookings and cancel API                                   | backend-dev    | T036                   | M    | todo                                                           | `feat/002-my-bookings-api`            |
+| T055 | My bookings and cancel API                                   | backend-dev    | T036                   | M    | review                                                         | `feat/002-my-bookings-api`            |
 | T056 | Owner bookings list API                                      | backend-dev    | T036                   | S    | todo                                                           | `feat/002-owner-bookings-api`         |
 | T057 | My bookings page, cancel, dashboard next booking             | frontend-dev   | T014, T029, T055       | M    | todo                                                           | `feat/002-my-bookings-page`           |
 | T058 | Owner bookings page with date filter                         | frontend-dev   | T023, T046, T056       | M    | todo                                                           | `feat/002-owner-bookings-page`        |
@@ -739,7 +739,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 **Independent test**: two bookings by one renter and one by another at the same space; each renter sees only theirs, the owner sees all three, cancelling one frees its seat.
 
 - [ ] T055 [US7] Add `GET /api/bookings` and `POST /api/bookings/{bookingId}/cancel` to `apps/api/src/bookings/` with `apps/api/test/my-bookings.int-spec.ts`; regenerate `apps/api/openapi.json`
-  - **Owner**: backend-dev · **Branch**: `feat/002-my-bookings-api` · **Size**: M · **Depends on**: T036 · **Status**: todo
+  - **Owner**: backend-dev · **Branch**: `feat/002-my-bookings-api` · **Size**: M · **Depends on**: T036 · **Status**: review — dev done; next: QA (queued)
   - **Scope**: contracts/bookings.md. Cancel is the single scoped `UPDATE booking`; `seat_hold_booking_fk` cascades the holds to inactive (AQ-7, ADR-0009 section 3), so the service never updates `seat_hold`. Legacy hourly rows are not listed (**OQ-3**).
   - **Boundary assumptions (T006 security review)**: see T007.
   - **Acceptance criteria**:

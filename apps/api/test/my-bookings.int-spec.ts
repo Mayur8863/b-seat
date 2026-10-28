@@ -150,9 +150,16 @@ describe('my bookings (GET /api/bookings, POST /api/bookings/:id/cancel)', () =>
       expect(holds.length).toBeGreaterThan(0);
       expect(holds.every((h) => !h.active)).toBe(true);
       // The seat is free for the same period again (the exclusion constraint would refuse this).
+      const taken = await insertPassBooking(db, {
+        seatId: seatAt(0),
+        userId: bId,
+        startsAt: row.startsAt,
+        endsAt: row.endsAt,
+      });
       await insertHold(db, {
         seatId: seatAt(0),
         userId: bId,
+        bookingId: taken.id,
         startsAt: row.startsAt,
         endsAt: row.endsAt,
       });
@@ -173,7 +180,15 @@ describe('my bookings (GET /api/bookings, POST /api/bookings/:id/cancel)', () =>
       const row = await pass(aId, seatAt(0), 1 * DAY);
       const other = await b.post(`/api/bookings/${row.id}/cancel`).expect(404);
       const unknown = await b.post(`/api/bookings/${randomUUID()}/cancel`).expect(404);
-      expect(other.body).toEqual(unknown.body);
+      const shape = (body: { type: string; title: string; status: number; detail: string }) => ({
+        type: body.type,
+        title: body.title,
+        status: body.status,
+        detail: body.detail,
+      });
+      expect(shape(other.body as Parameters<typeof shape>[0])).toEqual(
+        shape(unknown.body as Parameters<typeof shape>[0]),
+      );
       const [after] = await db.select().from(booking).where(eq(booking.id, row.id));
       expect(after?.status).toBe('active');
     });

@@ -56,3 +56,13 @@ export const BookingSchema = z
   })
   .meta({ id: 'Booking' });
 export type Booking = z.infer<typeof BookingSchema>;
+
+export const BookingListSchema = z
+  .object({ items: z.array(BookingSchema) })
+  .meta({ id: 'BookingList' });
+export type BookingList = z.infer<typeof BookingListSchema>;
+
+export const ListMyBookingsInputSchema = z
+  .strictObject({ limit: z.coerce.number().int().min(1).max(50).optional() })
+  .meta({ id: 'ListMyBookingsInput' });
+export type ListMyBookingsInput = z.infer<typeof ListMyBookingsInputSchema>;
