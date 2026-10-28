@@ -119,19 +119,17 @@ export function AppNav() {
               )}
             >
               {isPending ? (
-                <>
-                  <ul
-                    id="main-nav-list"
-                    aria-hidden="true"
-                    className="grid gap-1 sm:flex sm:gap-1 lg:gap-2"
-                  >
-                    {[0, 1, 2].map((i) => (
-                      <li key={i}>
-                        <Skeleton className="h-8 w-24" />
-                      </li>
-                    ))}
-                  </ul>
-                </>
+                <ul
+                  id="main-nav-list"
+                  aria-hidden="true"
+                  className="grid gap-1 sm:flex sm:gap-1 lg:gap-2"
+                >
+                  {[0, 1, 2].map((i) => (
+                    <li key={i}>
+                      <Skeleton className="h-8 w-24" />
+                    </li>
+                  ))}
+                </ul>
               ) : (
                 <ul
                   id="main-nav-list"

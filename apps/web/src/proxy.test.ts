@@ -12,7 +12,7 @@ describe('proxy', () => {
     '/bookings',
     '/find',
     '/spaces/abc',
-    '/find',
+    '/owner/spaces/new',
     '/owner',
   ])('guards %s', (path) => {
     expect(doesMatch({ config, url: `http://localhost:3000${path}` })).toBe(true);
@@ -22,13 +22,16 @@ describe('proxy', () => {
     expect(doesMatch({ config, url: `http://localhost:3000${path}` })).toBe(false);
   });
 
-  it('redirects to sign-in with next when there is no session cookie', () => {
-    const response = proxy(new NextRequest('http://localhost:3000/find'));
-    expect(response.status).toBe(307);
-    const location = new URL(response.headers.get('location') ?? '');
-    expect(location.pathname).toBe('/sign-in');
-    expect(location.searchParams.get('next')).toBe('/find');
-  });
+  it.each(['/bookings', '/find', '/owner/spaces/new'])(
+    'redirects %s to sign-in with next when there is no session cookie',
+    (path) => {
+      const response = proxy(new NextRequest(`http://localhost:3000${path}`));
+      expect(response.status).toBe(307);
+      const location = new URL(response.headers.get('location') ?? '');
+      expect(location.pathname).toBe('/sign-in');
+      expect(location.searchParams.get('next')).toBe(path);
+    },
+  );
 
   it('lets a signed-in request through', () => {
     const request = new NextRequest('http://localhost:3000/book', {

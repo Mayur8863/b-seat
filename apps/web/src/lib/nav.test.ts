@@ -16,7 +16,7 @@ const APP_DIR = join(__dirname, '..', 'app', '(app)');
 const ROLES: readonly NavRole[] = ['renter', 'owner'];
 
 /** Next route for a `page.tsx` folder: drops `(group)` and `@slot` segments, skips `_private`. */
-export function routeOf(segments: readonly string[]): string | null {
+function routeOf(segments: readonly string[]): string | null {
   if (segments.some((s) => s.startsWith('_'))) return null;
   const parts = segments.filter((s) => !/^\(.*\)$/.test(s) && !s.startsWith('@'));
   return '/' + parts.join('/');
@@ -37,7 +37,7 @@ interface Manifest {
 }
 
 /** Problems for one role: pages it can use that are not in its nav or reached from it. */
-export function manifestProblems(role: NavRole, routes: readonly string[], m: Manifest): string[] {
+function manifestProblems(role: NavRole, routes: readonly string[], m: Manifest): string[] {
   const navHrefs = new Set<string>(navLinksFor(role).map((l) => l.href));
   return routes.flatMap((route) => {
     if (!Object.hasOwn(m.pageRoles, route)) return [`${route}: no audience in PAGE_ROLES`];
