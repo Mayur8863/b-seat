@@ -47,6 +47,8 @@ ALTER TABLE "occupancy_mark" ADD CONSTRAINT "occupancy_mark_created_by_user_id_f
 ALTER TABLE "occupancy_mark" ADD CONSTRAINT "occupancy_mark_seat_space_fk" FOREIGN KEY ("seat_id","space_id") REFERENCES "public"."seat"("id","space_id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "seat_hold" ADD CONSTRAINT "seat_hold_seat_id_seat_id_fk" FOREIGN KEY ("seat_id") REFERENCES "public"."seat"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "seat_hold" ADD CONSTRAINT "seat_hold_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+-- Moved before the FK that references it (drizzle-kit emitted it after, which fails).
+ALTER TABLE "booking" ADD CONSTRAINT "booking_hold_key_unique" UNIQUE("id","seat_id","user_id","holds_active");--> statement-breakpoint
 ALTER TABLE "seat_hold" ADD CONSTRAINT "seat_hold_booking_fk" FOREIGN KEY ("booking_id","seat_id","user_id","active") REFERENCES "public"."booking"("id","seat_id","user_id","holds_active") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE "seat_hold" ADD CONSTRAINT "seat_hold_occupancy_mark_fk" FOREIGN KEY ("occupancy_mark_id","seat_id") REFERENCES "public"."occupancy_mark"("id","seat_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "seat_hold_seat_id_idx" ON "seat_hold" USING btree ("seat_id");--> statement-breakpoint
@@ -54,7 +56,6 @@ CREATE INDEX "seat_hold_booking_id_idx" ON "seat_hold" USING btree ("booking_id"
 CREATE INDEX "seat_hold_user_id_idx" ON "seat_hold" USING btree ("user_id");--> statement-breakpoint
 ALTER TABLE "booking" ADD CONSTRAINT "booking_seat_space_fk" FOREIGN KEY ("seat_id","space_id") REFERENCES "public"."seat"("id","space_id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "booking_space_id_starts_at_idx" ON "booking" USING btree ("space_id","starts_at");--> statement-breakpoint
-ALTER TABLE "booking" ADD CONSTRAINT "booking_hold_key_unique" UNIQUE("id","seat_id","user_id","holds_active");--> statement-breakpoint
 ALTER TABLE "booking" ADD CONSTRAINT "booking_pass_complete" CHECK ("booking"."kind" = 'hourly' or ("booking"."space_id" is not null and "booking"."pass" is not null and "booking"."slot" is not null and "booking"."start_date" is not null and "booking"."end_date" is not null and "booking"."price" is not null and "booking"."currency" is not null));--> statement-breakpoint
 ALTER TABLE "booking" ADD CONSTRAINT "booking_pass_length" CHECK ("booking"."kind" = 'hourly' or "booking"."end_date" - "booking"."start_date" = case "booking"."pass" when 'day' then 0 when 'week' then 6 else 29 end);--> statement-breakpoint
 ALTER TABLE "booking" ADD CONSTRAINT "booking_price_positive" CHECK ("booking"."price" is null or "booking"."price" > 0);--> statement-breakpoint

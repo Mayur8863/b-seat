@@ -195,8 +195,8 @@ describe('migration 0010_seat_hold_exclusions on top of hourly bookings (OQ-3, A
 
   it('backfills exactly one active hold, for the booking that has not ended', async () => {
     const { rows } = await scratch.pool.query(
-      `SELECT booking_id, seat_id, user_id, active, starts_at = b.starts_at AS same_start,
-              service_date = (b.starts_at AT TIME ZONE 'Asia/Kolkata')::date AS local_date
+      `SELECT h.booking_id, h.seat_id, h.user_id, h.active, h.starts_at = b.starts_at AS same_start,
+              h.service_date = (b.starts_at AT TIME ZONE 'Asia/Kolkata')::date AS local_date
        FROM seat_hold h JOIN booking b ON b.id = h.booking_id`,
     );
 

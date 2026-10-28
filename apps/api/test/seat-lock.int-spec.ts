@@ -28,9 +28,15 @@ describe('seat locks against Postgres (ADR-0009 section 9)', () => {
   afterAll(() => app.close());
 
   /** A pass header plus one hold on `seatId` for `userId`, written inside a lock transaction. */
-  async function writeHold(tx: SeatLockTx, seatId: string, userId: string, spaceId: string) {
-    const startsAt = at('2030-02-04', '07:00');
-    const endsAt = at('2030-02-04', '19:00');
+  async function writeHold(
+    tx: SeatLockTx,
+    seatId: string,
+    userId: string,
+    spaceId: string,
+    slot: 'day' | 'night' = 'day',
+  ) {
+    const startsAt = at('2030-02-04', slot === 'day' ? '07:00' : '19:00');
+    const endsAt = slot === 'day' ? at('2030-02-04', '19:00') : at('2030-02-05', '07:00');
     const [header] = await tx
       .insert(booking)
       .values({
@@ -66,18 +72,20 @@ describe('seat locks against Postgres (ADR-0009 section 9)', () => {
 
       const held = await db.transaction(async (tx) => {
         await lockSeats(tx, [a.id, b.id, a.id, b.id, a.id]);
-        const { rows } = await tx.execute<{ classid: number; objid: number }>(sql`
-          select classid::bigint::int as classid, objid::bigint::int as objid from pg_locks
+        const { rows } = await tx.execute<{ classid: string; objid: string }>(sql`
+          select classid::bigint as classid, objid::bigint as objid from pg_locks
           where locktype = 'advisory' and pid = pg_backend_pid() and objsubid = 2`);
-        const { rows: expected } = await tx.execute<{ k: number }>(
-          sql`select hashtext(id::text) as k from unnest(array[${a.id}, ${b.id}]::uuid[]) as t(id)`,
+        const { rows: expected } = await tx.execute<{ k: string }>(
+          sql`select ((hashtext(id::text)::bigint + 4294967296) % 4294967296) as k from unnest(array[${a.id}, ${b.id}]::uuid[]) as t(id)`,
         );
-        return { rows, expected: expected.map((r) => r.k) };
+        return { rows, expected: expected.map((r) => Number(r.k)) };
       });
 
       expect(held.rows).toHaveLength(2);
-      expect(new Set(held.rows.map((r) => r.classid))).toEqual(new Set([SEAT_HOLD_LOCK_CLASS]));
-      expect(held.rows.map((r) => r.objid).sort()).toEqual([...held.expected].sort());
+      expect(new Set(held.rows.map((r) => Number(r.classid)))).toEqual(
+        new Set([SEAT_HOLD_LOCK_CLASS]),
+      );
+      expect(held.rows.map((r) => Number(r.objid)).sort()).toEqual([...held.expected].sort());
     });
 
     it('is a no-op for an empty list', async () => {
@@ -155,7 +163,10 @@ describe('seat locks against Postgres (ADR-0009 section 9)', () => {
           db,
           ids,
           async (tx) => {
-            for (const id of ids) await writeHold(tx, id, userId, space.id);
+            // One renter holds both seats, in different slots (the renter rule forbids overlap).
+            for (const id of ids) {
+              await writeHold(tx, id, userId, space.id, id === s1.id ? 'day' : 'night');
+            }
           },
           { classify: classifyInsertError },
         );

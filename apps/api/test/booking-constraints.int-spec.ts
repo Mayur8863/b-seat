@@ -168,7 +168,8 @@ describe('booking constraints (database)', () => {
 
   describe('foreign keys', () => {
     // ON DELETE RESTRICT reports restrict_violation (23001), not foreign_key_violation (23503).
-    it('refuses deleting a seat that has bookings, and a space that has seats (RESTRICT)', async () => {
+    // For a seat with a pass header, the composite booking_seat_space_fk (NO ACTION) fires first.
+    it('refuses deleting a seat that has bookings, and a space that has seats', async () => {
       await insertPassBooking(db, {
         seatId: s1.id,
         userId: u,
@@ -177,8 +178,8 @@ describe('booking constraints (database)', () => {
       });
 
       expect(await pgFailure(db.delete(seat).where(eq(seat.id, s1.id)))).toEqual({
-        code: '23001',
-        constraint: 'booking_seat_id_seat_id_fk',
+        code: '23503',
+        constraint: 'booking_seat_space_fk',
       });
       expect(await pgFailure(db.delete(space).where(eq(space.id, london.id)))).toEqual({
         code: '23001',
@@ -199,16 +200,17 @@ describe('booking constraints (database)', () => {
       expect(await db.$count(booking)).toBe(0);
     });
 
-    it('refuses a booking for an unknown seat (booking_seat_id_seat_id_fk)', async () => {
+    it('refuses a booking for an unknown seat (booking_seat_space_fk)', async () => {
       const failure = await pgFailure(
         insertPassBooking(db, {
           seatId: '00000000-0000-4000-8000-000000000000',
+          spaceId: london.id,
           userId: u,
           startsAt: at('09:00'),
           endsAt: at('10:00'),
         }),
       );
-      expect(failure).toEqual({ code: '23503', constraint: 'booking_seat_id_seat_id_fk' });
+      expect(failure).toEqual({ code: '23503', constraint: 'booking_seat_space_fk' });
     });
   });
 });
