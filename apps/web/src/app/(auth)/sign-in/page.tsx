@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense } from 'react';
+import { Suspense, useEffect } from 'react';
 
 import { AuthForm } from '@/components/auth-form';
 import { authClient } from '@/lib/auth-client';
@@ -12,6 +12,13 @@ function SignIn() {
   const router = useRouter();
   const next = useSearchParams().get('next');
   const target = safeNext(next);
+  const session = authClient.useSession();
+
+  // Only a server-validated session redirects; a stale cookie yields no user and the form shows.
+  const hasSession = Boolean(session.data?.user);
+  useEffect(() => {
+    if (hasSession) router.replace(target as '/dashboard');
+  }, [hasSession, router, target]);
 
   return (
     <div className="grid gap-6">

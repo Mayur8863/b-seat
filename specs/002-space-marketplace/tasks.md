@@ -44,7 +44,7 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 | T012 | Wire `SEED_DEMO_PASSWORD` into compose and CI                | devops         | T001                   | S    | done   | `chore/002-seed-env`                  |
 | T013 | Renter preferences API                                       | backend-dev    | T002                   | S    | done   | `feat/002-renter-preferences-api`     |
 | T014 | Signed-in shell, role-aware nav, role dashboards             | frontend-dev   | T002, T010             | M    | review | `feat/002-app-nav`                    |
-| T015 | Sign-up role choice and optional preferences                 | frontend-dev   | T002, T013, T014, T019 | M    | todo   | `feat/002-sign-up-role`               |
+| T015 | Sign-up role choice and optional preferences                 | frontend-dev   | T002, T013, T014, T019 | M    | review | `feat/002-sign-up-role`               |
 | T016 | QA US1: accounts and navigation e2e, axe                     | qa-engineer    | T011, T014, T015       | M    | todo   | `test/002-us1-accounts-e2e`           |
 | T017 | Docs US1                                                     | docs-writer    | T016                   | S    | todo   | `docs/002-us1-accounts`               |
 | T018 | UI spec: owner listing, seats, slots and prices              | ui-ux-designer | T010                   | M    | todo   | `docs/002-ui-owner-listing`           |
@@ -290,7 +290,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given keyboard only, When tabbing from the skip link, Then every nav link is reachable with a visible focus ring (AC 1.5).
 
 - [ ] T015 [US1] Add the role choice and optional preferences to `apps/web/src/app/(auth)/sign-up/page.tsx` and `apps/web/src/components/auth-form.tsx` (+ tests), `inferAdditionalFields` in `apps/web/src/lib/auth-client.ts`, and `apps/web/src/components/preferences-form.tsx` (+ test) on the renter dashboard
-  - **Owner**: frontend-dev · **Branch**: `feat/002-sign-up-role` · **Size**: M · **Depends on**: T002, T013, T014, T019 · **Status**: todo
+  - **Owner**: frontend-dev · **Branch**: `feat/002-sign-up-role` · **Size**: M · **Depends on**: T002, T013, T014, T019 · **Status**: review
   - **Scope**: ui/01. RHF + `zodResolver`. After a renter's successful sign-up, save preferences with `useMeUpdatePreferences` (a failure shows a non-blocking notice; the account stands). The country picker uses `useReferenceGet` (T019), the same list as the space form.
   - **Note (T002 bridge)**: T002 added a temporary `accountType: 'renter'` in `sign-up/page.tsx` (and `inferAdditionalFields` in `auth-client.ts`, which stays). Replace the hard-coded value with the user's choice and update `sign-up/page.test.tsx`.
   - **Note (T002 review)**: rewrite `sign-up/page.test.tsx` to mock HTTP with MSW (capture the request body) instead of mocking `@/lib/auth-client`, and cover the error path. Do not send `accountType` on profile edits: the update hook rejects even no-op values.
