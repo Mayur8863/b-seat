@@ -14,7 +14,7 @@ function driverError(code: string, constraint?: string): DrizzleQueryError {
   return new DrizzleQueryError('insert into "booking" ...', [], cause);
 }
 
-describe('classifyInsertError (ADR-0008 section 2)', () => {
+describe('classifyInsertError (ADR-0009 section 2)', () => {
   it('maps 23P01 on seat_hold_seat_no_overlap to 409 seat-unavailable', () => {
     const outcome = classifyInsertError(driverError('23P01', 'seat_hold_seat_no_overlap'));
     expect(outcome).toBeInstanceOf(ProblemException);

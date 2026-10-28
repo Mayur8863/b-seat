@@ -15,6 +15,9 @@ export const LOCK_TIMEOUT = '5s';
  */
 export const SEAT_HOLD_LOCK_CLASS = 1112735745;
 
+/** Most seats one transaction may lock (ADR-0009 section 9.2). */
+export const MAX_LOCKED_SEATS = 200;
+
 export type SeatLockTx = Parameters<Parameters<Database['transaction']>[0]>[0];
 
 /**
@@ -24,15 +27,22 @@ export type SeatLockTx = Parameters<Parameters<Database['transaction']>[0]>[0];
  * Call it first in the transaction, after `SET LOCAL lock_timeout`, before any row lock.
  */
 export async function lockSeats(tx: SeatLockTx, seatIds: readonly string[]): Promise<void> {
-  if (seatIds.length === 0) return;
-  // One statement: the subquery's ORDER BY is not flattened, so locks are taken in key order.
-  const ids = sql`array[${sql.join(
-    seatIds.map((id) => sql`${id}`),
-    sql`, `,
-  )}]::uuid[]`;
-  await tx.execute(sql`
+  const distinct = [...new Set(seatIds)];
+  if (distinct.length === 0) return;
+  if (distinct.length > MAX_LOCKED_SEATS) {
+    throw new RangeError(`Cannot lock more than ${MAX_LOCKED_SEATS} seats in one transaction`);
+  }
+  await tx.execute(lockSeatsStatement(distinct));
+}
+
+/** Drizzle spreads a JS array into one parameter per item, so the array travels as one text literal. */
+const uuidArrayLiteral = (ids: readonly string[]) => `{${ids.join(',')}}`;
+
+/** One bound uuid array; the subquery's ORDER BY is not flattened, so locks are taken in key order. */
+export function lockSeatsStatement(distinct: readonly string[]) {
+  return sql`
     select pg_advisory_xact_lock(${SEAT_HOLD_LOCK_CLASS}::int, k)
-    from (select distinct hashtext(id::text) as k from unnest(${ids}) as t(id) order by k) as keys`);
+    from (select distinct hashtext(id::text) as k from unnest(${uuidArrayLiteral(distinct)}::uuid[]) as t(id) order by k) as keys`;
 }
 
 /** What `classify` decides about a database error from the writer's statements. */
@@ -75,7 +85,7 @@ export async function withSeatLocks<T>(
   for (let attempt = 1; ; attempt += 1) {
     try {
       return await db.transaction(async (tx) => {
-        await tx.execute(sql`set local lock_timeout = ${sql.raw(`'${LOCK_TIMEOUT}'`)}`);
+        await tx.execute(sql`select set_config('lock_timeout', ${LOCK_TIMEOUT}, true)`);
         await lockSeats(tx, seatIds);
         return work(tx);
       });

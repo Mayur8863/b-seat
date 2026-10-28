@@ -1,10 +1,19 @@
 import { DrizzleQueryError } from 'drizzle-orm';
+import { PgDialect } from 'drizzle-orm/pg-core';
 import pg from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { Database } from '../db/db.js';
 import { classifyInsertError } from './booking-conflicts.js';
-import { MAX_INSERT_ATTEMPTS, withSeatLocks } from './seat-lock.js';
+import {
+  lockSeats,
+  lockSeatsStatement,
+  MAX_INSERT_ATTEMPTS,
+  MAX_LOCKED_SEATS,
+  SEAT_HOLD_LOCK_CLASS,
+  type SeatLockTx,
+  withSeatLocks,
+} from './seat-lock.js';
 
 const SEAT_IDS = ['0b6c7d1e-0000-4000-8000-000000000001'];
 const options = { classify: classifyInsertError };
@@ -71,7 +80,7 @@ describe('withSeatLocks', () => {
     expect(log).toEqual(['begin', 'lock_timeout', 'lock', 'work', 'commit']);
   });
 
-  it('maps an exclusion violation to the 409 problem (ADR-0008 section 2)', async () => {
+  it('maps an exclusion violation to the 409 problem (ADR-0009 section 2)', async () => {
     const { db } = fakeDb();
 
     const err = await rejection(
@@ -211,5 +220,40 @@ describe('withSeatLocks', () => {
     expect(err).toBe(timeout);
     expect(onLockTimeout).toHaveBeenCalledTimes(1);
     expect(transaction).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('lockSeats', () => {
+  const uuid = (n: number) => `0b6c7d1e-0000-4000-8000-${String(n).padStart(12, '0')}`;
+  const txStub = () => {
+    const execute = vi.fn(() => Promise.resolve());
+    return { tx: { execute } as unknown as SeatLockTx, execute };
+  };
+
+  it('renders one distinct, key-ordered statement of the seat-hold class with one bound array', () => {
+    const ids = [uuid(2), uuid(1)];
+    const { sql: text, params } = new PgDialect().sqlToQuery(lockSeatsStatement(ids));
+
+    expect(text).toMatch(/pg_advisory_xact_lock\(\$1::int, k\)/);
+    expect(text).toMatch(/select distinct hashtext\(id::text\) as k from unnest\(\$2::uuid\[\]\)/);
+    expect(text).toMatch(/order by k\) as keys/);
+    expect(params).toEqual([SEAT_HOLD_LOCK_CLASS, `{${ids.join(',')}}`]);
+  });
+
+  it('does nothing for an empty list', async () => {
+    const { tx, execute } = txStub();
+    await lockSeats(tx, []);
+    expect(execute).not.toHaveBeenCalled();
+  });
+
+  it('throws RangeError over the cap of distinct seats, and counts duplicates once', async () => {
+    const { tx, execute } = txStub();
+    const many = Array.from({ length: MAX_LOCKED_SEATS + 1 }, (_, i) => uuid(i));
+
+    await expect(lockSeats(tx, many)).rejects.toBeInstanceOf(RangeError);
+    expect(execute).not.toHaveBeenCalled();
+
+    await lockSeats(tx, [...many.slice(0, MAX_LOCKED_SEATS), ...many.slice(0, 5)]);
+    expect(execute).toHaveBeenCalledTimes(1);
   });
 });

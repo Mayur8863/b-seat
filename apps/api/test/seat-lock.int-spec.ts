@@ -1,6 +1,7 @@
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { eq, sql } from 'drizzle-orm';
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import type pg from 'pg';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { classifyInsertError } from '../src/bookings/booking-conflicts.js';
 import {
@@ -10,6 +11,7 @@ import {
   withSeatLocks,
 } from '../src/bookings/seat-lock.js';
 import type { Database } from '../src/db/db.js';
+import { PG_POOL } from '../src/db/db.module.js';
 import { booking, seatHold } from '../src/db/schema/index.js';
 import { createSeats, createSpace, signedInUser, testDb } from './fixtures.js';
 import { createTestApp, resetDb } from './helpers.js';
@@ -19,12 +21,15 @@ const at = (day: string, time: string) => new Date(`${day}T${time}:00Z`);
 describe('seat locks against Postgres (ADR-0009 section 9)', () => {
   let app: NestExpressApplication;
   let db: Database;
+  let pool: pg.Pool;
 
   beforeAll(async () => {
     app = await createTestApp();
     db = testDb(app);
+    pool = app.get<pg.Pool>(PG_POOL);
   });
   beforeEach(() => resetDb(app));
+  afterEach(() => vi.restoreAllMocks());
   afterAll(() => app.close());
 
   /** A pass header plus one hold on `seatId` for `userId`, written inside a lock transaction. */
@@ -97,12 +102,74 @@ describe('seat locks against Postgres (ADR-0009 section 9)', () => {
       });
     });
 
+    it('locks in ascending key order: holds every lower key while it waits on the highest', async () => {
+      const space = await createSpace(db);
+      const seats = await createSeats(db, space.id, 8);
+      const keyed = await Promise.all(
+        seats.map(async (s) => {
+          const { rows } = await db.execute<{ k: number }>(
+            sql`select hashtext(${s.id}::text) as k`,
+          );
+          return { id: s.id, k: Number(rows[0]?.k) };
+        }),
+      );
+      // Highest key first in the input, so only the sort makes the others get locked first.
+      const ordered = keyed.sort((x, y) => y.k - x.k);
+      const [high, ...lower] = ordered;
+      if (!high || new Set(keyed.map((s) => s.k)).size !== keyed.length) {
+        throw new Error('expected distinct keys');
+      }
+      // pg_locks.objid is an unsigned oid; hashtext returns a signed int4.
+      const unsigned = (k: number) => (k + 2 ** 32) % 2 ** 32;
+      const wanted = lower.map((s) => unsigned(s.k)).sort((x, y) => x - y);
+      const blocker = await pool.connect();
+      const observer = await pool.connect();
+      try {
+        await blocker.query('select pg_advisory_lock($1::int, $2::int)', [
+          SEAT_HOLD_LOCK_CLASS,
+          high.k,
+        ]);
+        let waiterPid = 0;
+        const outcome = db
+          .transaction(async (tx) => {
+            await tx.execute(sql`set local lock_timeout = '1500ms'`);
+            const { rows } = await tx.execute<{ pid: number }>(sql`select pg_backend_pid() as pid`);
+            waiterPid = Number(rows[0]?.pid);
+            await lockSeats(
+              tx,
+              ordered.map((s) => s.id),
+            );
+          })
+          .then(
+            () => 'locked',
+            (err: unknown) => err,
+          );
+
+        let held: number[] = [];
+        for (let i = 0; i < 25 && held.length < wanted.length; i += 1) {
+          await new Promise((r) => setTimeout(r, 50));
+          if (!waiterPid) continue;
+          const { rows } = await observer.query<{ objid: string }>(
+            `select objid::bigint as objid from pg_locks
+             where locktype = 'advisory' and pid = $1 and granted`,
+            [waiterPid],
+          );
+          held = rows.map((r) => Number(r.objid)).sort((x, y) => x - y);
+        }
+
+        expect(held).toEqual(wanted);
+        expect(await outcome).toMatchObject({ cause: { code: '55P03' } });
+      } finally {
+        await blocker.query('select pg_advisory_unlock_all()');
+        blocker.release();
+        observer.release();
+      }
+    });
+
     it('lets two writers lock the same seats in opposite order without a deadlock', async () => {
       const space = await createSpace(db);
       const seats = await createSeats(db, space.id, 6);
       const ids = seats.map((s) => s.id);
-      const transaction = vi.spyOn(db, 'transaction');
-
       const results = await Promise.allSettled(
         Array.from({ length: 10 }, (_, i) =>
           db.transaction(async (tx) => {
@@ -114,7 +181,6 @@ describe('seat locks against Postgres (ADR-0009 section 9)', () => {
       );
 
       expect(results.filter((r) => r.status === 'rejected')).toEqual([]);
-      expect(transaction).toHaveBeenCalledTimes(10);
     });
   });
 

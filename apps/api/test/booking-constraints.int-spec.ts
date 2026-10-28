@@ -57,8 +57,8 @@ describe('booking constraints (database)', () => {
   });
 
   describe('booking CHECK constraints', () => {
-    // Every inverted window also breaks booking_pass_length or similar earlier-named checks, so the
-    // definition is asserted instead (CHECKs run in name order).
+    // Postgres checks CHECKs in name order, so booking_ends_after_starts reports before the
+    // booking_pass_* checks that an inverted window would also break.
     it('defines booking_ends_after_starts as ends_at > starts_at', async () => {
       const { rows } = await db.execute<{ def: string }>(sql`
         select pg_get_constraintdef(oid) as def from pg_constraint
@@ -77,7 +77,7 @@ describe('booking constraints (database)', () => {
         }),
       );
 
-      expect(failure.code).toBe('23514');
+      expect(failure).toEqual({ code: '23514', constraint: 'booking_ends_after_starts' });
     });
 
     it.each([
@@ -129,7 +129,8 @@ describe('booking constraints (database)', () => {
         }),
       );
 
-      expect(failure).toEqual({ code: '23503', constraint: 'booking_seat_space_fk' });
+      expect(failure.code).toBe('23503');
+      expect(['booking_seat_id_seat_id_fk', 'booking_seat_space_fk']).toContain(failure.constraint);
     });
   });
 
@@ -167,8 +168,13 @@ describe('booking constraints (database)', () => {
   });
 
   describe('foreign keys', () => {
-    // ON DELETE RESTRICT reports restrict_violation (23001), not foreign_key_violation (23503).
-    // For a seat with a pass header, the composite booking_seat_space_fk (NO ACTION) fires first.
+    // A seat with a pass header is referenced by both booking_seat_id_seat_id_fk (RESTRICT, 23001)
+    // and booking_seat_space_fk (NO ACTION, 23503). Which one Postgres reports depends on trigger
+    // firing order (by name/OID), so the tests accept either pair instead of relying on it.
+    const SEAT_FK_FAILURES = [
+      { code: '23001', constraint: 'booking_seat_id_seat_id_fk' },
+      { code: '23503', constraint: 'booking_seat_space_fk' },
+    ];
     it('refuses deleting a seat that has bookings, and a space that has seats', async () => {
       await insertPassBooking(db, {
         seatId: s1.id,
@@ -177,10 +183,9 @@ describe('booking constraints (database)', () => {
         endsAt: at('10:00'),
       });
 
-      expect(await pgFailure(db.delete(seat).where(eq(seat.id, s1.id)))).toEqual({
-        code: '23503',
-        constraint: 'booking_seat_space_fk',
-      });
+      expect(SEAT_FK_FAILURES).toContainEqual(
+        await pgFailure(db.delete(seat).where(eq(seat.id, s1.id))),
+      );
       expect(await pgFailure(db.delete(space).where(eq(space.id, london.id)))).toEqual({
         code: '23001',
         constraint: 'seat_space_id_space_id_fk',
@@ -200,7 +205,7 @@ describe('booking constraints (database)', () => {
       expect(await db.$count(booking)).toBe(0);
     });
 
-    it('refuses a booking for an unknown seat (booking_seat_space_fk)', async () => {
+    it('refuses a booking for an unknown seat (23503 on either seat key)', async () => {
       const failure = await pgFailure(
         insertPassBooking(db, {
           seatId: '00000000-0000-4000-8000-000000000000',
@@ -210,7 +215,8 @@ describe('booking constraints (database)', () => {
           endsAt: at('10:00'),
         }),
       );
-      expect(failure).toEqual({ code: '23503', constraint: 'booking_seat_space_fk' });
+      expect(failure.code).toBe('23503');
+      expect(['booking_seat_id_seat_id_fk', 'booking_seat_space_fk']).toContain(failure.constraint);
     });
   });
 });
