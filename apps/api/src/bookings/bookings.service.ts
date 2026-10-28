@@ -51,6 +51,12 @@ export class BookingsService {
       (tx) => this.insert(tx, userId, spaceId, input, plan),
       {
         classify: classifyInsertError,
+        // Seat removal (T021) locks the space row and then the seat locks; taking the space
+        // first here keeps one order, so the two never deadlock. It also makes an unpublish
+        // that is waiting on the space row queue behind this booking.
+        beforeLocks: async (tx) => {
+          await tx.execute(sql`SELECT 1 FROM space WHERE id = ${spaceId} FOR SHARE`);
+        },
         onRetry: (attempt) => {
           this.logger.warn({ seatId: input.seatId, attempt }, 'booking.insert_deadlock_retry');
         },
