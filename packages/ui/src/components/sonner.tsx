@@ -42,4 +42,6 @@ const Toaster = ({ ...props }: ToasterProps) => {
   );
 };
 
+// Re-exported so apps call toast() without a direct sonner dependency.
+export { toast } from 'sonner';
 export { Toaster };

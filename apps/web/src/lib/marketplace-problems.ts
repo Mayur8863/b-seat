@@ -1,0 +1,54 @@
+import { ApiError } from '@bseat/api-client';
+
+import { safeNext } from './safe-next';
+import type { ProblemCopy } from './booking-problems';
+
+/** Screens that use this copy; the Alert title reads "We couldn't {action}" (ui/02 9.1). */
+export type OwnerAction = 'save your space';
+
+/**
+ * Copy for a failed owner request. The server's `title` and `detail` are never shown (OQ-H):
+ * the fallback depends only on the status.
+ */
+export function describeOwnerProblem(
+  error: unknown,
+  action: OwnerAction,
+  path?: string,
+): ProblemCopy {
+  const title = `We couldn't ${action}`;
+  if (!(error instanceof ApiError)) {
+    return { title, description: ['Check your connection and try again.'] };
+  }
+  switch (error.status) {
+    case 400:
+    case 422:
+      return { title, description: ['Check the details and try again.'] };
+    case 401: {
+      const next = safeNext(path, '');
+      return {
+        title: 'Your session has ended',
+        description: [
+          { text: 'Sign in', href: `/sign-in${next ? `?next=${encodeURIComponent(next)}` : ''}` },
+          ' again to continue.',
+        ],
+      };
+    }
+    case 403:
+      return { title: 'Not allowed', description: ["You don't have access to this."] };
+    case 404:
+      return {
+        title,
+        description: ["We couldn't find that. It may have been removed."],
+      };
+    case 409:
+      return {
+        title,
+        description: ['That changed while you were working. Reload and try again.'],
+      };
+    default:
+      return {
+        title,
+        description: ['Something went wrong on our side. Try again in a moment.'],
+      };
+  }
+}
