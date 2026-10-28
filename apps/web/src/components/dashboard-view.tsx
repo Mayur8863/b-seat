@@ -17,6 +17,7 @@ import { CalendarIcon, SearchIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
+import { OwnerSpaces } from '@/components/owner-spaces';
 import { PreferencesForm } from '@/components/preferences-form';
 
 const NO_PREFERENCES: Preferences = { country: null, city: null, area: null };
@@ -146,22 +147,6 @@ function RenterBody({ preferences }: { preferences: Preferences | null }) {
   );
 }
 
-function OwnerBody() {
-  return (
-    <section aria-labelledby="spaces-heading" className="grid gap-3">
-      <h2 id="spaces-heading" className="text-lg font-medium">
-        My spaces
-      </h2>
-      {/* Slot for the spaces list (T023): loading, empty, error and cards render here. */}
-      <Card>
-        <CardContent>
-          <p className="text-muted-foreground">Your spaces will appear here.</p>
-        </CardContent>
-      </Card>
-    </section>
-  );
-}
-
 /** Dashboard body: the h1 always shows; the rest depends on the account role. */
 export function DashboardView() {
   const { data, isPending, error } = useMeGet();
@@ -184,7 +169,7 @@ export function DashboardView() {
         <>
           <p className="text-muted-foreground">Signed in as {data.data.name}</p>
           {data.data.accountType === 'owner' ? (
-            <OwnerBody />
+            <OwnerSpaces />
           ) : (
             <RenterBody preferences={data.data.preferences} />
           )}

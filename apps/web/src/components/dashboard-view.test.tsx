@@ -1,4 +1,8 @@
-import { getMeGetMockHandler, getReferenceGetMockHandler } from '@bseat/api-client/mocks';
+import {
+  getMeGetMockHandler,
+  getOwnerSpacesListMockHandler,
+  getReferenceGetMockHandler,
+} from '@bseat/api-client/mocks';
 import { screen, waitFor, within } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import userEvent from '@testing-library/user-event';
@@ -68,11 +72,11 @@ describe('DashboardView', () => {
     expect(screen.queryByRole('heading', { name: 'My spaces' })).not.toBeInTheDocument();
   });
 
-  it('owner: My spaces heading with the placeholder slot, no next booking', async () => {
-    server.use(me('owner'));
+  it('owner: My spaces with the list, no next booking', async () => {
+    server.use(me('owner'), getOwnerSpacesListMockHandler({ items: [] }));
     renderWithQuery(<DashboardView />);
     expect(await screen.findByRole('heading', { level: 2, name: 'My spaces' })).toBeInTheDocument();
-    expect(screen.getByText('Your spaces will appear here.')).toBeInTheDocument();
+    expect(await screen.findByText("You haven't listed a space yet.")).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Next booking' })).not.toBeInTheDocument();
   });
 
@@ -162,7 +166,7 @@ describe('DashboardView', () => {
     });
 
     it('owners never see the preferences card', async () => {
-      server.use(me('owner'));
+      server.use(me('owner'), getOwnerSpacesListMockHandler({ items: [] }));
       renderWithQuery(<DashboardView />);
       await screen.findByRole('heading', { name: 'My spaces' });
       expect(screen.queryByRole('region', { name: 'Your preferences' })).not.toBeInTheDocument();
