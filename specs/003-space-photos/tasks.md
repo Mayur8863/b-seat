@@ -46,7 +46,7 @@ only a human merges.
 | T009 | Owner photo list and describe API                                | backend-dev       | T008                         | S    | todo   | `feat/003-photo-list-api`              |
 | T010 | `uploadSpacePhoto` XHR helper in the api-client                  | frontend-dev      | T008                         | S    | todo   | `feat/003-upload-helper`               |
 | T011 | UI spec: owner Photos section                                    | ui-ux-designer    | T001                         | M    | review | `docs/003-ui-owner-photos`             |
-| T012 | UI spec: cover, placeholder, gallery and large view              | ui-ux-designer    | T001                         | S    | todo   | `docs/003-ui-renter-photos`            |
+| T012 | UI spec: cover, placeholder, gallery and large view              | ui-ux-designer    | T001                         | S    | review | `docs/003-ui-renter-photos`            |
 | T013 | Upload-queue model (pure reducer, TDD)                           | frontend-dev      | T011                         | S    | todo   | `feat/003-upload-queue-model`          |
 | T014 | Owner Photos page: nav, list, empty state, count, upload queue   | frontend-dev      | T009, T010, T011, T013       | M    | todo   | `feat/003-owner-photos-page`           |
 | T015 | Describe photos and guard leaving with unfinished uploads        | frontend-dev      | T014                         | S    | todo   | `feat/003-photo-describe-leave-guard`  |
@@ -222,7 +222,7 @@ first (T002, T003). After T001: T002, T003, T005, T006, T011 and T012 can start 
     - Given the delete dialog, Then its copy says deletion is permanent and cannot be undone (AC 3.3).
 
 - [ ] T012 [P] [US2] Write `specs/003-space-photos/ui/02-renter-photos.md` and add it to `ui.md`: cover on result cards, the placeholder, the listing gallery, the large view (controls, "3 of 7", captions, swipe, focus return), loading and image-error states
-  - **Owner**: ui-ux-designer · **Branch**: `docs/003-ui-renter-photos` · **Size**: S · **Depends on**: T001 · **Status**: todo
+  - **Owner**: ui-ux-designer · **Branch**: `docs/003-ui-renter-photos` · **Size**: S · **Depends on**: T001 · **Status**: review (specs/003-space-photos/ui/02-renter-photos.md written; awaiting frontend-dev T019/T020)
   - **Acceptance criteria**:
     - Given the spec, Then AC 2.1 to 2.4 and FR-016, FR-017 have described states, with the placeholder text "No photos yet", and card layouts identical with and without a photo.
     - Given the large view, Then keyboard (arrows, Escape, Tab order), pointer and touch behaviour and focus return are specified, and contrast for captions and controls over photos meets 4.5:1 (FR-026).
