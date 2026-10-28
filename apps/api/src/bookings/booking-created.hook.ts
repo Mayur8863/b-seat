@@ -1,9 +1,14 @@
 import { Injectable } from '@nestjs/common';
 
+import type { Booking } from './bookings.schemas.js';
+
 export interface BookingCreatedEvent {
   bookingId: string;
   seatId: string;
   spaceId: string;
+  userId: string;
+  /** The response body, so listeners need no second read of what was just written. */
+  booking: Booking;
 }
 
 /**

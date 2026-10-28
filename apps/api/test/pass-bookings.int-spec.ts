@@ -29,6 +29,7 @@ import {
   localDateFromNow,
   signedInUser,
   testDb,
+  waitForMail,
 } from './fixtures.js';
 import { createTestApp, resetDb } from './helpers.js';
 
@@ -414,6 +415,65 @@ describe('create pass booking (POST /api/listings/:spaceId/bookings)', () => {
         }
       }
     }, 60_000);
+  });
+
+  describe('emails (T037)', () => {
+    async function ownerWithSeat(email: string) {
+      const o = await signedInUser(app, email, 'Olive Owner');
+      await db.update(user).set({ accountType: 'owner' }).where(eq(user.id, o.userId));
+      const s = await createListing(db, o.userId, {
+        status: 'published',
+        timeZone: ZONE,
+        openingMode: 'always_open',
+        shiftChangeAt: '07:00',
+        opensAt: null,
+        closesAt: null,
+      });
+      const [seatRow] = await createSeats(db, s.id, 1);
+      if (!seatRow) throw new Error('no seat');
+      await db.insert(availabilityCalendar).values({ spaceId: s.id, startDate: '2020-01-01' });
+      await db
+        .insert(passPrice)
+        .values({ spaceId: s.id, slot: 'day', pass: 'day', amount: '500.00' });
+      return { spaceId: s.id, seatId: seatRow.id };
+    }
+
+    it('a booking sends one email to the renter and one to the owner, no renter address to the owner', async () => {
+      const tag = randomUUID().slice(0, 8);
+      const ownerEmail = `own-${tag}@example.com`;
+      const renterEmail = `ren-${tag}@example.com`;
+      const o = await ownerWithSeat(ownerEmail);
+      const r = await signedInUser(app, renterEmail, 'Rita Renter');
+      await post(r.agent, dayBody(o.seatId), o.spaceId).expect(201);
+
+      const [renterMail] = await waitForMail(renterEmail, 'Booking confirmed:');
+      const [ownerMail] = await waitForMail(ownerEmail, 'New booking at');
+      expect(renterMail?.text).toContain('Payment is made directly to the owner.');
+      expect(renterMail?.text).toContain('500.00 INR');
+      expect(renterMail?.text).toContain(`(${ZONE})`);
+      expect(ownerMail?.text).toContain('Rita Renter');
+      expect(ownerMail?.text).not.toContain(renterEmail);
+    }, 90_000);
+
+    it('a race for one seat mails only the winner and the owner once', async () => {
+      const tag = randomUUID().slice(0, 8);
+      const ownerEmail = `own-${tag}@example.com`;
+      const o = await ownerWithSeat(ownerEmail);
+      const emails = Array.from({ length: 5 }, (_, i) => `race${i}-${tag}@example.com`);
+      const racers = await Promise.all(emails.map((e) => signedInUser(app, e)));
+      const results = await Promise.all(
+        racers.map((x) => post(x.agent, dayBody(o.seatId), o.spaceId)),
+      );
+      const winners = results.flatMap((res, i) => (res.status === 201 ? [i] : []));
+      expect(winners).toHaveLength(1);
+
+      const winnerEmail = emails[winners[0] ?? 0] ?? '';
+      expect(await waitForMail(winnerEmail, 'Booking confirmed:')).toHaveLength(1);
+      expect(await waitForMail(ownerEmail, 'New booking at')).toHaveLength(1);
+      for (const loser of emails.filter((e) => e !== winnerEmail)) {
+        await expect(waitForMail(loser, 'Booking confirmed:', 1_000)).rejects.toThrow(/No mail/);
+      }
+    }, 90_000);
   });
 
   describe('races', () => {
