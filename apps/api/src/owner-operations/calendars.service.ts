@@ -2,7 +2,7 @@ import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, asc, eq, gte, inArray, isNull, sql } from 'drizzle-orm';
 import { PinoLogger } from 'nestjs-pino';
 
-import { LOCK_TIMEOUT } from '../bookings/seat-lock.js';
+import { withLockTimeout } from '../bookings/seat-lock.js';
 import { Clock } from '../common/time/clock.js';
 import { toLocal } from '../common/time/zoned-time.js';
 import type { Database } from '../db/db.js';
@@ -48,12 +48,13 @@ export class CalendarsService {
    * holds or bookings, so there are no seat locks to order after it (ADR-0009 section 9).
    */
   private async lockSpace(tx: Tx, ownerId: string, spaceId: string): Promise<string> {
-    await tx.execute(sql`set local lock_timeout = ${sql.raw(`'${LOCK_TIMEOUT}'`)}`);
-    const [row] = await tx
-      .select({ timeZone: space.timeZone })
-      .from(space)
-      .where(and(eq(space.id, spaceId), eq(space.ownerId, ownerId)))
-      .for('update');
+    const [row] = await withLockTimeout(tx, this.logger, { spaceId }, () =>
+      tx
+        .select({ timeZone: space.timeZone })
+        .from(space)
+        .where(and(eq(space.id, spaceId), eq(space.ownerId, ownerId)))
+        .for('update'),
+    );
     if (!row) throw new NotFoundException();
     return row.timeZone;
   }

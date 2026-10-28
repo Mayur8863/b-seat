@@ -48,13 +48,17 @@ export class BookingsService {
   }
 
   async create(userId: string, spaceId: string, input: CreateBookingInput): Promise<Booking> {
-    const facts = await this.loadFacts(spaceId, input);
-    const plan = planPassBooking(facts, userId, input, this.clock.now());
-
+    // Price, slot flag and calendar are read right after the space row is share-locked (and
+    // before the seat locks, so the queued bookers do not hold them longer): pricing and calendar
+    // writers take the space row FOR UPDATE, so their commit is either seen here or queued behind us.
+    let ready: { facts: PassBookingFacts; plan: PassBookingPlan } | undefined;
     const header = await withSeatLocks(
       this.db,
       [input.seatId],
-      (tx) => this.insert(tx, userId, spaceId, input, plan),
+      async (tx) => {
+        if (!ready) throw new Error('booking facts were not loaded before the seat lock');
+        return this.insert(tx, userId, spaceId, input, ready.plan);
+      },
       {
         classify: classifyInsertError,
         // Seat removal (T021) locks the space row and then the seat locks; taking the space
@@ -62,6 +66,8 @@ export class BookingsService {
         // that is waiting on the space row queue behind this booking.
         beforeLocks: async (tx) => {
           await tx.execute(sql`SELECT 1 FROM space WHERE id = ${spaceId} FOR SHARE`);
+          const facts = await this.loadFacts(tx, spaceId, input);
+          ready = { facts, plan: planPassBooking(facts, userId, input, this.clock.now()) };
         },
         onRetry: (attempt) => {
           this.logger.warn({ seatId: input.seatId, attempt }, 'booking.insert_deadlock_retry');
@@ -71,6 +77,8 @@ export class BookingsService {
         },
       },
     );
+    if (!ready) throw new Error('booking facts were not loaded');
+    const { facts, plan } = ready;
 
     this.logger.info({ bookingId: header.id, seatId: input.seatId, spaceId }, 'booking.created');
     const created = toBooking(header, facts, plan, input);
@@ -153,16 +161,23 @@ export class BookingsService {
     );
     if (cancelled) this.logger.info({ bookingId }, 'booking.cancelled');
 
-    const [view] = await loadBookings(this.db, eq(booking.id, bookingId));
+    const [view] = await loadBookings(
+      this.db,
+      and(eq(booking.id, bookingId), eq(booking.userId, userId)),
+    );
     if (!view) throw new NotFoundException();
     return view;
   }
 
-  /** Step 1: space (any status; a draft is refused by the plan), the active seat of that space, price, slot flag, calendar. */
-  async loadFacts(spaceId: string, input: CreateBookingInput): Promise<PassBookingFacts> {
-    const [s] = await this.db.select().from(space).where(eq(space.id, spaceId));
+  /** Runs inside the space share lock: space (any status; a draft is refused by the plan), the active seat of that space, price, slot flag, calendar. */
+  async loadFacts(
+    db: Pick<Database, 'select'>,
+    spaceId: string,
+    input: CreateBookingInput,
+  ): Promise<PassBookingFacts> {
+    const [s] = await db.select().from(space).where(eq(space.id, spaceId));
     if (!s?.openingMode) throw new NotFoundException();
-    const [row] = await this.db
+    const [row] = await db
       .select({ id: seat.id, label: seat.label, cubicleName: cubicle.name })
       .from(seat)
       .leftJoin(cubicle, and(eq(cubicle.id, seat.cubicleId), isNull(cubicle.removedAt)))
@@ -170,11 +185,11 @@ export class BookingsService {
     if (!row) throw new NotFoundException();
 
     const [[slot], [price], calendars] = await Promise.all([
-      this.db
+      db
         .select()
         .from(spaceSlot)
         .where(and(eq(spaceSlot.spaceId, spaceId), eq(spaceSlot.slot, input.slot))),
-      this.db
+      db
         .select()
         .from(passPrice)
         .where(
@@ -184,7 +199,7 @@ export class BookingsService {
             eq(passPrice.pass, input.pass),
           ),
         ),
-      this.db
+      db
         .select()
         .from(availabilityCalendar)
         .where(eq(availabilityCalendar.spaceId, spaceId))

@@ -6,13 +6,14 @@ import {
   Instant,
   LocalDate,
   LocalTime,
+  PlainText,
   StandardUtility,
   TimeZone,
 } from '../common/schemas/field-formats.js';
+import { PassTypeEnum, SlotKindEnum } from '../marketplace/enums.js';
 
 const Money = z.string().describe('Decimal amount with two fraction digits');
 const Saving = z.object({ amount: Money, percent: z.int() });
-const SLOT_KINDS = z.enum(['day', 'night', 'full_day', 'working_hours']);
 
 /** Renter-facing detail: no owner identity, contact or occupancy data (R-3). */
 export const ListingSchema = z
@@ -35,7 +36,7 @@ export const ListingSchema = z
     ]),
     offers: z.array(
       z.object({
-        slot: SLOT_KINDS,
+        slot: SlotKindEnum,
         startTime: LocalTime,
         endTime: LocalTime,
         endsNextDay: z.boolean(),
@@ -54,7 +55,6 @@ export const ListingSchema = z
   .meta({ id: 'Listing' });
 export type Listing = z.infer<typeof ListingSchema>;
 
-const PASS_TYPES = z.enum(['day', 'week', 'month']);
 const UtilityList = z
   .union([StandardUtility, z.array(StandardUtility)])
   .transform((v) => (Array.isArray(v) ? v : [v]));
@@ -62,13 +62,13 @@ const UtilityList = z
 export const SearchListingsInputSchema = z
   .strictObject({
     country: CountryCode,
-    city: z.string().trim().max(100).optional(),
-    area: z.string().trim().max(100).optional(),
+    city: PlainText.trim().max(100).optional(),
+    area: PlainText.trim().max(100).optional(),
     startDate: LocalDate.optional().describe(
       'Only spaces with a seat free for the whole pass from this date; no pass means a day pass, no slot any offered slot',
     ),
-    pass: PASS_TYPES.optional(),
-    slot: SLOT_KINDS.optional(),
+    pass: PassTypeEnum.optional(),
+    slot: SlotKindEnum.optional(),
     utilities: UtilityList.optional().describe('Repeat the parameter; every one must be present'),
     cursor: z.string().max(500).optional(),
     limit: z.coerce.number().int().min(1).max(50).default(20),
@@ -104,8 +104,8 @@ export const LocationSuggestionsInputSchema = z
   .strictObject({
     country: CountryCode,
     field: z.enum(['city', 'area']),
-    city: z.string().trim().min(1).max(100).optional(),
-    q: z.string().trim().min(1).max(100),
+    city: PlainText.trim().min(1).max(100).optional(),
+    q: PlainText.trim().min(1).max(100),
   })
   .refine((v) => v.field !== 'area' || v.city !== undefined, {
     message: 'city is required when field is area',
@@ -119,11 +119,9 @@ export const LocationSuggestionsSchema = z
   .meta({ id: 'LocationSuggestions' });
 export type LocationSuggestions = z.infer<typeof LocationSuggestionsSchema>;
 
-export const PassTypeSchema = z.enum(['day', 'week', 'month']);
-
 /** Query of the seat availability read. Past and far dates are viewable; the booking rules apply on POST. */
 export const SeatAvailabilityInputSchema = z
-  .object({ pass: PassTypeSchema, slot: SLOT_KINDS, startDate: LocalDate })
+  .strictObject({ pass: PassTypeEnum, slot: SlotKindEnum, startDate: LocalDate })
   .meta({ id: 'SeatAvailabilityInput' });
 export type SeatAvailabilityInput = z.infer<typeof SeatAvailabilityInputSchema>;
 
@@ -131,8 +129,8 @@ export type SeatAvailabilityInput = z.infer<typeof SeatAvailabilityInputSchema>;
 export const ListingSeatAvailabilitySchema = z
   .object({
     space: z.object({ id: z.uuid(), name: z.string(), timeZone: TimeZone }),
-    pass: PassTypeSchema,
-    slot: SLOT_KINDS,
+    pass: PassTypeEnum,
+    slot: SlotKindEnum,
     startDate: LocalDate,
     endDate: LocalDate,
     slotTimes: z.object({ startTime: LocalTime, endTime: LocalTime, endsNextDay: z.boolean() }),

@@ -8,9 +8,8 @@ import {
   LocalTime,
   TimeZone,
 } from '../common/schemas/field-formats.js';
+import { PassTypeEnum, SlotKindEnum } from '../marketplace/enums.js';
 
-const PassType = z.enum(['day', 'week', 'month']);
-const SlotKind = z.enum(['day', 'night', 'full_day', 'working_hours']);
 const Money = z.object({
   amount: z.string().describe('Decimal amount with two fraction digits'),
   currency: CurrencyCode,
@@ -20,8 +19,8 @@ const Money = z.object({
 export const CreateBookingInputSchema = z
   .strictObject({
     seatId: z.uuid(),
-    pass: PassType,
-    slot: SlotKind,
+    pass: PassTypeEnum,
+    slot: SlotKindEnum,
     startDate: LocalDate,
   })
   .meta({ id: 'CreateBookingInput' });
@@ -32,8 +31,8 @@ export const BookingSchema = z
   .object({
     id: z.uuid(),
     status: z.enum(['active', 'cancelled']),
-    pass: PassType,
-    slot: SlotKind,
+    pass: PassTypeEnum,
+    slot: SlotKindEnum,
     startDate: LocalDate,
     endDate: LocalDate,
     timeZone: TimeZone,
@@ -63,6 +62,6 @@ export const BookingListSchema = z
 export type BookingList = z.infer<typeof BookingListSchema>;
 
 export const ListMyBookingsInputSchema = z
-  .strictObject({ limit: z.coerce.number().int().min(1).max(50).optional() })
+  .strictObject({ limit: z.coerce.number().int().min(1).max(50).default(50) })
   .meta({ id: 'ListMyBookingsInput' });
 export type ListMyBookingsInput = z.infer<typeof ListMyBookingsInputSchema>;

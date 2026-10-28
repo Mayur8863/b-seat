@@ -2,7 +2,7 @@ import { and, asc, eq, inArray, isNull, type SQL } from 'drizzle-orm';
 
 import type { Database } from '../db/db.js';
 import { booking, cubicle, seat, seatHold, space } from '../db/schema/index.js';
-import { addDays } from '../common/time/zoned-time.js';
+import { addDays, toLocal } from '../common/time/zoned-time.js';
 import { openingHoursOf, slotTimes } from '../owner-spaces/owner-spaces.service.js';
 import type { Booking } from './bookings.schemas.js';
 
@@ -64,6 +64,7 @@ export async function loadBookings(
         startsAt: h.startsAt.toISOString(),
         endsAt: (h.endsAt ?? h.startsAt).toISOString(),
       }));
+    const first = holds.find((h) => h.bookingId === b.id && h.endsAt !== null);
     const held = new Set(days.map((d) => d.date));
     const skippedDates: string[] = [];
     for (let i = 0; i < MAX_SPAN_DAYS; i += 1) {
@@ -80,7 +81,7 @@ export async function loadBookings(
         startDate: b.startDate,
         endDate: b.endDate,
         timeZone: s.timeZone,
-        slotTimes: slotTimes(openingHoursOf(s), b.slot),
+        slotTimes: bookedSlotTimes(first, s, b.slot),
         firstStartsAt: b.startsAt.toISOString(),
         lastEndsAt: b.endsAt.toISOString(),
         days,
@@ -99,4 +100,20 @@ export async function loadBookings(
       },
     ];
   });
+}
+
+/**
+ * The times the renter booked, read from the booking's first hold: the owner may change the
+ * opening hours later, and the booking must not move with them. A booking without a hold falls
+ * back to the space's current hours.
+ */
+function bookedSlotTimes(
+  first: { startsAt: Date; endsAt: Date | null } | undefined,
+  s: typeof space.$inferSelect,
+  slot: Parameters<typeof slotTimes>[1],
+) {
+  if (!first?.endsAt) return slotTimes(openingHoursOf(s), slot);
+  const start = toLocal(first.startsAt, s.timeZone);
+  const end = toLocal(first.endsAt, s.timeZone);
+  return { startTime: start.time, endTime: end.time, endsNextDay: end.date > start.date };
 }

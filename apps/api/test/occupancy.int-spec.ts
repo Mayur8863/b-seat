@@ -176,6 +176,7 @@ describe('occupancy API (T047)', () => {
     await mark({ seatIds: [s(0)], endDate: day(-1) }).expect(400);
     await mark({ seatIds: [s(0)], note: 'x'.repeat(201) }).expect(400);
     await mark({ seatIds: Array.from({ length: 201 }, () => randomUUID()) }).expect(400);
+    await mark({ seatIds: [s(0)], note: 'a\u0000b' }).expect(400);
     await mark({ seatIds: [s(0)], extra: 1 }).expect(400);
     await owner.get(`${base}?seatId=nope`).expect(400);
     await owner.post(`${base}/not-a-uuid/end`).expect(400);

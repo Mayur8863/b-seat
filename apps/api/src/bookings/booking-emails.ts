@@ -27,7 +27,12 @@ const weekday = new Intl.DateTimeFormat('en-GB', { weekday: 'long', timeZone: 'U
 const withWeekday = (date: string) => `${weekday.format(new Date(`${date}T12:00:00Z`))} ${date}`;
 
 /** Space and seat names are owner-controlled: a line break in a subject would inject headers. */
-const oneLine = (text: string) => text.replace(/[\r\n]+/g, ' ');
+const oneLine = (text: string, max = 100) =>
+  text
+    .replace(/[\p{Cc}\p{Zl}\p{Zp}]+/gu, ' ')
+    .replace(/[\p{Cf}]/gu, '')
+    .trim()
+    .slice(0, max);
 
 function sharedLines(b: Booking): string[] {
   const { startTime, endTime, endsNextDay } = b.slotTimes;
@@ -64,7 +69,7 @@ export function buildBookingEmails(
       to: renter.email,
       subject: `Booking confirmed: seat ${label} at ${space} from ${b.startDate}`,
       text: [
-        `Hi ${renter.name},`,
+        `Hi ${oneLine(renter.name)},`,
         '',
         'Your seat is booked.',
         '',
@@ -81,9 +86,9 @@ export function buildBookingEmails(
       to: owner.email,
       subject: `New booking at ${space}: seat ${label} from ${b.startDate}`,
       text: [
-        `Hi ${owner.name},`,
+        `Hi ${oneLine(owner.name)},`,
         '',
-        `${renter.name} booked a seat at your space.`,
+        `${oneLine(renter.name)} booked a seat at your space.`,
         '',
         ...sharedLines(b),
         '',

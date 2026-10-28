@@ -1,5 +1,7 @@
 import { type HttpException } from '@nestjs/common';
-import { sql } from 'drizzle-orm';
+import { DrizzleQueryError, sql } from 'drizzle-orm';
+import type { PinoLogger } from 'nestjs-pino';
+import pg from 'pg';
 
 import type { Database } from '../db/db.js';
 
@@ -115,5 +117,30 @@ export async function withSeatLocks<T>(
       if (outcome === 'retry' || outcome === 'rethrow') throw err;
       throw outcome;
     }
+  }
+}
+
+/**
+ * Every writer of a space sets `lock_timeout` before it waits on the space row (ADR-0009 section
+ * 9.4). A wait past it (55P03) is logged with ids only and rethrown unchanged.
+ */
+export async function withLockTimeout<T>(
+  tx: Pick<SeatLockTx, 'execute'>,
+  logger: PinoLogger,
+  ids: Record<string, string>,
+  wait: () => Promise<T>,
+): Promise<T> {
+  await tx.execute(sql`select set_config('lock_timeout', ${LOCK_TIMEOUT}, true)`);
+  try {
+    return await wait();
+  } catch (err) {
+    if (
+      err instanceof DrizzleQueryError &&
+      err.cause instanceof pg.DatabaseError &&
+      err.cause.code === '55P03'
+    ) {
+      logger.warn(ids, 'space.lock_timeout');
+    }
+    throw err;
   }
 }

@@ -2036,6 +2036,7 @@
             "required": false,
             "in": "query",
             "schema": {
+              "default": 50,
               "type": "integer",
               "minimum": 1,
               "maximum": 50
@@ -4114,6 +4115,7 @@
             "description": "Wall-clock time in the space's time zone (HH:mm)"
           },
           "slots": {
+            "maxItems": 4,
             "type": "array",
             "items": {
               "type": "object",
@@ -5090,7 +5092,8 @@
           "pass",
           "slot",
           "startDate"
-        ]
+        ],
+        "additionalProperties": false
       },
       "ListingSeatAvailability": {
         "type": "object",
@@ -5555,6 +5558,7 @@
         "type": "object",
         "properties": {
           "limit": {
+            "default": 50,
             "type": "integer",
             "minimum": 1,
             "maximum": 50

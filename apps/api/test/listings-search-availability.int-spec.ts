@@ -1,10 +1,20 @@
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { eq } from 'drizzle-orm';
+import pg from 'pg';
 import { z } from 'zod';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { seat, space } from '../src/db/schema/index.js';
-import { insertHold, insertPassBooking, localInstant, signedInUser, testDb } from './fixtures.js';
+import { passPrice, seat, space } from '../src/db/schema/index.js';
+import { PG_POOL } from '../src/db/db.module.js';
+import {
+  createListing,
+  createOwner,
+  insertHold,
+  insertPassBooking,
+  localInstant,
+  signedInUser,
+  testDb,
+} from './fixtures.js';
 import { createTestApp, resetDb, signedInAgent } from './helpers.js';
 
 type Agent = Awaited<ReturnType<typeof signedInAgent>>;
@@ -164,5 +174,52 @@ describe('listing search availability filter', () => {
     const second = await page(first.nextCursor ?? undefined);
     expect(second.items.map((i) => i.name)).toEqual(['S3']);
     expect(second.nextCursor).toBeNull();
+  });
+
+  it('bounds the work of one search and hands back a cursor at the scan position', async () => {
+    const db = testDb(app);
+    const ownerRow = await createOwner(db);
+    const template = await createListing(db, ownerRow.id, { status: 'published' });
+    const { id: templateId, ...rest } = template;
+    await db.delete(space).where(eq(space.id, templateId));
+    const spaces = await db
+      .insert(space)
+      .values(
+        Array.from({ length: 450 }, (_, i) => ({
+          ...rest,
+          name: `Closed ${String(i).padStart(3, '0')}`,
+        })),
+      )
+      .returning();
+    // Seats and a price, but no availability calendar: every seat is closed.
+    await db.insert(seat).values(spaces.map((x) => ({ spaceId: x.id, label: 'A' })));
+    await db.insert(passPrice).values(
+      spaces.map((x) => ({
+        spaceId: x.id,
+        slot: 'working_hours' as const,
+        pass: 'day' as const,
+        amount: '10.00',
+      })),
+    );
+
+    const pool = app.get<pg.Pool>(PG_POOL);
+    const spy = vi.spyOn(pool, 'query');
+    const res = await renter.get(`/api/listings?country=IN&startDate=${MONDAY}`).expect(200);
+    const queries = spy.mock.calls.length;
+    spy.mockRestore();
+    const body = PageSchema.parse(res.body);
+    expect(body.items).toEqual([]);
+    expect(body.nextCursor).not.toBeNull();
+    // 200 candidates in 20-row batches: a fixed handful of queries per batch, not one per space.
+    expect(queries).toBeLessThan(120);
+
+    const next = PageSchema.parse(
+      (
+        await renter
+          .get(`/api/listings?country=IN&startDate=${MONDAY}&cursor=${body.nextCursor}`)
+          .expect(200)
+      ).body,
+    );
+    expect(next.nextCursor).not.toBeNull();
   });
 });

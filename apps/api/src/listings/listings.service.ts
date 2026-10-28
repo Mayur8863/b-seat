@@ -2,6 +2,7 @@ import { BadRequestException, Inject, Injectable, NotFoundException } from '@nes
 import { and, asc, eq, inArray, isNull, sql, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
 
+import { PlainText } from '../common/schemas/field-formats.js';
 import { ProblemException } from '../common/errors/problem.exception.js';
 import { fullDaySaving } from '../common/money/money.js';
 import type { Database } from '../db/db.js';
@@ -37,8 +38,10 @@ interface Hold {
 }
 
 const PASSES = ['day', 'week', 'month'] as const;
+/** Candidate spaces one search request may evaluate against availability. */
+const MAX_SCAN = 200;
 
-const CursorSchema = z.object({ name: z.string(), id: z.uuid() });
+const CursorSchema = z.object({ name: PlainText, id: z.uuid() });
 const encodeCursor = (c: z.infer<typeof CursorSchema>): string =>
   Buffer.from(JSON.stringify(c)).toString('base64url');
 function decodeCursor(raw: string): z.infer<typeof CursorSchema> {
@@ -155,22 +158,32 @@ export class ListingsService {
         .orderBy(asc(space.name), asc(space.id));
 
     // Without a start date the SQL prefilter is the whole answer. With one, candidates are
-    // evaluated in batches (R-10) until the page, plus one row to detect a next page, is full.
+    // evaluated in set-based batches (R-10) until the page, plus one row to detect a next page,
+    // is full or MAX_SCAN candidates were looked at. In the latter case the cursor is the scan
+    // position, so the client continues from there instead of one request doing unbounded work.
     let rows: (typeof space.$inferSelect)[];
+    let scanCursor: string | null = null;
     if (q.startDate) {
       const startDate = q.startDate;
       rows = [];
       let after = q.cursor ? decodeCursor(q.cursor) : null;
-      const batchSize = Math.max(q.limit * 2, 20);
+      let scanned = 0;
       while (rows.length < q.limit + 1) {
-        const batch = await base(after).limit(batchSize);
+        const size = Math.min(Math.max(q.limit * 2, 20), MAX_SCAN - scanned);
+        const batch = await base(after).limit(size);
+        const free = await this.withFreeSeat(batch, startDate, q.pass, q.slot);
         for (const candidate of batch) {
           if (rows.length > q.limit) break;
-          if (await this.hasFreeSeat(candidate, startDate, q.pass, q.slot)) rows.push(candidate);
+          if (free.has(candidate.id)) rows.push(candidate);
         }
+        scanned += batch.length;
         const tail = batch.at(-1);
-        if (batch.length < batchSize || !tail) break;
+        if (batch.length < size || !tail) break;
         after = { name: tail.name, id: tail.id };
+        if (rows.length <= q.limit && scanned >= MAX_SCAN) {
+          scanCursor = encodeCursor(after);
+          break;
+        }
       }
     } else {
       rows = await base(q.cursor ? decodeCursor(q.cursor) : null).limit(q.limit + 1);
@@ -178,7 +191,7 @@ export class ListingsService {
     const page = rows.slice(0, q.limit);
     const last = page.at(-1);
     const nextCursor =
-      rows.length > q.limit && last ? encodeCursor({ name: last.name, id: last.id }) : null;
+      rows.length > q.limit && last ? encodeCursor({ name: last.name, id: last.id }) : scanCursor;
 
     const lowest = new Map<string, Record<(typeof PASSES)[number], string | null>>();
     if (page.length > 0) {
@@ -230,27 +243,40 @@ export class ListingsService {
   }
 
   /**
-   * At least one seat free for the whole pass period (AC 4.3). Without a pass the day pass is
-   * meant, and without a slot any offered slot counts (OQ-4). A pass the space does not sell is
-   * simply not a match.
+   * The candidates with at least one seat free for the whole pass period (AC 4.3). Without a pass
+   * the day pass is meant, and without a slot any offered slot counts (OQ-4). A pass the space
+   * does not sell is simply not a match. The batch costs a fixed number of queries.
    */
-  private async hasFreeSeat(
-    s: typeof space.$inferSelect,
+  private async withFreeSeat(
+    candidates: (typeof space.$inferSelect)[],
     startDate: string,
     pass: SeatAvailabilityInput['pass'] | undefined,
     slot: SeatAvailabilityInput['slot'] | undefined,
-  ): Promise<boolean> {
-    if (!s.openingMode) return false;
-    const slots = slot ? [slot] : offeredSlots(openingHoursOf(s));
-    for (const kind of slots) {
-      try {
-        const view = await this.availabilityOf(s, { pass: pass ?? 'day', slot: kind, startDate });
-        if (view.seats.some((x) => x.status === 'free')) return true;
-      } catch (e) {
-        if (!(e instanceof ProblemException)) throw e;
+  ): Promise<Set<string>> {
+    const published = candidates.filter((c) => c.openingMode);
+    if (published.length === 0) return new Set();
+    const data = await this.loadData(published, pass ?? 'day', slot);
+    const prepared: Prepared[] = [];
+    for (const s of published) {
+      const d = data.get(s.id);
+      if (!d) continue;
+      for (const kind of slot ? [slot] : offeredSlots(openingHoursOf(s))) {
+        try {
+          prepared.push(prepare(s, { pass: pass ?? 'day', slot: kind, startDate }, d));
+        } catch (e) {
+          if (!(e instanceof ProblemException)) throw e;
+        }
       }
     }
-    return false;
+    const holds = await this.holdsOver(
+      published.map((s) => s.id),
+      prepared.flatMap((p) => [...p.periods.values()].flatMap((x) => x.occurrences)),
+    );
+    const free = new Set<string>();
+    for (const p of prepared) {
+      if (view(p, holds).seats.some((x) => x.status === 'free')) free.add(p.s.id);
+    }
+    return free;
   }
 
   async locations(q: LocationSuggestionsInput): Promise<LocationSuggestions> {
@@ -286,30 +312,43 @@ export class ListingsService {
     return this.availabilityOf(s, input);
   }
 
-  /** The seat-by-seat view of one published space; shared by the seats route and the search filter. */
+  /** The seat-by-seat view of one published space; the search filter shares `prepare` and `view`. */
   private async availabilityOf(
     s: typeof space.$inferSelect,
     input: SeatAvailabilityInput,
   ): Promise<ListingSeatAvailability> {
-    const spaceId = s.id;
-    const openingHours = openingHoursOf(s);
-    const [slots, [price], seats, calendars] = await Promise.all([
-      this.db
-        .select()
-        .from(spaceSlot)
-        .where(and(eq(spaceSlot.spaceId, spaceId), eq(spaceSlot.slot, input.slot))),
+    const data = (await this.loadData([s], input.pass, input.slot)).get(s.id);
+    if (!data) throw passNotOffered();
+    const prepared = prepare(s, input, data);
+    const holds = await this.holdsOver(
+      [s.id],
+      [...prepared.periods.values()].flatMap((p) => p.occurrences),
+    );
+    return view(prepared, holds);
+  }
+
+  /** Slots, the pass price, seats and calendars of every space in four queries. */
+  private async loadData(
+    spaces: (typeof space.$inferSelect)[],
+    pass: SeatAvailabilityInput['pass'],
+    slot: SeatAvailabilityInput['slot'] | undefined,
+  ): Promise<Map<string, SpaceData>> {
+    const ids = spaces.map((x) => x.id);
+    const [slots, prices, seats, calendars] = await Promise.all([
+      this.db.select().from(spaceSlot).where(inArray(spaceSlot.spaceId, ids)),
       this.db
         .select()
         .from(passPrice)
         .where(
           and(
-            eq(passPrice.spaceId, spaceId),
-            eq(passPrice.slot, input.slot),
-            eq(passPrice.pass, input.pass),
+            inArray(passPrice.spaceId, ids),
+            eq(passPrice.pass, pass),
+            slot ? eq(passPrice.slot, slot) : undefined,
           ),
         ),
       this.db
         .select({
+          spaceId: seat.spaceId,
           id: seat.id,
           label: seat.label,
           features: seat.features,
@@ -318,87 +357,25 @@ export class ListingsService {
         })
         .from(seat)
         .leftJoin(cubicle, and(eq(cubicle.id, seat.cubicleId), isNull(cubicle.removedAt)))
-        .where(and(eq(seat.spaceId, spaceId), isNull(seat.removedAt)))
+        .where(and(inArray(seat.spaceId, ids), isNull(seat.removedAt)))
         .orderBy(asc(seat.label)),
-      this.db.select().from(availabilityCalendar).where(eq(availabilityCalendar.spaceId, spaceId)),
+      this.db.select().from(availabilityCalendar).where(inArray(availabilityCalendar.spaceId, ids)),
     ]);
-
-    const offered = offeredSlots(openingHours).includes(input.slot) && (slots[0]?.enabled ?? true);
-    if (!offered || !price) throw passNotOffered();
-
-    const shared = calendars.find((c) => c.seatId === null) ?? null;
-    const own = new Map(calendars.filter((c) => c.seatId !== null).map((c) => [c.seatId, c]));
-
-    // One period per distinct calendar (usually one).
-    const periods = new Map<string, ReturnType<typeof passPeriod>>();
-    const periodFor = (seatId: string) => {
-      const row = own.get(seatId);
-      const calendar: Calendar = row ?? shared ?? CLOSED;
-      const key = `${calendar.startDate}|${calendar.endDate ?? ''}|${calendar.weekdays}`;
-      let period = periods.get(key);
-      if (!period) {
-        period = passPeriod({
-          pass: input.pass,
-          slot: input.slot,
-          startDate: input.startDate,
-          calendar,
-          openingHours,
-          timeZone: s.timeZone,
-        });
-        periods.set(key, period);
-      }
-      return period;
-    };
-    const perSeat = seats.map((x) => ({ seat: x, period: periodFor(x.id) }));
-
-    const all: PassOccurrence[] = [...periods.values()].flatMap((p) => p.occurrences);
-    const holds = all.length > 0 ? await this.holdsOver(spaceId, all) : [];
-    const holdsBySeat = new Map<string, Hold[]>();
-    for (const h of holds) holdsBySeat.set(h.seatId, [...(holdsBySeat.get(h.seatId) ?? []), h]);
-
-    const times = slotTimes(openingHours, input.slot);
-    return {
-      space: { id: s.id, name: s.name, timeZone: s.timeZone },
-      pass: input.pass,
-      slot: input.slot,
-      startDate: input.startDate,
-      endDate: passPeriod({
-        pass: input.pass,
-        slot: input.slot,
-        startDate: input.startDate,
-        calendar: CLOSED,
-        openingHours,
-        timeZone: s.timeZone,
-      }).endDate,
-      slotTimes: times,
-      price: price.amount,
-      seats: perSeat.map(({ seat: x, period }) => {
-        const first = period.occurrences[0];
-        const last = period.occurrences[period.occurrences.length - 1];
-        const closed = !period.startDayOpen || !first || !last;
-        const mine = holdsBySeat.get(x.id) ?? [];
-        const taken =
-          !closed &&
-          period.occurrences.some((o) =>
-            mine.some((h) => h.startsAt < o.endsAt && (h.endsAt === null || h.endsAt > o.startsAt)),
-          );
-        return {
-          id: x.id,
-          label: x.label,
-          features: x.features,
-          cubicle: x.cubicleId && x.cubicleName ? { id: x.cubicleId, name: x.cubicleName } : null,
-          status: closed ? 'closed' : taken ? 'taken' : 'free',
-          firstStartsAt: closed ? null : first.startsAt.toISOString(),
-          lastEndsAt: closed ? null : last.endsAt.toISOString(),
-          includedDates: period.occurrences.length,
-          closedDates: period.skippedDates,
-        };
-      }),
-    };
+    const out = new Map<string, SpaceData>();
+    for (const id of ids) {
+      out.set(id, {
+        slots: slots.filter((r) => r.spaceId === id),
+        prices: prices.filter((r) => r.spaceId === id),
+        seats: seats.filter((r) => r.spaceId === id),
+        calendars: calendars.filter((r) => r.spaceId === id),
+      });
+    }
+    return out;
   }
 
-  /** One query for every active hold of the space inside the envelope, spelled for the GiST index (R-10). */
-  private async holdsOver(spaceId: string, occurrences: PassOccurrence[]): Promise<Hold[]> {
+  /** One query for every active hold of the spaces inside the envelope, spelled for the GiST index (R-10). */
+  private async holdsOver(spaceIds: string[], occurrences: PassOccurrence[]): Promise<Hold[]> {
+    if (occurrences.length === 0) return [];
     const from = new Date(Math.min(...occurrences.map((o) => o.startsAt.getTime())));
     const to = new Date(Math.max(...occurrences.map((o) => o.endsAt.getTime())));
     const result = await this.db.execute<{
@@ -409,7 +386,10 @@ export class ListingsService {
       SELECT h.seat_id, h.starts_at, h.ends_at
       FROM seat s
       JOIN seat_hold h ON h.seat_id = s.id
-      WHERE s.space_id = ${spaceId}
+      WHERE s.space_id = ANY(${sql`ARRAY[${sql.join(
+        spaceIds.map((id) => sql`${id}`),
+        sql`, `,
+      )}]::uuid[]`})
         AND s.removed_at IS NULL
         AND h.active
         AND tstzrange(h.starts_at, h.ends_at, '[)')
@@ -421,6 +401,111 @@ export class ListingsService {
       endsAt: r.ends_at === null ? null : new Date(r.ends_at),
     }));
   }
+}
+
+interface SpaceData {
+  slots: (typeof spaceSlot.$inferSelect)[];
+  prices: (typeof passPrice.$inferSelect)[];
+  seats: {
+    id: string;
+    label: string;
+    features: string[];
+    cubicleId: string | null;
+    cubicleName: string | null;
+  }[];
+  calendars: (typeof availabilityCalendar.$inferSelect)[];
+}
+
+interface Prepared {
+  s: typeof space.$inferSelect;
+  input: SeatAvailabilityInput;
+  openingHours: ReturnType<typeof openingHoursOf>;
+  price: string;
+  seats: SpaceData['seats'];
+  periods: Map<string, ReturnType<typeof passPeriod>>;
+  perSeat: { seat: SpaceData['seats'][number]; period: ReturnType<typeof passPeriod> }[];
+}
+
+/** The pure half of the availability view: periods per seat, no holds yet. */
+function prepare(
+  s: typeof space.$inferSelect,
+  input: SeatAvailabilityInput,
+  data: SpaceData,
+): Prepared {
+  const openingHours = openingHoursOf(s);
+  const price = data.prices.find((p) => p.slot === input.slot && p.pass === input.pass);
+  const slotRow = data.slots.find((r) => r.slot === input.slot);
+  const offered = offeredSlots(openingHours).includes(input.slot) && (slotRow?.enabled ?? true);
+  if (!offered || !price) throw passNotOffered();
+
+  const shared = data.calendars.find((c) => c.seatId === null) ?? null;
+  const own = new Map(data.calendars.filter((c) => c.seatId !== null).map((c) => [c.seatId, c]));
+
+  // One period per distinct calendar (usually one).
+  const periods = new Map<string, ReturnType<typeof passPeriod>>();
+  const periodFor = (seatId: string) => {
+    const calendar: Calendar = own.get(seatId) ?? shared ?? CLOSED;
+    const key = `${calendar.startDate}|${calendar.endDate ?? ''}|${calendar.weekdays}`;
+    let period = periods.get(key);
+    if (!period) {
+      period = passPeriod({
+        pass: input.pass,
+        slot: input.slot,
+        startDate: input.startDate,
+        calendar,
+        openingHours,
+        timeZone: s.timeZone,
+      });
+      periods.set(key, period);
+    }
+    return period;
+  };
+  const perSeat = data.seats.map((x) => ({ seat: x, period: periodFor(x.id) }));
+  return { s, input, openingHours, price: price.amount, seats: data.seats, periods, perSeat };
+}
+
+function view(p: Prepared, holds: Hold[]): ListingSeatAvailability {
+  const { s, input, openingHours } = p;
+  const holdsBySeat = new Map<string, Hold[]>();
+  for (const h of holds) holdsBySeat.set(h.seatId, [...(holdsBySeat.get(h.seatId) ?? []), h]);
+  return {
+    space: { id: s.id, name: s.name, timeZone: s.timeZone },
+    pass: input.pass,
+    slot: input.slot,
+    startDate: input.startDate,
+    endDate: passPeriod({
+      pass: input.pass,
+      slot: input.slot,
+      startDate: input.startDate,
+      calendar: CLOSED,
+      openingHours,
+      timeZone: s.timeZone,
+    }).endDate,
+    slotTimes: slotTimes(openingHours, input.slot),
+    price: p.price,
+    seats: p.perSeat.map(({ seat: x, period }) => {
+      const first = period.occurrences[0];
+      const last = period.occurrences[period.occurrences.length - 1];
+      const closed = !period.startDayOpen || !first || !last;
+      const mine = holdsBySeat.get(x.id) ?? [];
+      const taken =
+        !closed &&
+        period.occurrences.some((o) =>
+          mine.some((h) => h.startsAt < o.endsAt && (h.endsAt === null || h.endsAt > o.startsAt)),
+        );
+      return {
+        id: x.id,
+        label: x.label,
+        features: x.features,
+        cubicle: x.cubicleId && x.cubicleName ? { id: x.cubicleId, name: x.cubicleName } : null,
+        status: closed ? 'closed' : taken ? 'taken' : 'free',
+        firstStartsAt: closed ? null : first.startsAt.toISOString(),
+        lastEndsAt: closed ? null : last.endsAt.toISOString(),
+        includedDates: period.occurrences.length,
+        closedDates: period.skippedDates,
+      };
+    }),
+  };
 }
 
 function passNotOffered(): ProblemException {
