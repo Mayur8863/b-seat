@@ -12,8 +12,9 @@ import { statusBadge } from '@/components/owner-spaces';
 import { SpaceManageNav } from '@/components/space-manage-nav';
 import { describeOwnerProblem } from '@/lib/marketplace-problems';
 
-const FRAME = 'mx-auto grid w-full max-w-6xl gap-4 px-4 py-8 sm:px-6';
-const PAGE = 'mx-auto grid w-full max-w-6xl gap-6 px-4 py-6 sm:px-6';
+// minmax(0,1fr) lets wide children (tab strip, plan canvas, tables) scroll inside themselves instead of widening the page.
+const FRAME = 'mx-auto grid w-full max-w-6xl grid-cols-[minmax(0,1fr)] gap-4 px-4 py-8 sm:px-6';
+const PAGE = 'mx-auto grid w-full max-w-6xl grid-cols-[minmax(0,1fr)] gap-6 px-4 py-6 sm:px-6';
 
 /** Header, sub-nav and 404/error/loading states shared by every page of one space (ui/02 section 5). */
 export function SpaceShell({ spaceId, children }: { spaceId: string; children: ReactNode }) {
@@ -37,7 +38,7 @@ export function SpaceShell({ spaceId, children }: { spaceId: string; children: R
   }
 
   if (error || !space) {
-    if (error instanceof ApiError && error.status === 404) {
+    if (error instanceof ApiError && (error.status === 404 || error.status === 400)) {
       return (
         <main id="main" className={`${FRAME} justify-items-start`}>
           <h1 className="text-2xl font-semibold tracking-tight">
@@ -80,7 +81,7 @@ export function SpaceShell({ spaceId, children }: { spaceId: string; children: R
   const badge = statusBadge(space.status);
   return (
     <>
-      <div className="mx-auto grid w-full max-w-6xl gap-3 px-4 pt-6 sm:px-6">
+      <div className="mx-auto grid w-full max-w-6xl grid-cols-[minmax(0,1fr)] gap-3 px-4 pt-6 sm:px-6">
         <div className="flex flex-wrap items-center gap-2">
           <p className="min-w-0 text-lg font-semibold break-words">{space.name}</p>
           <Badge variant={badge.variant}>{badge.text}</Badge>

@@ -175,7 +175,7 @@ describe('PricingForm', () => {
     await waitFor(() => expect(day).toHaveValue('1500.50'));
   });
 
-  it('a 400 with a plain message shows it in the alert', async () => {
+  it('a 400 on slots shows the message as a field error tied to the price inputs', async () => {
     setup(always());
     server.use(
       http.put('*/api/owner/spaces/s1/pricing', () =>
@@ -184,7 +184,7 @@ describe('PricingForm', () => {
             type: 'about:blank',
             status: 400,
             title: 'Bad Request',
-            detail: 'slots must be day, night, full_day',
+            errors: [{ path: 'slots', message: 'slots must hold each of day, night, full_day' }],
           },
           { status: 400 },
         ),
@@ -192,7 +192,85 @@ describe('PricingForm', () => {
     );
     await screen.findByLabelText('Shift change time');
     await userEvent.click(screen.getByRole('button', { name: 'Save prices' }));
+    const message = await screen.findByText('slots must hold each of day, night, full_day');
+    expect(message).toHaveAttribute('id', 'slots-error');
+    expect(
+      screen.getByLabelText('Day pass price in INR', { selector: '#day-day' }),
+    ).toHaveAttribute('aria-describedby', expect.stringContaining('slots-error'));
+    expect(screen.queryByText("We couldn't save your prices")).not.toBeInTheDocument();
+  });
+
+  it('a 400 on shiftChangeAt shows the message under the shift field', async () => {
+    setup(always());
+    server.use(
+      http.put('*/api/owner/spaces/s1/pricing', () =>
+        HttpResponse.json(
+          {
+            type: 'about:blank',
+            status: 400,
+            title: 'Bad Request',
+            errors: [
+              { path: 'shiftChangeAt', message: 'shiftChangeAt only applies to 24-hour spaces' },
+            ],
+          },
+          { status: 400 },
+        ),
+      ),
+    );
+    const shift = await screen.findByLabelText('Shift change time');
+    await userEvent.click(screen.getByRole('button', { name: 'Save prices' }));
+    expect(
+      await screen.findByText('shiftChangeAt only applies to 24-hour spaces'),
+    ).toBeInTheDocument();
+    expect(shift).toHaveAttribute(
+      'aria-describedby',
+      expect.stringContaining('shiftChangeAt-error'),
+    );
+  });
+
+  it('an unmapped 400 shows the generic alert, not the raw detail', async () => {
+    setup(always());
+    server.use(
+      http.put('*/api/owner/spaces/s1/pricing', () =>
+        HttpResponse.json(
+          { type: 'about:blank', status: 400, title: 'Bad Request', detail: 'internal wording' },
+          { status: 400 },
+        ),
+      ),
+    );
+    await screen.findByLabelText('Shift change time');
+    await userEvent.click(screen.getByRole('button', { name: 'Save prices' }));
     expect(await screen.findByText("We couldn't save your prices")).toBeInTheDocument();
-    expect(screen.getByText('slots must be day, night, full_day')).toBeInTheDocument();
+    expect(screen.queryByText('internal wording')).not.toBeInTheDocument();
+  });
+
+  it('after the hours mode changes elsewhere, the form shows the new slots and saves them', async () => {
+    let body: unknown;
+    const { client } = setup(always());
+    await screen.findByLabelText('Shift change time');
+    server.use(
+      getOwnerSpacesGetPricingMockHandler(fixed),
+      http.put('*/api/owner/spaces/s1/pricing', async ({ request }) => {
+        body = await request.json();
+        return HttpResponse.json(fixed);
+      }),
+    );
+    await client.invalidateQueries({ queryKey: [`/api/owner/spaces/s1/pricing`] });
+    await waitFor(() =>
+      expect(screen.queryByLabelText('Shift change time')).not.toBeInTheDocument(),
+    );
+    expect(screen.getByRole('group', { name: 'Working hours' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Save prices' }));
+    await waitFor(() => {
+      expect(body).toEqual({
+        slots: [
+          {
+            slot: 'working_hours',
+            enabled: true,
+            prices: { day: '500.00', week: null, month: null },
+          },
+        ],
+      });
+    });
   });
 });

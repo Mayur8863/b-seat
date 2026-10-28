@@ -202,12 +202,16 @@ DOM order equals reading order, the tab order is the same at every breakpoint.
 
 ## 5. `[spaceId]` layout (T023)
 
-`app/(app)/owner/spaces/[spaceId]/layout.tsx` (client, `useOwnerSpacesGet`). It renders no `<main>` in the success state. It does not mount `children`
+`app/(app)/owner/spaces/[spaceId]/layout.tsx` (client, `useOwnerSpacesGet`). It owns the page `<main id="main">` (the `max-w-6xl` frame) in every state, so pages render no `<main>` of their own. It does not mount `children`
 until the space has loaded, so a 404 fires no child requests.
 
 Header (inside the `max-w-6xl` frame, above the sub-nav of 01 section 3.2): the space name (`p`, `text-lg font-semibold`, truncates with `break-words`
 on mobile) and the status `Badge` (text as section 3), then `<nav aria-label="Space management">`. Page h1s are "Details", "Seats", "Passes and
-prices", each a page `<main id="main">` heading.
+prices", each the page's h1.
+
+Every tab's content uses the full shell frame width (`max-w-6xl`); tabs add no max width of their own, so the width does not change between tabs.
+Individual controls cap themselves (short inputs and time fields stay `max-w-xs`; forms inside a card may cap at `max-w-2xl`). At 375 the
+tab strip scrolls inside itself (`overflow-x-auto`, the active tab is scrolled into view) and the shell grid uses `minmax(0,1fr)` so nothing widens the page.
 
 | State    | Behaviour                                                                                                                                                                                                                                                                                                                                                                     |
 | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -224,7 +228,7 @@ The 404 state never names the space, the owner or why. It must read the same for
 
 ## 6. Details and publish (T023)
 
-`/owner/spaces/[spaceId]` renders, inside its own `<main id="main">`: h1 "Details", the **Publishing** card, then the space form in `edit` mode (section 4).
+`/owner/spaces/[spaceId]` renders, inside the shell's `<main id="main">`: h1 "Details", the **Publishing** card, then the space form in `edit` mode (section 4).
 Single column `max-w-2xl` below `lg`; no side-by-side layout.
 
 ### 6.1 Publishing card

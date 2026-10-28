@@ -43,6 +43,19 @@ describe('SpaceShell', () => {
     expect(screen.getByRole('main')).toContainElement(screen.getByText('child content'));
   });
 
+  it('400 (malformed id): shows the same not-found state', async () => {
+    server.use(
+      http.get('*/api/owner/spaces/s1', () =>
+        HttpResponse.json({ status: 400, title: 'Bad Request' }, { status: 400 }),
+      ),
+    );
+    render();
+    expect(
+      await screen.findByRole('heading', { name: "We couldn't find that space" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('child content')).not.toBeInTheDocument();
+  });
+
   it('404: identical not-found state, no children', async () => {
     server.use(
       http.get('*/api/owner/spaces/s1', () =>

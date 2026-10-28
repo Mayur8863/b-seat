@@ -206,7 +206,7 @@ export function SpaceDetails({ spaceId }: { spaceId: string }) {
   const { data, error, refetch } = useOwnerSpacesGet(spaceId);
   const space = data?.data;
   return (
-    <div className="grid max-w-3xl gap-6">
+    <div className="grid gap-6">
       <h1 className="text-2xl font-semibold tracking-tight">Details</h1>
       {space ? (
         <>

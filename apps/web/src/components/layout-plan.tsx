@@ -14,6 +14,10 @@ import {
 } from '@/lib/layout-editor/model';
 
 /** Square size in px (ui/05 3.1). */
+// A scrollable region must be reachable by keyboard (axe scrollable-region-focusable). The value is a named
+// constant because jsx-a11y allows expression values for tabIndex on a labelled region.
+const SCROLL_REGION_TAB_INDEX = 0;
+
 export const CELL = 24;
 const DRAG_THRESHOLD = 4;
 
@@ -196,8 +200,8 @@ export function LayoutPlan({
       ref={region}
       role="region"
       aria-label={`Floor plan, ${String(state.columns)} by ${String(state.rows)} squares`}
-      tabIndex={-1}
-      className="bg-card max-h-[70vh] overflow-auto rounded-xl border"
+      tabIndex={SCROLL_REGION_TAB_INDEX}
+      className="bg-card focus-visible:outline-ring max-h-[70vh] overflow-auto rounded-xl border focus-visible:outline-2"
     >
       <div
         role="group"

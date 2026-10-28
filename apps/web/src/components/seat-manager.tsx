@@ -36,7 +36,7 @@ export function SeatManager({ spaceId }: { spaceId: string }) {
   };
 
   return (
-    <div className="grid max-w-4xl gap-6">
+    <div className="grid gap-6">
       <div className="grid gap-1">
         <h1 className="text-2xl font-semibold tracking-tight">Seats</h1>
         {seats ? (

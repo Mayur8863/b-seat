@@ -5,7 +5,10 @@ import { Alert, AlertDescription, AlertTitle } from '@bseat/ui/components/alert'
 import { Button } from '@bseat/ui/components/button';
 import { Skeleton } from '@bseat/ui/components/skeleton';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
+
+import { describeOwnerProblem } from '@/lib/marketplace-problems';
 
 function GateMessage({ children }: { children: ReactNode }) {
   return (
@@ -18,6 +21,7 @@ function GateMessage({ children }: { children: ReactNode }) {
 /** UX gate for /owner pages (FR-004). The API still enforces the role on every request. */
 export function OwnerGate({ children }: { children: ReactNode }) {
   const { data, isPending, error, refetch } = useMeGet();
+  const pathname = usePathname();
 
   if (isPending) {
     return (
@@ -35,7 +39,29 @@ export function OwnerGate({ children }: { children: ReactNode }) {
 
   if (data?.data.accountType === 'owner') return <>{children}</>;
 
-  if (data || (error instanceof ApiError && error.status === 401)) {
+  if (error instanceof ApiError && error.status === 401) {
+    const copy = describeOwnerProblem(error, 'load this space', pathname);
+    return (
+      <GateMessage>
+        <Alert>
+          <AlertTitle>{copy.title}</AlertTitle>
+          <AlertDescription>
+            {copy.description.map((part) =>
+              typeof part === 'string' ? (
+                part
+              ) : (
+                <Link key={part.href} href={part.href} className="underline underline-offset-4">
+                  {part.text}
+                </Link>
+              ),
+            )}
+          </AlertDescription>
+        </Alert>
+      </GateMessage>
+    );
+  }
+
+  if (data) {
     return (
       <GateMessage>
         <h1 className="text-2xl font-semibold tracking-tight">Owners only</h1>

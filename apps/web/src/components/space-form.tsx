@@ -2,6 +2,9 @@
 
 import {
   ApiError,
+  getCalendarsListQueryKey,
+  getOccupancyListQueryKey,
+  getOwnerSpacesGetPricingQueryKey,
   getOwnerSpacesGetQueryKey,
   getOwnerSpacesListQueryKey,
   type OwnerSpace,
@@ -124,6 +127,23 @@ export function SpaceForm(props: Props) {
     'aria-busy': refLoading ? true : undefined,
   });
 
+  const [invalidTick, setInvalidTick] = useState(0);
+  // The timeout waits for React to commit the errors, so aria-invalid is on the fields when we look.
+  useEffect(() => {
+    if (!invalidTick) return;
+    const timer = setTimeout(() => {
+      const first = formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]');
+      const target =
+        first?.getAttribute('role') === 'radiogroup'
+          ? first.querySelector<HTMLElement>('[role="radio"]')
+          : first;
+      target?.focus();
+    }, 0);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [invalidTick]);
+
   const applyServerErrors = (error: unknown) => {
     const items =
       error instanceof ApiError && error.status === 400 ? error.problem?.errors : undefined;
@@ -151,17 +171,6 @@ export function SpaceForm(props: Props) {
       );
     }
   };
-
-  const [invalidTick, setInvalidTick] = useState(0);
-  useEffect(() => {
-    if (!invalidTick) return;
-    const first = formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]');
-    const target =
-      first?.getAttribute('role') === 'radiogroup'
-        ? first.querySelector<HTMLElement>('[role="radio"]')
-        : first;
-    target?.focus();
-  }, [invalidTick]);
 
   const onValid = handleSubmit(
     (values) => {
@@ -196,6 +205,12 @@ export function SpaceForm(props: Props) {
             setSaved(true);
             void queryClient.invalidateQueries({ queryKey: getOwnerSpacesGetQueryKey(space.id) });
             void queryClient.invalidateQueries({ queryKey: getOwnerSpacesListQueryKey() });
+            // Hours and currency change the pricing slots; a new zone moves every calendar and occupancy time.
+            const keys: (readonly unknown[])[] = [getOwnerSpacesGetPricingQueryKey(space.id)];
+            if (next.timeZone !== baseline.timeZone) {
+              keys.push(getCalendarsListQueryKey(space.id), getOccupancyListQueryKey(space.id));
+            }
+            for (const queryKey of keys) void queryClient.invalidateQueries({ queryKey });
           },
           onError: applyServerErrors,
         },

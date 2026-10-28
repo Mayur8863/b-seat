@@ -21,7 +21,7 @@ export const manageHref = (spaceId: string, segment: string) =>
 export function SpaceManageNav({ spaceId }: { spaceId: string }) {
   const pathname = usePathname();
   return (
-    <nav aria-label="Space management" className="md:border-b">
+    <nav aria-label="Space management" className="min-w-0 md:border-b">
       <ul className="flex gap-1 overflow-x-auto md:flex-wrap md:overflow-visible">
         {MANAGE_LINKS.map(({ label, segment }) => {
           const href = manageHref(spaceId, segment);
@@ -31,6 +31,10 @@ export function SpaceManageNav({ spaceId }: { spaceId: string }) {
               <Link
                 href={href}
                 aria-current={current ? 'page' : undefined}
+                // Keeps the active tab in view when the strip scrolls on a narrow screen.
+                ref={(el) => {
+                  if (current) el?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+                }}
                 className={cn(
                   'hover:bg-muted focus-visible:outline-ring inline-flex min-h-11 items-center px-3 whitespace-nowrap focus-visible:outline-2 md:min-h-9',
                   current

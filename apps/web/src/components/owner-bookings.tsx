@@ -155,7 +155,7 @@ export function OwnerBookings({ spaceId }: { spaceId: string }) {
   const count = `${items.length} ${items.length === 1 ? 'booking' : 'bookings'}`;
 
   return (
-    <div className="grid max-w-6xl gap-4">
+    <div className="grid gap-4">
       <h1 className="text-2xl font-semibold">Bookings</h1>
       <p className="text-muted-foreground">
         Upcoming bookings for this space. Renters pay you directly; BSeat doesn&apos;t record
