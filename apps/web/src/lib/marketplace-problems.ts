@@ -19,7 +19,10 @@ export type OwnerAction =
   | 'mark those seats occupied'
   | 'mark that seat vacant'
   | 'remove that mark'
-  | 'load occupancy details';
+  | 'load occupancy details'
+  | 'save the calendar'
+  | "switch that seat's calendar"
+  | 'load availability';
 
 export type MissingItem = 'seat' | 'pricedPass';
 

@@ -7,12 +7,12 @@ const pathname = vi.hoisted(() => vi.fn());
 vi.mock('next/navigation', () => ({ usePathname: pathname }));
 
 describe('SpaceManageNav', () => {
-  it('has a labelled nav with Details, Seats, Passes and prices and Layout, current on the overview', () => {
+  it('has a labelled nav with Details, Seats, Passes and prices, Layout and Availability, current on the overview', () => {
     pathname.mockReturnValue('/owner/spaces/s1');
     render(<SpaceManageNav spaceId="s1" />);
     const nav = screen.getByRole('navigation', { name: 'Space management' });
     const links = nav.querySelectorAll('a');
-    expect(links).toHaveLength(4);
+    expect(links).toHaveLength(5);
     const details = screen.getByRole('link', { name: 'Details' });
     expect(details).toHaveAttribute('href', '/owner/spaces/s1');
     expect(details).toHaveAttribute('aria-current', 'page');
@@ -27,6 +27,10 @@ describe('SpaceManageNav', () => {
     expect(screen.getByRole('link', { name: 'Layout' })).toHaveAttribute(
       'href',
       '/owner/spaces/s1/layout',
+    );
+    expect(screen.getByRole('link', { name: 'Availability' })).toHaveAttribute(
+      'href',
+      '/owner/spaces/s1/availability',
     );
   });
 

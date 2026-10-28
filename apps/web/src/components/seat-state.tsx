@@ -12,6 +12,7 @@ export function SeatState({ seat, bookingsHref }: { seat: OwnerSeat; bookingsHre
   const { state, note } = seat.today;
   return (
     <div className="grid min-w-0 gap-1 text-sm sm:justify-items-start">
+      {seat.calendar === 'own' && <Badge variant="outline">Own calendar</Badge>}
       {state === 'vacant' && (
         <Badge variant="outline">
           <CircleIcon aria-hidden="true" /> Vacant
