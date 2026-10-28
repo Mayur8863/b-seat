@@ -7,6 +7,7 @@ import type { Database } from '../db/db.js';
 import { DB } from '../db/db.module.js';
 import { passPrice, space, spaceSlot } from '../db/schema/index.js';
 import { offeredSlots } from '../marketplace/slots.js';
+import { spacesWithLayout } from '../owner-operations/layout.queries.js';
 import { openingHoursOf, slotTimes } from '../owner-spaces/owner-spaces.service.js';
 import type {
   Listing,
@@ -92,8 +93,7 @@ export class ListingsService {
       currency: s.currency ?? '',
       utilities: s.utilities as Listing['utilities'],
       customUtilities: s.customUtilities,
-      // The layout tables arrive with the layout feature (US8).
-      hasLayout: false,
+      hasLayout: (await spacesWithLayout(this.db, [s.id])).has(s.id),
       openingHours,
       offers,
       fullDaySavings: savings.day || savings.week || savings.month ? savings : null,
@@ -167,6 +167,10 @@ export class ListingsService {
       }
     }
 
+    const withLayout = await spacesWithLayout(
+      this.db,
+      page.map((p) => p.id),
+    );
     return {
       items: page.map((s) => ({
         id: s.id,
@@ -178,8 +182,7 @@ export class ListingsService {
         customUtilities: s.customUtilities,
         currency: s.currency ?? '',
         lowestPrices: lowest.get(s.id) ?? { day: null, week: null, month: null },
-        // The layout tables arrive with the layout feature (US8).
-        hasLayout: false,
+        hasLayout: withLayout.has(s.id),
       })),
       nextCursor,
     };

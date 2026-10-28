@@ -3,6 +3,7 @@ import { and, asc, eq, inArray, ne, sql } from 'drizzle-orm';
 import { PinoLogger } from 'nestjs-pino';
 
 import { publishIncomplete } from '../common/errors/problem-types.js';
+import { spacesWithLayout } from '../owner-operations/layout.queries.js';
 import { Clock } from '../common/time/clock.js';
 import { toLocal } from '../common/time/zoned-time.js';
 import type { Database } from '../db/db.js';
@@ -375,8 +376,7 @@ export class OwnerSpacesService {
       customUtilities: s.customUtilities,
       seatCount: row.seatCount,
       hasOfferedPass: row.hasOfferedPass,
-      // The layout tables arrive with the layout feature (US8).
-      hasLayout: false,
+      hasLayout: (await spacesWithLayout(this.db, [s.id])).has(s.id),
       createdAt: s.createdAt.toISOString(),
       updatedAt: s.updatedAt.toISOString(),
     };

@@ -91,7 +91,7 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 | T059 | QA US7: bookings lists e2e, axe                              | qa-engineer    | T057, T058             | S    | todo                                                           | `test/002-us7-bookings`               |
 | T060 | Docs US7                                                     | docs-writer    | T059                   | S    | todo                                                           | `docs/002-us7-bookings`               |
 | T061 | UI spec: layout editor and renter plan                       | ui-ux-designer | T018, T029             | M    | review — spec done; next: frontend tasks can start             | `docs/002-ui-layout`                  |
-| T062 | Layout schema and API (owner and renter)                     | backend-dev    | T021                   | M    | todo                                                           | `feat/002-layout-api`                 |
+| T062 | Layout schema and API (owner and renter)                     | backend-dev    | T021                   | M    | review — dev done; next: QA (queued)                           | `feat/002-layout-api`                 |
 | T063 | Seed a sample layout                                         | backend-dev    | T009, T062             | S    | todo                                                           | `feat/002-seed-layout`                |
 | T064 | Layout editor model (pure reducer, TDD)                      | frontend-dev   | T061, T062             | M    | todo                                                           | `feat/002-layout-editor-model`        |
 | T065 | Layout editor page (grid, pointer, keyboard, form)           | frontend-dev   | T023, T064             | M    | todo                                                           | `feat/002-layout-editor`              |
@@ -801,7 +801,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given the renter plan, Then seat state is never conveyed by colour alone and a list view is always reachable (AC 8.4, FR-031).
 
 - [ ] T062 [US8] Add `apps/api/src/db/schema/layout.ts`, migration `layouts`, owner `GET`/`PUT …/layout` in `apps/api/src/owner-operations/`, renter `GET /api/listings/{spaceId}/layout`, `hasLayout` in `OwnerSpace` and `Listing`, and remove a seat's element on soft removal; tests `apps/api/test/layout.int-spec.ts`; regenerate `apps/api/openapi.json`
-  - **Owner**: backend-dev · **Branch**: `feat/002-layout-api` · **Size**: M · **Depends on**: T021 · **Status**: todo
+  - **Owner**: backend-dev · **Branch**: `feat/002-layout-api` · **Size**: M · **Depends on**: T021 · **Status**: review — dev done; next: QA (queued)
   - **Scope**: data-model.md "space_layout and layout_element" (CHECK `layout_element_kind_ref`, sizes, composite FKs); contracts/owner-operations.md "Layout"; research R-12.
   - **Acceptance criteria**:
     - Given a space with no layout, When the owner `GET`s it, Then `version: 0`, no elements, and every active seat in `unplacedSeatIds` (AC 8.2).

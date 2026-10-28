@@ -11,7 +11,7 @@ import {
 import { Clock } from '../common/time/clock.js';
 import type { Database } from '../db/db.js';
 import { DB } from '../db/db.module.js';
-import { booking, cubicle, seat, space } from '../db/schema/index.js';
+import { booking, cubicle, layoutElement, seat, space } from '../db/schema/index.js';
 import { LOCK_TIMEOUT, lockSeats, type SeatLockTx } from '../bookings/seat-lock.js';
 import {
   type CreateCubicleInput,
@@ -253,6 +253,7 @@ export class OwnerSeatsService {
         .update(seat)
         .set({ removedAt: sql`now()` })
         .where(eq(seat.id, seatId));
+      await tx.delete(layoutElement).where(eq(layoutElement.seatId, seatId));
     });
     this.logger.info({ spaceId, ownerId, seatId }, 'listing.seat-removed');
   }
@@ -342,7 +343,9 @@ export class OwnerSeatsService {
           .update(seat)
           .set({ removedAt: sql`now()` })
           .where(inArray(seat.id, seatIds));
+        await tx.delete(layoutElement).where(inArray(layoutElement.seatId, seatIds));
       }
+      await tx.delete(layoutElement).where(eq(layoutElement.cubicleId, cubicleId));
       await tx
         .update(cubicle)
         .set({ removedAt: sql`now()` })
