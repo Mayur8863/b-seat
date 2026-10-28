@@ -38,7 +38,7 @@ only a human merges.
 | T001 | Approve plan; write ADR-0011; amend ADR-0007 and ADR-0009 9.3    | architect         | none                         | M    | done   | `spec/003-space-photos`                |
 | T002 | Bump multer ≥ 2.5.0 and body-parser ≥ 2.4.0 (CVEs)               | devops            | T001                         | S    | review | `chore/003-multer-body-parser-cves`    |
 | T003 | Local S3 storage service, bucket init, e2e forwarder and S3 env  | devops            | T001                         | M    | review | `chore/003-local-storage`              |
-| T004 | Storage module, S3 env and windowed URL signing (TDD)            | backend-dev       | T003                         | M    | todo   | `feat/003-object-storage`              |
+| T004 | Storage module, S3 env and windowed URL signing (TDD)            | backend-dev       | T003                         | M    | review | `feat/003-object-storage`              |
 | T005 | Photo schema and migration, constraint tests first               | backend-dev       | T001                         | S    | todo   | `feat/003-photo-schema`                |
 | T006 | Image processing module with sharp (TDD)                         | backend-dev       | T001                         | M    | todo   | `feat/003-photo-processing`            |
 | T007 | Production image loads sharp; AWS storage runbook                | devops            | T006                         | S    | todo   | `chore/003-photo-runtime`              |
@@ -113,7 +113,7 @@ first (T002, T003). After T001: T002, T003, T005, T006, T011 and T012 can start 
     - Given `.env.example`, Then every new variable has a comment, and the secret ones say "dev only".
 
 - [ ] T004 Add `S3_*` and `PHOTO_URL_TTL_SECONDS` to `apps/api/src/config/env.ts` (+ `env.spec.ts`); add `apps/api/src/storage/` (`storage.module.ts`, `storage.service.ts`, `url-signing.ts` + `url-signing.spec.ts`) with `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner`; point integration tests at `S3_BUCKET_PHOTOS_TEST` in `apps/api/test/setup-env.ts` and create and empty that bucket in `global-setup.ts`; add `apps/api/test/storage.int-spec.ts`
-  - **Owner**: backend-dev · **Branch**: `feat/003-object-storage` · **Size**: M · **Depends on**: T003 · **Status**: todo
+  - **Owner**: backend-dev · **Branch**: `feat/003-object-storage` · **Size**: M · **Depends on**: T003 · **Status**: review (2026-10-29; SeaweedFS accepts SDK default checksums, no WHEN_REQUIRED override)
   - **Scope**: ADR-0011 sections 1, 5 and 10; research R-1, R-4, R-12; contracts/photos.md "Storage port" and "Environment". The PR states why each new dependency is needed. The signing window is a pure function, tested first. Secrets are never logged.
     - **(T001)** The port is `putObject`, `deleteObject` (one key) and an async `signGetUrls(keys, now)`.
     - S3 client timeouts: 3 s connection, 15 s request, at most 3 attempts.
