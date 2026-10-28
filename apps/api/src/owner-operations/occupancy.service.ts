@@ -1,4 +1,5 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { naturalSeatOrder } from '../marketplace/seat-order.js';
 import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { DrizzleQueryError } from 'drizzle-orm';
 import pg from 'pg';
@@ -134,7 +135,7 @@ export class OccupancyService {
           query.seatId === undefined ? undefined : eq(occupancyMark.seatId, query.seatId),
         ),
       )
-      .orderBy(asc(seatHold.startsAt), asc(seat.label), asc(occupancyMark.id));
+      .orderBy(asc(seatHold.startsAt), ...naturalSeatOrder(), asc(occupancyMark.id));
     return {
       items: rows.map((r) => toMark(r.mark, { id: r.seatId, label: r.label }, r, now)),
     };

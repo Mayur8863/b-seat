@@ -135,6 +135,27 @@ describe('seat availability API', () => {
   }
   const nextDay = (d: string) => new Date(Date.parse(d) + 86400000).toISOString().slice(0, 10);
 
+  it('lists seat labels in natural order (M-2 before M-10)', async () => {
+    await testDb(app)
+      .insert(seat)
+      .values(['M-10', 'M-2', 'M-1', 'M-12', 'M-11'].map((label) => ({ spaceId: id, label })));
+    const res = await renter.get(week());
+    const labels = (res.body as { seats: { label: string }[] }).seats.map((x) => x.label);
+    expect(labels).toEqual([
+      'A1',
+      'A2',
+      'A3',
+      'A4',
+      'A5',
+      'A6',
+      'M-1',
+      'M-2',
+      'M-10',
+      'M-11',
+      'M-12',
+    ]);
+  });
+
   it('marks a booked seat taken and reports the period (AC 4.4)', async () => {
     await holdDay(str(seatIds[2]), 'day');
     const res = await renter.get(week());
