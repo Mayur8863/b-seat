@@ -37,7 +37,7 @@ import { z } from 'zod';
 import { utilityLabel } from '@/lib/format';
 import { describeOwnerProblem } from '@/lib/marketplace-problems';
 import { offeredTimeZones } from '@/lib/time-zones';
-import type { ProblemCopy } from '@/lib/booking-problems';
+import type { ProblemCopy } from '@/lib/problem-copy';
 
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 const MAX_CUSTOM = 5;
