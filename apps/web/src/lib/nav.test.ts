@@ -107,7 +107,11 @@ describe('routeOf', () => {
 
 describe('navLinksFor', () => {
   it('lists Dashboard and Find a space for a renter', () => {
-    expect(navLinksFor('renter').map((l) => l.label)).toEqual(['Dashboard', 'Find a space']);
+    expect(navLinksFor('renter').map((l) => l.label)).toEqual([
+      'Dashboard',
+      'Find a space',
+      'My bookings',
+    ]);
   });
 
   it('adds List a space for an owner, once its page exists', () => {
@@ -115,6 +119,7 @@ describe('navLinksFor', () => {
       ['Dashboard', '/dashboard'],
       ['List a space', '/owner/spaces/new'],
       ['Find a space', '/find'],
+      ['My bookings', '/bookings'],
     ]);
     expect(PAGE_ROLES['/owner/spaces/new']).toBe('owner');
   });

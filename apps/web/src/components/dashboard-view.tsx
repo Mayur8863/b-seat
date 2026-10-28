@@ -13,10 +13,11 @@ import { Card, CardContent } from '@bseat/ui/components/card';
 import { Skeleton } from '@bseat/ui/components/skeleton';
 import { toast } from '@bseat/ui/components/sonner';
 import { useQueryClient } from '@tanstack/react-query';
-import { CalendarIcon, SearchIcon } from 'lucide-react';
+import { SearchIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
+import { NextBooking } from '@/components/next-booking';
 import { OwnerSpaces } from '@/components/owner-spaces';
 import { PreferencesForm } from '@/components/preferences-form';
 
@@ -124,23 +125,7 @@ function RenterBody({ preferences }: { preferences: Preferences | null }) {
         </Button>
       </nav>
       <div className="grid gap-6 md:grid-cols-2">
-        {/* T057 fills the summary and the true empty state in this same frame. */}
-        <section aria-labelledby="next-heading" className="grid content-start gap-3">
-          <h2 id="next-heading" className="text-lg font-medium">
-            Next booking
-          </h2>
-          <Card>
-            <CardContent className="grid justify-items-start gap-3">
-              <CalendarIcon aria-hidden="true" className="text-muted-foreground size-5" />
-              <p className="text-muted-foreground">
-                Find a space and book a seat by the day, week or month.
-              </p>
-              <Button asChild className="max-sm:min-h-11">
-                <Link href="/find">Find a space</Link>
-              </Button>
-            </CardContent>
-          </Card>
-        </section>
+        <NextBooking />
         <PreferencesCard preferences={preferences ?? NO_PREFERENCES} />
       </div>
     </>

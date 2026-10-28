@@ -260,7 +260,7 @@ export function BookingConfirmation({
           )}
           <div className="flex flex-wrap gap-2">
             <Button asChild>
-              <Link href={'/bookings' as Route}>View my bookings</Link>
+              <Link href="/bookings">View my bookings</Link>
             </Button>
             <Button variant="outline" asChild>
               <Link href="/find">Find another space</Link>
