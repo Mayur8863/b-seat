@@ -107,6 +107,10 @@ describe('owner spaces API', () => {
       expect(slots.map((s) => s.slot)).toEqual(['working_hours']);
     });
 
+    it('requires a description', async () => {
+      await create({ description: undefined }).expect(400);
+    });
+
     it('ignores nothing: unknown keys such as ownerId or status are 400', async () => {
       await create({ ownerId: 'x' }).expect(400);
       await create({ status: 'published' }).expect(400);
