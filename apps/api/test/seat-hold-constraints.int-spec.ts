@@ -157,6 +157,10 @@ describe('seat hold constraints (database)', () => {
         const results = await Promise.allSettled(
           racers.map(({ userId }) =>
             db.transaction(async (tx) => {
+              // The app pool's 10 s statement_timeout fires (57014) when the suite loads the CPU
+              // and 20 transactions queue behind each other's uncommitted rows; this test is
+              // about which constraint wins, not about timing.
+              await tx.execute(sql`SET LOCAL statement_timeout = '60s'`);
               const [header] = await tx
                 .insert(booking)
                 .values({
