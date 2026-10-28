@@ -59,7 +59,7 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 | T027 | Slots and pricing API                                        | backend-dev    | T007, T020             | M    | review — dev done; next: QA (queued)                           | `feat/002-pricing-api`                |
 | T028 | Listing detail API with offers and 24-hour saving            | backend-dev    | T027                   | S    | review — dev done; next: QA (queued)                           | `feat/002-listing-detail-api`         |
 | T029 | UI spec: search, listing page, booking, my bookings          | ui-ux-designer | T010                   | M    | review — spec done; next: frontend tasks can start             | `docs/002-ui-renter-booking`          |
-| T030 | Owner pricing page                                           | frontend-dev   | T023, T027             | M    | todo                                                           | `feat/002-pricing-page`               |
+| T030 | Owner pricing page                                           | frontend-dev   | T023, T027             | M    | review — dev done; next: QA (queued)                           | `feat/002-pricing-page`               |
 | T031 | Listing page v1: details and pass options                    | frontend-dev   | T014, T028, T029       | M    | todo                                                           | `feat/002-listing-page`               |
 | T032 | QA US3: pricing e2e, axe                                     | qa-engineer    | T030, T031             | S    | todo                                                           | `test/002-us3-pricing-e2e`            |
 | T033 | Docs US3                                                     | docs-writer    | T032                   | S    | todo                                                           | `docs/002-us3-pricing`                |
@@ -476,7 +476,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given SC-002, When the journey from dashboard to confirmation is counted, Then it is achievable by keyboard in a stated number of steps, with focus management after booking and cancel.
 
 - [ ] T030 [US3] Pricing page `apps/web/src/app/(app)/owner/spaces/[spaceId]/pricing/page.tsx` with `components/pricing-form.tsx` (+ test); add "Passes and prices" to the sub-nav
-  - **Owner**: frontend-dev · **Branch**: `feat/002-pricing-page` · **Size**: M · **Depends on**: T023, T027 · **Status**: todo
+  - **Owner**: frontend-dev · **Branch**: `feat/002-pricing-page` · **Size**: M · **Depends on**: T023, T027 · **Status**: review — dev done; next: QA (queued)
   - **Acceptance criteria**:
     - Given a 24-hour space, When the shift time changes, Then the derived slot times update before saving (AC 3.1).
     - Given a fixed-hours space, When the page renders, Then only "Working hours" shows and it cannot be turned off (AC 3.2).

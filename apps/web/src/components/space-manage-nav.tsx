@@ -8,6 +8,7 @@ import { usePathname } from 'next/navigation';
 /** Management pages of a space (ui/01 3.2). Each page task adds its own entry. */
 export const MANAGE_LINKS: readonly { label: string; segment: string }[] = [
   { label: 'Details', segment: '' },
+  { label: 'Passes and prices', segment: '/pricing' },
 ];
 
 export const manageHref = (spaceId: string, segment: string) =>
