@@ -70,39 +70,55 @@ export type ProblemExtensions =
   | Pick<z.infer<typeof LabelTakenProblem>, 'labels'>
   | Pick<z.infer<typeof OccupancyConflictProblem>, 'conflicts'>;
 
+/** Non-empty list of `T`, so a factory cannot be asked for a problem with nothing to report. */
+type NonEmpty<T> = readonly [T, ...T[]];
+type Missing = z.infer<typeof PublishIncompleteProblem>['missing'][number];
+type Conflict = z.infer<typeof OccupancyConflictProblem>['conflicts'][number];
+
+/* Each factory parses its argument with the response schema's own field: zod objects strip
+ * unknown keys, so a Drizzle row carrying renter ids or emails never reaches the body, and
+ * `.min(1)` is enforced at runtime too. */
+
 /** 422 publish without an active seat and/or an offered pass. */
-export function publishIncomplete(
-  missing: z.infer<typeof PublishIncompleteProblem>['missing'],
-): ProblemException {
+export function publishIncomplete(missing: NonEmpty<Missing>): ProblemException {
   return new ProblemException(
     422,
     PROBLEM_TYPES.publishIncomplete,
     'Listing incomplete',
     'Add at least one seat and price at least one pass before publishing.',
-    { missing },
+    { missing: PublishIncompleteProblem.shape.missing.parse(missing) },
   );
 }
 
 /** 409 duplicate label among the active seats of a space. */
-export function labelTaken(labels: z.infer<typeof LabelTakenProblem>['labels']): ProblemException {
+export function labelTaken(labels: NonEmpty<string>): ProblemException {
   return new ProblemException(
     409,
     PROBLEM_TYPES.labelTaken,
     'Seat label taken',
     'Another active seat in this space already uses that label.',
-    { labels },
+    { labels: LabelTakenProblem.shape.labels.parse(labels) },
   );
 }
 
 /** 409 marking seats occupied over renter bookings. */
-export function occupancyConflict(
-  conflicts: z.infer<typeof OccupancyConflictProblem>['conflicts'],
-): ProblemException {
+export function occupancyConflict(conflicts: NonEmpty<Conflict>): ProblemException {
   return new ProblemException(
     409,
     PROBLEM_TYPES.occupancyConflictsWithBookings,
     'Seats are booked',
     'Some of these seats are booked by renters on those dates.',
-    { conflicts },
+    { conflicts: OccupancyConflictProblem.shape.conflicts.parse(conflicts) },
+  );
+}
+
+/** 409 marking seats occupied over only the owner's own active marks. */
+export function alreadyOccupied(conflicts: NonEmpty<Conflict>): ProblemException {
+  return new ProblemException(
+    409,
+    PROBLEM_TYPES.occupancyAlreadyOccupied,
+    'Seats are already occupied',
+    'These seats already have active occupancy marks of yours on those dates.',
+    { conflicts: OccupancyConflictProblem.shape.conflicts.parse(conflicts) },
   );
 }

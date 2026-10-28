@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  alreadyOccupied,
   labelTaken,
   LabelTakenProblem,
   occupancyConflict,
@@ -82,9 +83,11 @@ describe('extension keys', () => {
       const extra = Object.keys(schema.shape).filter((key) => !reserved.includes(key));
       expect(extra).toHaveLength(1);
     }
-    expect(Object.keys(PublishIncompleteProblem.shape)).toEqual(
-      expect.arrayContaining(['missing']),
-    );
+    const extensionKeys = (schema: { shape: object }) =>
+      Object.keys(schema.shape).filter((key) => !reserved.includes(key));
+    expect(extensionKeys(PublishIncompleteProblem)).toEqual(['missing']);
+    expect(extensionKeys(LabelTakenProblem)).toEqual(['labels']);
+    expect(extensionKeys(OccupancyConflictProblem)).toEqual(['conflicts']);
   });
 });
 
@@ -105,11 +108,57 @@ describe('problem factories', () => {
   });
 
   it('build a 409 occupancy conflict problem with its extension', () => {
-    const conflicts = [{ seatId: id, label: 'A-1', bookedDates: ['2026-11-02'], marks: [] }];
+    const conflicts: [{ seatId: string; label: string; bookedDates: string[]; marks: [] }] = [
+      { seatId: id, label: 'A-1', bookedDates: ['2026-11-02'], marks: [] },
+    ];
     const err = occupancyConflict(conflicts);
     expect(err.getStatus()).toBe(409);
     expect(err.type).toBe(PROBLEM_TYPES.occupancyConflictsWithBookings);
     expect(err.extensions).toEqual({ conflicts });
+  });
+
+  it('build a 409 already-occupied problem with the same extension', () => {
+    const conflicts: [{ seatId: string; label: string; bookedDates: []; marks: [] }] = [
+      { seatId: id, label: 'A-1', bookedDates: [], marks: [] },
+    ];
+    const err = alreadyOccupied(conflicts);
+    expect(err.getStatus()).toBe(409);
+    expect(err.type).toBe(PROBLEM_TYPES.occupancyAlreadyOccupied);
+    expect(err.extensions).toEqual({ conflicts });
+  });
+
+  it('strip undocumented fields from passed-in objects', () => {
+    const row = {
+      seatId: id,
+      label: 'A-1',
+      bookedDates: ['2026-11-02'],
+      marks: [{ id, startDate: '2026-11-02', endDate: null, email: 'o@example.com' }],
+      email: 'renter@example.com',
+    };
+    const conflicts: [typeof row] = [row];
+    const expected = {
+      conflicts: [
+        {
+          seatId: id,
+          label: 'A-1',
+          bookedDates: ['2026-11-02'],
+          marks: [{ id, startDate: '2026-11-02', endDate: null }],
+        },
+      ],
+    };
+    expect(occupancyConflict(conflicts).extensions).toEqual(expected);
+    expect(alreadyOccupied(conflicts).extensions).toEqual(expected);
+  });
+
+  it('require at least one entry', () => {
+    // @ts-expect-error missing must be a non-empty tuple
+    expect(() => publishIncomplete([])).toThrow();
+    // @ts-expect-error labels must be a non-empty tuple
+    expect(() => labelTaken([])).toThrow();
+    // @ts-expect-error conflicts must be a non-empty tuple
+    expect(() => occupancyConflict([])).toThrow();
+    // @ts-expect-error conflicts must be a non-empty tuple
+    expect(() => alreadyOccupied([])).toThrow();
   });
 
   it('reject untyped extension objects at compile time', () => {
@@ -118,6 +167,6 @@ describe('problem factories', () => {
       new ProblemException(409, 't', 'T', 'D', { anything: 1 });
     expect(build).not.toThrow();
     // @ts-expect-error labels must be strings
-    expect(() => labelTaken([1])).not.toThrow();
+    expect(() => labelTaken([1])).toThrow();
   });
 });
