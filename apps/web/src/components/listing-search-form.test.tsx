@@ -156,4 +156,12 @@ describe('ListingSearchForm', () => {
     });
     expect(screen.getByRole('combobox', { name: 'City (optional)' })).toHaveValue('');
   });
+
+  it('selects the country from the URL once the list has loaded', async () => {
+    search = 'country=GB&city=Probeville';
+    server.use(reference, me(null), getListingsSearchMockHandler({ items: [], nextCursor: null }));
+    renderWithQuery(<ListingSearchForm />);
+    await screen.findByRole('option', { name: 'United Kingdom' });
+    expect(screen.getByLabelText('Country')).toHaveValue('GB');
+  });
 });

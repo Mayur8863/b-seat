@@ -24,6 +24,7 @@ const item = (n: number, over = {}) => ({
   ...over,
 });
 
+const fullPage = Array.from({ length: 20 }, (_, n) => item(n + 1));
 const base: FindFilters = { ...EMPTY_FILTERS, country: 'IN' };
 const render = (filters: FindFilters = base, handlers = {}) =>
   renderWithQuery(
@@ -120,20 +121,23 @@ describe('ListingResults', () => {
       http.get('*/api/listings', ({ request }) => {
         const cursor = new URL(request.url).searchParams.get('cursor');
         return HttpResponse.json(
-          cursor ? { items: [item(2)], nextCursor: null } : { items: [item(1)], nextCursor: 'c1' },
+          cursor ? { items: [item(21)], nextCursor: null } : { items: fullPage, nextCursor: 'c1' },
         );
       }),
     );
     render();
     await screen.findByRole('link', { name: 'Hub 1' });
-    expect(screen.getByRole('status')).toHaveTextContent('Showing 1 spaces');
+    expect(screen.getByRole('status')).toHaveTextContent('Showing 20 spaces');
     await user.click(screen.getByRole('button', { name: 'Show more spaces' }));
-    const second = await screen.findByRole('link', { name: 'Hub 2' });
-    await vi.waitFor(() => {
-      expect(second).toHaveFocus();
-    });
+    const second = await screen.findByRole('link', { name: 'Hub 21' });
+    await vi.waitFor(
+      () => {
+        expect(second).toHaveFocus();
+      },
+      { timeout: 5000 },
+    );
     expect(screen.queryByRole('button', { name: 'Show more spaces' })).not.toBeInTheDocument();
-    expect(screen.getByRole('status')).toHaveTextContent('2 spaces in India');
+    expect(screen.getByRole('status')).toHaveTextContent('21 spaces in India');
   });
 
   it('paging failure keeps the loaded cards and offers a retry', async () => {
@@ -142,12 +146,66 @@ describe('ListingResults', () => {
       http.get('*/api/listings', ({ request }) =>
         new URL(request.url).searchParams.get('cursor')
           ? HttpResponse.json({ type: 'x', title: 'x', status: 500 }, { status: 500 })
-          : HttpResponse.json({ items: [item(1)], nextCursor: 'c1' }),
+          : HttpResponse.json({ items: fullPage, nextCursor: 'c1' }),
       ),
     );
     render();
     await user.click(await screen.findByRole('button', { name: 'Show more spaces' }));
     expect(await screen.findByText("We couldn't load more spaces")).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Hub 1' })).toBeInTheDocument();
+  });
+  it('keeps paging through empty pages while a cursor is set, never saying no match', async () => {
+    let calls = 0;
+    server.use(
+      http.get('*/api/listings', ({ request }) => {
+        calls += 1;
+        const cursor = new URL(request.url).searchParams.get('cursor');
+        if (!cursor) return HttpResponse.json({ items: [], nextCursor: 'c1' });
+        if (cursor === 'c1') return HttpResponse.json({ items: [], nextCursor: 'c2' });
+        return HttpResponse.json({ items: [item(7)], nextCursor: null });
+      }),
+    );
+    render({ ...base, city: 'Pune' });
+    expect(await screen.findByRole('link', { name: 'Hub 7' })).toBeInTheDocument();
+    expect(calls).toBe(3);
+    expect(screen.queryByText('No spaces match your search.')).not.toBeInTheDocument();
+  });
+
+  it('after a few empty rounds it offers Show more instead of claiming no match', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.get('*/api/listings', ({ request }) => {
+        const cursor = new URL(request.url).searchParams.get('cursor');
+        return HttpResponse.json({ items: [], nextCursor: `${cursor ?? 'c'}x` });
+      }),
+    );
+    render({ ...base, city: 'Pune' });
+    expect(
+      await screen.findByRole('button', { name: 'Show more spaces' }, { timeout: 5000 }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('No spaces match your search.')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Show more spaces' }));
+  });
+
+  it('running the same search again replaces the pages instead of appending', async () => {
+    const user = userEvent.setup();
+    let round = 0;
+    server.use(
+      http.get('*/api/listings', ({ request }) => {
+        const cursor = new URL(request.url).searchParams.get('cursor');
+        if (cursor) return HttpResponse.json({ items: [item(21)], nextCursor: null });
+        round += 1;
+        return HttpResponse.json({ items: fullPage, nextCursor: round === 1 ? 'c1' : null });
+      }),
+    );
+    const view = render();
+    await user.click(await screen.findByRole('button', { name: 'Show more spaces' }));
+    await screen.findByRole('link', { name: 'Hub 21' });
+    await view.client.invalidateQueries();
+    await vi.waitFor(() => {
+      expect(screen.queryByRole('link', { name: 'Hub 21' })).not.toBeInTheDocument();
+    });
+    expect(screen.getAllByRole('link', { name: 'Hub 1' })).toHaveLength(1);
+    expect(screen.queryByRole('button', { name: 'Show more spaces' })).not.toBeInTheDocument();
   });
 });
