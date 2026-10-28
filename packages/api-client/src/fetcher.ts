@@ -16,6 +16,8 @@ export interface ProblemDetails {
   errors?: { path: string; message: string }[];
   /** Extension member of `listing:publish-incomplete`: what the listing still lacks. */
   missing?: string[];
+  /** Extension member of `listing:label-taken`: the clashing seat labels. */
+  labels?: string[];
 }
 
 export class ApiError extends Error {
@@ -70,6 +72,9 @@ function asProblem(data: unknown, status: number): ProblemDetails | undefined {
   }
   if (Array.isArray(raw.missing)) {
     problem.missing = raw.missing.filter((m): m is string => typeof m === 'string');
+  }
+  if (Array.isArray(raw.labels)) {
+    problem.labels = raw.labels.filter((l): l is string => typeof l === 'string');
   }
   return problem;
 }
