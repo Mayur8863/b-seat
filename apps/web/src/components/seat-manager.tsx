@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from 'react';
 import { AddSeatForm } from '@/components/add-seat-form';
 import { BulkSeatForm } from '@/components/bulk-seat-form';
 import { CubicleSection } from '@/components/cubicle-section';
-import { SeatList } from '@/components/seat-list';
+import { OccupancySeatList } from '@/components/occupancy-seat-list';
 import type { ProblemCopy } from '@/lib/problem-copy';
 import { SEAT_LIMIT, seatCountText } from '@/lib/seat-values';
 
@@ -78,7 +78,7 @@ export function SeatManager({ spaceId }: { spaceId: string }) {
         onPageProblem={onPageProblem}
       />
 
-      <SeatList
+      <OccupancySeatList
         spaceId={spaceId}
         seats={seats}
         failed={seatsQuery.isError}

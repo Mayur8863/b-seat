@@ -1,4 +1,5 @@
 import {
+  getOccupancyListQueryKey,
   getOwnerSeatsListCubiclesQueryKey,
   getOwnerSeatsListSeatsQueryKey,
   getOwnerSpacesGetQueryKey,
@@ -13,6 +14,7 @@ export function useSeatRefresh(spaceId: string) {
     for (const queryKey of [
       getOwnerSeatsListSeatsQueryKey(spaceId),
       getOwnerSeatsListCubiclesQueryKey(spaceId),
+      getOccupancyListQueryKey(spaceId),
       getOwnerSpacesGetQueryKey(spaceId),
       getOwnerSpacesListQueryKey(),
     ]) {

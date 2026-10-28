@@ -77,7 +77,7 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 | T045 | Docs US4                                                     | docs-writer    | T043, T044             | S    | todo                                                           | `docs/002-us4-search-book`            |
 | T046 | UI spec: occupancy, calendars, owner bookings                | ui-ux-designer | T018                   | M    | review — spec done; next: frontend tasks can start             | `docs/002-ui-owner-operations`        |
 | T047 | Occupancy API and seat state today                           | backend-dev    | T006, T021             | M    | todo                                                           | `feat/002-occupancy-api`              |
-| T048 | Occupancy UI on the seats page                               | frontend-dev   | T024, T046, T047       | M    | todo                                                           | `feat/002-occupancy-ui`               |
+| T048 | Occupancy UI on the seats page                               | frontend-dev   | T024, T046, T047       | M    | review — dev done; next: QA (queued)                           | `feat/002-occupancy-ui`               |
 | T049 | QA US5: occupancy e2e, booking-vs-mark race, axe             | qa-engineer    | T036, T048             | M    | todo                                                           | `test/002-us5-occupancy`              |
 | T050 | Docs US5                                                     | docs-writer    | T049                   | S    | todo                                                           | `docs/002-us5-occupancy`              |
 | T051 | Availability calendars API                                   | backend-dev    | T006, T021             | M    | review — dev done; next: QA (queued)                           | `feat/002-calendar-api`               |
@@ -677,7 +677,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given another owner, Then 404 parity (FR-009). Given `gen:api`, Then the schemas are committed.
 
 - [ ] T048 [US5] Occupancy UI on the seats page: `components/seat-state.tsx`, `components/mark-occupied-dialog.tsx` (+ tests)
-  - **Owner**: frontend-dev · **Branch**: `feat/002-occupancy-ui` · **Size**: M · **Depends on**: T024, T046, T047 · **Status**: todo
+  - **Owner**: frontend-dev · **Branch**: `feat/002-occupancy-ui` · **Size**: M · **Depends on**: T024, T046, T047 · **Status**: review — dev done; next: QA (queued)
   - **Acceptance criteria**:
     - Given seats, When the page renders, Then each shows today's state in text and icon, and the private note for occupied seats (AC 5.4).
     - Given selected seats and dates, When marked occupied, Then the success state shows and the states refresh (AC 5.1).
