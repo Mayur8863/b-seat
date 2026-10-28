@@ -323,6 +323,7 @@ lock.
    rename), `LayoutService.save` and `OwnerSpacesService` (`update`, `publish`, `unpublish`, `updatePricing`) set no
    `lock_timeout`, and `deleteSeat` and `deleteCubicle` set it only after the space row. This is no deadlock risk
    (the order is right), only an unbounded wait, so it does not block 002. It is a follow-up task for backend-dev.
+   **Resolved 2026-10-29:** fixed in a20525a. All writers now use `withLockTimeout`.
 
 5. **The renter rule stays retry-only.** There is no per-renter lock. `seat_hold_user_no_overlap` can still
    deadlock when one renter books two different seats at once, because each transaction holds a different seat
