@@ -155,5 +155,6 @@ export const seat = pgTable(
       foreignColumns: [cubicle.id, cubicle.spaceId],
     }),
     check('seat_label_length', sql`length(btrim(${t.label})) between 1 and 20`),
+    check('seat_features_max', sql`cardinality(${t.features}) <= 10`),
   ],
 );

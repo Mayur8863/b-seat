@@ -51,26 +51,29 @@ const pattern = z
     }
   });
 
+/* One object with exactly one of `seats` or `pattern`, not a union: a union reports a single
+ * root-level "Invalid input", and the contract wants 400 on the offending field. */
 export const CreateSeatsInputSchema = z
-  .union([
-    z.strictObject({
-      seats: z
-        .array(
-          z.strictObject({
-            label,
-            cubicleId: z.uuid().optional(),
-            features: features.default([]),
-          }),
-        )
-        .min(1)
-        .max(MAX_SEATS),
-    }),
-    z.strictObject({
-      pattern,
-      cubicleId: z.uuid().optional(),
-      features: features.default([]),
-    }),
-  ])
+  .strictObject({
+    seats: z
+      .array(
+        z.strictObject({ label, cubicleId: z.uuid().optional(), features: features.default([]) }),
+      )
+      .min(1)
+      .max(MAX_SEATS)
+      .optional(),
+    pattern: pattern.optional(),
+    cubicleId: z.uuid().optional(),
+    features: features.default([]),
+  })
+  .refine((v) => (v.seats === undefined) !== (v.pattern === undefined), {
+    message: 'Send either seats or pattern',
+    path: ['seats'],
+  })
+  .refine((v) => v.seats === undefined || (v.cubicleId === undefined && v.features.length === 0), {
+    message: 'With seats, set cubicleId and features on each seat',
+    path: ['seats'],
+  })
   .meta({ id: 'CreateSeatsInput' });
 export type CreateSeatsInput = z.infer<typeof CreateSeatsInputSchema>;
 

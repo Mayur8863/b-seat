@@ -24,7 +24,7 @@ describe('seat schemas', () => {
 
   it('refuses a generated label over 20 characters on pattern.prefix', () => {
     const r = CreateSeatsInputSchema.safeParse({
-      pattern: { prefix: 'abcdefghijklmno', from: 1, to: 100000 },
+      pattern: { prefix: 'abcdefghijklmno', from: 100000, to: 100005 },
     });
     expect(paths(r)).toContain('pattern.prefix');
   });

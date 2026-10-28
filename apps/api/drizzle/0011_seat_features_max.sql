@@ -1,0 +1,1 @@
+ALTER TABLE "seat" ADD CONSTRAINT "seat_features_max" CHECK (cardinality("seat"."features") <= 10);

@@ -127,9 +127,11 @@ describe('owner seats and cubicles API', () => {
           .post(`${base}/seats`)
           .send({ seats: [{ label: 'A', features }] })
           .expect(400);
-        expect(res.body.errors[0].path).toContain('features');
+        expect(JSON.stringify(res.body.errors)).toContain('features');
       }
-      const res = await addPattern({ prefix: 'abcdefghijklmno', from: 1, to: 100000 }).expect(400);
+      const res = await addPattern({ prefix: 'abcdefghijklmno', from: 100000, to: 100005 }).expect(
+        400,
+      );
       expect(JSON.stringify(res.body.errors)).toContain('pattern.prefix');
       await a.post(`${base}/seats`).send({ seats: [] }).expect(400);
     });

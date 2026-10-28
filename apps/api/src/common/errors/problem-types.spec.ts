@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   alreadyOccupied,
+  cubicleNameTaken,
   labelTaken,
   LabelTakenProblem,
   occupancyConflict,
@@ -9,6 +10,8 @@ import {
   PROBLEM_TYPES,
   publishIncomplete,
   PublishIncompleteProblem,
+  seatHasFutureBookings,
+  seatLimit,
 } from './problem-types.js';
 import { ProblemException } from './problem.exception.js';
 import { ProblemSchema } from './problem.js';
@@ -147,6 +150,28 @@ describe('problem factories', () => {
     expect(text(alreadyOccupied(c))).toEqual([
       'Seats are already occupied',
       "You've already marked some of these seats occupied on those dates.",
+    ]);
+  });
+
+  it('build the seat-limit, cubicle-name and future-booking problems from the registry', () => {
+    const text = (e: ProblemException) => [e.getStatus(), e.type, e.title, e.detail];
+    expect(text(seatLimit())).toEqual([
+      422,
+      PROBLEM_TYPES.seatLimit,
+      'Seat limit reached',
+      'A space can have at most 200 seats. No seats were added.',
+    ]);
+    expect(text(cubicleNameTaken())).toEqual([
+      409,
+      PROBLEM_TYPES.cubicleNameTaken,
+      'Cubicle name already used',
+      'Another active cubicle in this space already has that name. Choose a different name.',
+    ]);
+    expect(text(seatHasFutureBookings())).toEqual([
+      409,
+      PROBLEM_TYPES.seatHasFutureBookings,
+      'Upcoming bookings',
+      'Upcoming bookings prevent this removal. Wait until they end or are cancelled.',
     ]);
   });
 
