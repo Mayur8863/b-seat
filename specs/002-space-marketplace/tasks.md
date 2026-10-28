@@ -69,7 +69,7 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 | T037 | Renter and owner booking emails                              | backend-dev    | T036                   | S    | todo                                                           | `feat/002-booking-emails`             |
 | T038 | Search availability filter (date, pass, slot)                | backend-dev    | T034, T035             | M    | todo                                                           | `feat/002-search-availability-filter` |
 | T039 | Find a space page                                            | frontend-dev   | T013, T014, T029, T034 | M    | todo                                                           | `feat/002-find-page`                  |
-| T040 | Listing page: seat availability for a pass                   | frontend-dev   | T031, T035             | M    | todo                                                           | `feat/002-listing-seats`              |
+| T040 | Listing page: seat availability for a pass                   | frontend-dev   | T031, T035             | M    | blocked                                                        | `feat/002-listing-seats`              |
 | T041 | Book a pass, confirmation, problem copy                      | frontend-dev   | T036, T040             | M    | todo                                                           | `feat/002-book-pass-ui`               |
 | T042 | Retire `/book`: redirect to `/find`, remove 001 components   | frontend-dev   | T039, T041             | S    | todo                                                           | `chore/002-retire-book-page`          |
 | T043 | Retire legacy `GET /api/spaces` routes                       | backend-dev    | T042                   | S    | todo                                                           | `chore/002-retire-legacy-spaces-api`  |
@@ -588,7 +588,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given loading, error and paging, Then ui/03 states show (FR-032).
 
 - [ ] T040 [US4] Seat availability on the listing page: `components/pass-picker.tsx` and `components/listing-seat-list.tsx` (+ tests) in `apps/web/src/app/(app)/spaces/[spaceId]/page.tsx`
-  - **Owner**: frontend-dev · **Branch**: `feat/002-listing-seats` · **Size**: M · **Depends on**: T031, T035 · **Status**: todo
+  - **Owner**: frontend-dev · **Branch**: `feat/002-listing-seats` · **Size**: M · **Depends on**: T031, T035 · **Status**: blocked — contract: GET /api/listings/{spaceId}/seats documents no pass/slot/startDate query params (missing @ApiQueryFromSchema), generated hook cannot send them; next: backend adds it + gen:api, then build T040
   - **Acceptance criteria**:
     - Given a pass, slot and start date, When the seat list loads, Then every seat shows free, taken or closed by text and icon, plus the end date and time labelled with the zone and the price (AC 4.4, FR-016, FR-033).
     - Given closed days in the period, When rendered, Then they are listed as "closed" and the price is unchanged (AC 6.4).
@@ -596,7 +596,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given the start date picker, When opened, Then dates more than 30 days ahead are not selectable (AC 4.9, UX only).
 
 - [ ] T041 [US4] Book action and confirmation: `components/book-pass.tsx` (+ test) and `apps/web/src/lib/marketplace-problems.ts` (+ test)
-  - **Owner**: frontend-dev · **Branch**: `feat/002-book-pass-ui` · **Size**: M · **Depends on**: T036, T040 · **Status**: todo
+  - **Owner**: frontend-dev · **Branch**: `feat/002-book-pass-ui` · **Size**: M · **Depends on**: T036, T040 · **Status**: blocked — contract: GET /api/listings/{spaceId}/seats documents no pass/slot/startDate query params (missing @ApiQueryFromSchema), generated hook cannot send them; next: backend adds it + gen:api, then build T040
   - **Scope**: `useBookingsCreate`; invalidate seat availability and my bookings; focus handling per ui/03. Hide booking on `isOwnSpace`.
   - **Acceptance criteria**:
     - Given a free seat, When the renter books (with the ui/03 confirmation), Then the confirmation shows seat, pass, slot, period, price and the offline-payment note, and the seat reads taken after refetch (AC 4.5).
