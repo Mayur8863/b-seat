@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { SlotKindEnum } from '../marketplace/enums.js';
 import { STANDARD_UTILITIES } from '../reference/utilities.js';
 
 import {
@@ -133,8 +134,6 @@ export type OwnerSpaceList = z.infer<typeof OwnerSpaceListSchema>;
 
 /* Pricing (T027). Money is a string, never a number: Postgres rounds sub-cent values silently. */
 
-const SLOT_KINDS = z.enum(['day', 'night', 'full_day', 'working_hours']);
-
 const DecimalString = z
   .string()
   .regex(/^(0|[1-9]\d{0,9})(\.\d{1,2})?$/, 'Expected a positive amount with at most two decimals')
@@ -145,17 +144,19 @@ const Money = z.string().describe('Decimal amount with two fraction digits');
 export const UpdatePricingInputSchema = z
   .strictObject({
     shiftChangeAt: ShiftChangeAt.optional(),
-    slots: z.array(
-      z.strictObject({
-        slot: SLOT_KINDS,
-        enabled: z.boolean(),
-        prices: z.strictObject({
-          day: DecimalString.nullable(),
-          week: DecimalString.nullable(),
-          month: DecimalString.nullable(),
+    slots: z
+      .array(
+        z.strictObject({
+          slot: SlotKindEnum,
+          enabled: z.boolean(),
+          prices: z.strictObject({
+            day: DecimalString.nullable(),
+            week: DecimalString.nullable(),
+            month: DecimalString.nullable(),
+          }),
         }),
-      }),
-    ),
+      )
+      .max(4),
   })
   .meta({ id: 'UpdatePricingInput' });
 export type UpdatePricingInput = z.infer<typeof UpdatePricingInputSchema>;
@@ -166,7 +167,7 @@ export const SpacePricingSchema = z
     openingHours: OpeningHoursOutput,
     slots: z.array(
       z.object({
-        slot: SLOT_KINDS,
+        slot: SlotKindEnum,
         enabled: z.boolean(),
         startTime: LocalTime,
         endTime: LocalTime,

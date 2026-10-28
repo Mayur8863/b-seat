@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { Instant, LocalDate } from '../common/schemas/field-formats.js';
+import { Instant, LocalDate, MultilineText } from '../common/schemas/field-formats.js';
 
 export const MAX_MARK_SEATS = 200;
 
@@ -11,7 +11,7 @@ export const MarkOccupiedInputSchema = z
     endDate: LocalDate.nullable().describe(
       'Inclusive; null keeps the seats occupied until vacated',
     ),
-    note: z.string().trim().max(200).nullable(),
+    note: MultilineText.trim().max(200).nullable(),
   })
   .refine((v) => v.endDate === null || v.endDate >= v.startDate, {
     path: ['endDate'],

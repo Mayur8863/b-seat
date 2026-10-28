@@ -110,6 +110,16 @@ describe('owner pricing API', () => {
     expect(res.status).toBe(400);
   });
 
+  it('reports pricing mistakes as field errors the form can show', async () => {
+    const wrong = await a.put(url()).send({ slots: [slot('day'), slot('night')] });
+    expect(wrong.status).toBe(400);
+    expect(wrong.body.errors).toEqual([expect.objectContaining({ path: 'slots' })]);
+    const shift = await a
+      .put(url(fixedId))
+      .send({ shiftChangeAt: '07:00', slots: [slot('working_hours')] });
+    expect(shift.body.errors).toEqual([expect.objectContaining({ path: 'shiftChangeAt' })]);
+  });
+
   it('fixed hours: one working_hours slot, cannot disable or use day (AC 3.2)', async () => {
     const got = await a.get(url(fixedId));
     expect(got.body.slots).toEqual([

@@ -2,6 +2,7 @@ import { BadRequestException, Inject, Injectable, NotFoundException } from '@nes
 import { and, asc, eq, inArray, isNull, sql, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
 
+import { PlainText } from '../common/schemas/field-formats.js';
 import { ProblemException } from '../common/errors/problem.exception.js';
 import { fullDaySaving } from '../common/money/money.js';
 import type { Database } from '../db/db.js';
@@ -40,7 +41,7 @@ const PASSES = ['day', 'week', 'month'] as const;
 /** Candidate spaces one search request may evaluate against availability. */
 const MAX_SCAN = 200;
 
-const CursorSchema = z.object({ name: z.string(), id: z.uuid() });
+const CursorSchema = z.object({ name: PlainText, id: z.uuid() });
 const encodeCursor = (c: z.infer<typeof CursorSchema>): string =>
   Buffer.from(JSON.stringify(c)).toString('base64url');
 function decodeCursor(raw: string): z.infer<typeof CursorSchema> {

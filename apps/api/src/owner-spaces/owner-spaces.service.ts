@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, asc, eq, inArray, ne, sql } from 'drizzle-orm';
 import { PinoLogger } from 'nestjs-pino';
 
@@ -6,6 +6,7 @@ import { publishIncomplete } from '../common/errors/problem-types.js';
 import { spacesWithLayout } from '../owner-operations/layout.queries.js';
 import { Clock } from '../common/time/clock.js';
 import { toLocal } from '../common/time/zoned-time.js';
+import { RequestValidationException } from '../common/errors/validation.js';
 import { withLockTimeout } from '../bookings/seat-lock.js';
 import type { Database } from '../db/db.js';
 import { DB } from '../db/db.module.js';
@@ -245,14 +246,20 @@ export class OwnerSpacesService {
       const kinds = SLOTS_BY_MODE[row.mode];
       const sent = input.slots.map((s) => s.slot);
       if (sent.length !== kinds.length || !kinds.every((k) => sent.includes(k))) {
-        throw new BadRequestException(`slots must hold each of ${kinds.join(', ')} exactly once`);
+        throw new RequestValidationException([
+          { path: 'slots', message: `slots must hold each of ${kinds.join(', ')} exactly once` },
+        ]);
       }
       if (row.mode === 'fixed_hours') {
         if (input.shiftChangeAt !== undefined) {
-          throw new BadRequestException('shiftChangeAt only applies to 24-hour spaces');
+          throw new RequestValidationException([
+            { path: 'shiftChangeAt', message: 'shiftChangeAt only applies to 24-hour spaces' },
+          ]);
         }
         if (input.slots.some((s) => !s.enabled)) {
-          throw new BadRequestException('working_hours cannot be disabled');
+          throw new RequestValidationException([
+            { path: 'slots', message: 'working_hours cannot be disabled' },
+          ]);
         }
       }
       await tx

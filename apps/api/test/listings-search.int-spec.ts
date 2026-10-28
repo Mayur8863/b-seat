@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { eq } from 'drizzle-orm';
 import request from 'supertest';
@@ -88,6 +89,15 @@ describe('listing search API', () => {
     expect((await renter.get('/api/listings?country=IN&bogus=1')).status).toBe(400);
     expect((await renter.get('/api/listings?country=IN&cursor=junk')).status).toBe(400);
     expect((await renter.get('/api/listings?country=IN&limit=51')).status).toBe(400);
+    expect((await renter.get('/api/listings?country=IN&city=%00')).status).toBe(400);
+    expect((await renter.get('/api/listings?country=IN&area=a%00')).status).toBe(400);
+    expect((await renter.get('/api/listings/locations?country=IN&field=city&q=%00')).status).toBe(
+      400,
+    );
+    const nul = Buffer.from(JSON.stringify({ name: 'a\u0000', id: randomUUID() })).toString(
+      'base64url',
+    );
+    expect((await renter.get(`/api/listings?country=IN&cursor=${nul}`)).status).toBe(400);
   });
 
   it('returns only published spaces in the trimmed, case-insensitive city (AC 4.1, 4.2)', async () => {

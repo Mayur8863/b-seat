@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { CurrencyCode, Instant, LocalDate, TimeZone } from '../common/schemas/field-formats.js';
+import { PassTypeEnum, SlotKindEnum } from '../marketplace/enums.js';
 
 export interface BookingCursor {
   startsAt: string;
@@ -49,8 +50,8 @@ export const OwnerBookingSchema = z
     status: z.enum(['active', 'cancelled']),
     renter: z.object({ name: z.string(), email: z.email() }),
     seat: z.object({ id: z.uuid(), label: z.string() }),
-    pass: z.enum(['day', 'week', 'month']),
-    slot: z.enum(['day', 'night', 'full_day', 'working_hours']),
+    pass: PassTypeEnum,
+    slot: SlotKindEnum,
     startDate: LocalDate,
     endDate: LocalDate,
     timeZone: TimeZone,
