@@ -13,6 +13,7 @@ import { z } from 'zod';
 import type { AuthSession } from '../auth/auth.js';
 import { AuthGuard, CurrentSession } from '../auth/auth.guard.js';
 import { ProblemSchema } from '../common/errors/problem.js';
+import { ApiQueryFromSchema } from '../common/openapi/api-query-schema.js';
 import {
   type Listing,
   type ListingSeatAvailability,
@@ -43,6 +44,7 @@ export class ListingsController {
   }
 
   @Get(':spaceId/seats')
+  @ApiQueryFromSchema(SeatAvailabilityInputSchema)
   @ApiOkResponse({ standardSchema: ListingSeatAvailabilitySchema })
   @ApiBadRequestResponse({ standardSchema: ProblemSchema })
   @ApiNotFoundResponse({ standardSchema: ProblemSchema })
