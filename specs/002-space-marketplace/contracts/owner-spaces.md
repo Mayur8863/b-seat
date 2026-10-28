@@ -62,7 +62,7 @@ const CreateSpaceInput = z
   .meta({ id: 'CreateSpaceInput' });
 ```
 
-Publish and unpublish are idempotent (publishing a published space returns 200). Changing `openingHours` never
+Publish and unpublish are idempotent (publishing a published space returns 200 without re-checking FR-008; unpublishing a `draft` returns 200 and leaves it a `draft`; only a published space becomes `unpublished`). `upcomingBookingCount` counts active pass bookings whose `ends_at` is after now. Changing `openingHours` never
 changes existing bookings (edge case); only new bookings use the new slots. Log `listing.published` /
 `listing.unpublished` with ids.
 

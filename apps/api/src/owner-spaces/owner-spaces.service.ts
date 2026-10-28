@@ -1,5 +1,5 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, asc, eq, type SQL, sql } from 'drizzle-orm';
+import { and, asc, eq, ne, sql } from 'drizzle-orm';
 import { PinoLogger } from 'nestjs-pino';
 
 import { publishIncomplete } from '../common/errors/problem-types.js';
@@ -17,13 +17,18 @@ import type {
 } from './owner-spaces.schemas.js';
 
 type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];
-type Executor = Database | Tx;
 type OpeningHours = CreateSpaceInput['openingHours'];
 
 const SLOTS_BY_MODE: Record<OpeningHours['mode'], SlotKind[]> = {
   always_open: ['day', 'night', 'full_day'],
   fixed_hours: ['working_hours'],
 };
+
+const slotList = (mode: OpeningHours['mode']) =>
+  sql.join(
+    SLOTS_BY_MODE[mode].map((slot) => sql`${slot}`),
+    sql`, `,
+  );
 
 const hhmm = (value: string | null): string => (value ?? '').slice(0, 5);
 
@@ -35,8 +40,8 @@ const hasOfferedPass = sql<boolean>`exists (
   select 1 from "space_slot" join "pass_price"
     on "pass_price"."space_id" = "space_slot"."space_id" and "pass_price"."slot" = "space_slot"."slot"
   where "space_slot"."space_id" = "space"."id" and "space_slot"."enabled"
-    and (("space"."opening_mode" = 'always_open' and "space_slot"."slot" in ('day', 'night', 'full_day'))
-      or ("space"."opening_mode" = 'fixed_hours' and "space_slot"."slot" = 'working_hours')))`;
+    and (("space"."opening_mode" = 'always_open' and "space_slot"."slot" in (${slotList('always_open')}))
+      or ("space"."opening_mode" = 'fixed_hours' and "space_slot"."slot" in (${slotList('fixed_hours')}))))`;
 
 function openingHoursOf(row: {
   openingMode: 'always_open' | 'fixed_hours' | null;
@@ -60,6 +65,7 @@ export class OwnerSpacesService {
   }
 
   async list(ownerId: string): Promise<OwnerSpaceList> {
+    const now = this.clock.now().toISOString();
     const rows = await this.db
       .select({
         id: space.id,
@@ -70,7 +76,9 @@ export class OwnerSpacesService {
         country: space.country,
         seatCount,
         hasOfferedPass,
-        upcomingBookingCount: sql<number>`(select count(*)::int from "booking" where "booking"."space_id" = "space"."id" and "booking"."kind" = 'pass' and "booking"."status" = 'active' and "booking"."ends_at" > ${this.clock.now().toISOString()}::timestamptz)`,
+        // A pass spans at most 30 days, so a booking that has not ended started within the last 31
+        // days. The lower bound on starts_at lets booking_space_id_starts_at_idx range-scan.
+        upcomingBookingCount: sql<number>`(select count(*)::int from "booking" where "booking"."space_id" = "space"."id" and "booking"."kind" = 'pass' and "booking"."status" = 'active' and "booking"."starts_at" > ${now}::timestamptz - interval '32 days' and "booking"."ends_at" > ${now}::timestamptz)`,
       })
       .from(space)
       .where(eq(space.ownerId, ownerId))
@@ -86,7 +94,7 @@ export class OwnerSpacesService {
   }
 
   get(ownerId: string, spaceId: string): Promise<OwnerSpace> {
-    return this.load(this.db, ownerId, spaceId);
+    return this.load(ownerId, spaceId);
   }
 
   async create(ownerId: string, input: CreateSpaceInput): Promise<OwnerSpace> {
@@ -118,7 +126,7 @@ export class OwnerSpacesService {
       return row.id;
     });
     this.logger.info({ spaceId: id, ownerId }, 'listing.created');
-    return this.load(this.db, ownerId, id);
+    return this.load(ownerId, id);
   }
 
   async update(ownerId: string, spaceId: string, input: UpdateSpaceInput): Promise<OwnerSpace> {
@@ -145,18 +153,22 @@ export class OwnerSpacesService {
       if (updated.length === 0) throw this.notFound();
       if (openingHours) await this.ensureSlotRows(tx, spaceId, openingHours.mode);
     });
-    return this.load(this.db, ownerId, spaceId);
+    return this.load(ownerId, spaceId);
   }
 
   async publish(ownerId: string, spaceId: string): Promise<OwnerSpace> {
     await this.db.transaction(async (tx) => {
-      // Locks the row so a concurrent unpublish or edit cannot interleave with the check.
+      // Serialises with other writers of the space row (edit, unpublish, publish) only; it does
+      // not block a concurrent seat or price removal. Such a removal is equivalent to
+      // publishing first and removing after, which FR-008 allows.
       const [row] = await tx
-        .select({ seats: seatCount, priced: hasOfferedPass })
+        .select({ status: space.status, seats: seatCount, priced: hasOfferedPass })
         .from(space)
         .where(and(eq(space.id, spaceId), eq(space.ownerId, ownerId)))
         .for('update', { of: space });
       if (!row) throw this.notFound();
+      // Idempotent: a published space is not re-checked (contract).
+      if (row.status === 'published') return;
       const missing: ('seat' | 'pricedPass')[] = [];
       if (row.seats === 0) missing.push('seat');
       if (!row.priced) missing.push('pricedPass');
@@ -168,18 +180,18 @@ export class OwnerSpacesService {
         .where(and(eq(space.id, spaceId), eq(space.ownerId, ownerId)));
     });
     this.logger.info({ spaceId, ownerId }, 'listing.published');
-    return this.load(this.db, ownerId, spaceId);
+    return this.load(ownerId, spaceId);
   }
 
   async unpublish(ownerId: string, spaceId: string): Promise<OwnerSpace> {
     const updated = await this.db
       .update(space)
       .set({ status: 'unpublished', updatedAt: sql`now()` })
-      .where(and(eq(space.id, spaceId), eq(space.ownerId, ownerId)))
+      .where(and(eq(space.id, spaceId), eq(space.ownerId, ownerId), ne(space.status, 'draft')))
       .returning({ id: space.id });
-    if (updated.length === 0) throw this.notFound();
-    this.logger.info({ spaceId, ownerId }, 'listing.unpublished');
-    return this.load(this.db, ownerId, spaceId);
+    // A draft was never published, so it stays a draft; load() still 404s a foreign id.
+    if (updated.length > 0) this.logger.info({ spaceId, ownerId }, 'listing.unpublished');
+    return this.load(ownerId, spaceId);
   }
 
   // Identical for another owner's space and an unknown id (FR-009).
@@ -211,12 +223,11 @@ export class OwnerSpacesService {
       .onConflictDoNothing();
   }
 
-  private async load(db: Executor, ownerId: string, spaceId: string): Promise<OwnerSpace> {
-    const filter: SQL = and(eq(space.id, spaceId), eq(space.ownerId, ownerId)) ?? sql`false`;
-    const [row] = await db
+  private async load(ownerId: string, spaceId: string): Promise<OwnerSpace> {
+    const [row] = await this.db
       .select({ s: space, seatCount, hasOfferedPass })
       .from(space)
-      .where(filter);
+      .where(and(eq(space.id, spaceId), eq(space.ownerId, ownerId)));
     if (!row) throw this.notFound();
     const s = row.s;
     return {

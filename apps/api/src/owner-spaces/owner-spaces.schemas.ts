@@ -1,10 +1,13 @@
 import { z } from 'zod';
 
+import { STANDARD_UTILITIES } from '../reference/utilities.js';
+
 import {
   CountryCode,
   CurrencyCode,
   Instant,
   LocalTime,
+  MultilineText,
   OfferedTimeZone,
   PlainText,
   StandardUtility,
@@ -37,7 +40,7 @@ const unique = (values: string[]) =>
 
 const fields = {
   name: Text(100),
-  description: Text(2000),
+  description: MultilineText.pipe(z.string().trim().min(1).max(2000)),
   country: CountryCode,
   city: Text(100),
   area: Text(100),
@@ -46,7 +49,10 @@ const fields = {
   currency: CurrencyCode,
   openingHours: OpeningHoursInput,
 };
-const utilities = z.array(StandardUtility).refine(unique, 'Utilities must be unique');
+const utilities = z
+  .array(StandardUtility)
+  .max(STANDARD_UTILITIES.length)
+  .refine(unique, 'Utilities must be unique');
 const customUtilities = z
   .array(Text(40))
   .max(5)

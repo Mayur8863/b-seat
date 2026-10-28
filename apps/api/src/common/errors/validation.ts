@@ -19,10 +19,15 @@ function issuePath(issue: StandardSchemaV1.Issue): string {
     .join('.');
 }
 
+// A huge invalid body must not become a huge response.
+const MAX_REPORTED_ISSUES = 20;
+
 /** Global pipe: validates `@Body/@Query/@Param({ schema })` with Zod (Standard Schema). */
 export const validationPipe = new StandardSchemaValidationPipe({
   exceptionFactory: (issues) =>
     new RequestValidationException(
-      issues.map((issue) => ({ path: issuePath(issue), message: issue.message })),
+      issues
+        .slice(0, MAX_REPORTED_ISSUES)
+        .map((issue) => ({ path: issuePath(issue), message: issue.message })),
     ),
 });
