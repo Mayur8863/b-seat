@@ -1,5 +1,5 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, asc, eq, isNull, sql } from 'drizzle-orm';
+import { and, asc, eq, gt, isNull, sql } from 'drizzle-orm';
 import { PinoLogger } from 'nestjs-pino';
 
 import { Clock } from '../common/time/clock.js';
@@ -17,8 +17,14 @@ import {
 } from '../db/schema/index.js';
 import { openingHoursOf } from '../owner-spaces/owner-spaces.service.js';
 import { BookingCreatedHook } from './booking-created.hook.js';
-import { classifyInsertError } from './booking-conflicts.js';
-import type { Booking, CreateBookingInput } from './bookings.schemas.js';
+import { bookingProblem, classifyInsertError } from './booking-conflicts.js';
+import { loadBookings } from './booking-view.js';
+import type {
+  Booking,
+  BookingList,
+  CreateBookingInput,
+  ListMyBookingsInput,
+} from './bookings.schemas.js';
 import {
   type PassBookingFacts,
   type PassBookingPlan,
@@ -69,6 +75,80 @@ export class BookingsService {
     this.logger.info({ bookingId: header.id, seatId: input.seatId, spaceId }, 'booking.created');
     await this.notify({ bookingId: header.id, seatId: input.seatId, spaceId });
     return toBooking(header, facts, plan, input);
+  }
+
+  /** The caller's active pass bookings that have not ended, soonest first (FR-026). */
+  async listMine(userId: string, { limit }: ListMyBookingsInput): Promise<BookingList> {
+    const items = await loadBookings(
+      this.db,
+      and(
+        eq(booking.userId, userId),
+        eq(booking.status, 'active'),
+        gt(booking.endsAt, this.clock.now()),
+      ),
+      limit,
+    );
+    return { items };
+  }
+
+  /**
+   * One scoped UPDATE; `seat_hold_booking_fk` cascades the holds inactive in the same statement,
+   * so this never touches `seat_hold`. Lock order matches create and seat removal: space row,
+   * then the seat lock. A booking that is not the caller's is a 404 like an unknown id (FR-028).
+   */
+  async cancel(userId: string, bookingId: string): Promise<Booking> {
+    const [own] = await this.db
+      .select({ seatId: booking.seatId, spaceId: booking.spaceId })
+      .from(booking)
+      .where(and(eq(booking.id, bookingId), eq(booking.userId, userId), eq(booking.kind, 'pass')));
+    if (!own?.spaceId) throw new NotFoundException();
+    const { seatId, spaceId } = own;
+
+    const cancelled = await withSeatLocks(
+      this.db,
+      [seatId],
+      async (tx) => {
+        const now = this.clock.now();
+        const updated = await tx
+          .update(booking)
+          .set({ status: 'cancelled', cancelledAt: now })
+          .where(
+            and(
+              eq(booking.id, bookingId),
+              eq(booking.userId, userId),
+              eq(booking.kind, 'pass'),
+              eq(booking.status, 'active'),
+              gt(booking.startsAt, now),
+            ),
+          )
+          .returning({ id: booking.id });
+        if (updated.length > 0) return true;
+        const [current] = await tx
+          .select({ status: booking.status })
+          .from(booking)
+          .where(and(eq(booking.id, bookingId), eq(booking.userId, userId)));
+        if (!current) throw new NotFoundException();
+        if (current.status === 'cancelled') return false;
+        throw bookingProblem('already-started');
+      },
+      {
+        classify: classifyInsertError,
+        beforeLocks: async (tx) => {
+          await tx.execute(sql`SELECT 1 FROM space WHERE id = ${spaceId} FOR SHARE`);
+        },
+        onRetry: (attempt) => {
+          this.logger.warn({ seatId, attempt }, 'booking.cancel_deadlock_retry');
+        },
+        onLockTimeout: () => {
+          this.logger.warn({ seatId, spaceId }, 'booking.lock_timeout');
+        },
+      },
+    );
+    if (cancelled) this.logger.info({ bookingId }, 'booking.cancelled');
+
+    const [view] = await loadBookings(this.db, eq(booking.id, bookingId));
+    if (!view) throw new NotFoundException();
+    return view;
   }
 
   /** Step 1: space (any status; a draft is refused by the plan), the active seat of that space, price, slot flag, calendar. */

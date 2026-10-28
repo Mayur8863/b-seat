@@ -18,6 +18,7 @@ import { HealthController } from './health/health.controller.js';
 import { CalendarsModule } from './owner-operations/calendars.module.js';
 import { LayoutModule } from './owner-operations/layout.module.js';
 import { OccupancyModule } from './owner-operations/occupancy.module.js';
+import { OwnerBookingsModule } from './owner-operations/owner-bookings.module.js';
 import { ListingsModule } from './listings/listings.module.js';
 import { MailModule } from './mail/mail.module.js';
 import { MeModule } from './me/me.module.js';
@@ -68,6 +69,7 @@ import { SpacesModule } from './spaces/spaces.module.js';
     CalendarsModule,
     LayoutModule,
     OccupancyModule,
+    OwnerBookingsModule,
   ],
   controllers: [HealthController, ReferenceController],
   providers: [
