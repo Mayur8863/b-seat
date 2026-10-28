@@ -1,7 +1,7 @@
 import { ApiError } from '@bseat/api-client';
 import { describe, expect, it } from 'vitest';
 
-import { describeOwnerProblem, publishMissing } from './marketplace-problems';
+import { describeBookProblem, describeOwnerProblem, publishMissing } from './marketplace-problems';
 
 const err = (status: number) => new ApiError(status, undefined);
 
@@ -56,5 +56,83 @@ describe('publishMissing', () => {
     expect(publishMissing(problem('urn:bseat:problem:validation', ['seat']))).toBeUndefined();
     expect(publishMissing(err(500))).toBeUndefined();
     expect(publishMissing(new TypeError('x'))).toBeUndefined();
+  });
+});
+
+describe('describeBookProblem', () => {
+  const problem = (status: number, type: string) =>
+    new ApiError(status, {
+      type: `urn:bseat:problem:${type}`,
+      status,
+      title: 'T',
+      detail: 'SECRET',
+    });
+  const ctx = { spaceId: 's1', seatLabel: 'A1', path: '/listings/s1' };
+
+  it.each([
+    [409, 'booking:seat-unavailable', 'Seat no longer available', 'seats', true],
+    [409, 'booking:user-overlap', 'You already have a booking then', 'seats', true],
+    [422, 'booking-rule:space-not-published', 'This space is no longer listed', 'listing', false],
+    [422, 'booking-rule:own-space', 'This is your space', 'none', false],
+    [422, 'booking-rule:pass-not-offered', "That pass isn't offered", 'listing', false],
+    [
+      422,
+      'booking-rule:start-day-closed',
+      'That seat is closed on your start date',
+      'seats',
+      false,
+    ],
+    [422, 'booking-rule:slot-started', 'That slot has already started', 'none', false],
+    [422, 'booking-rule:too-far-ahead', "That's too far ahead", 'none', false],
+  ])('%i %s', (status, type, title, refetch, clearSeat) => {
+    const r = describeBookProblem(problem(status, type), ctx);
+    expect(r.copy.title).toBe(title);
+    expect(r.refetch).toBe(refetch);
+    expect(r.clearSeat).toBe(clearSeat);
+    expect(JSON.stringify(r.copy)).not.toContain('SECRET');
+  });
+
+  it('names the seat and links out', () => {
+    expect(
+      describeBookProblem(problem(409, 'booking:seat-unavailable'), ctx).copy.description[0],
+    ).toContain('A1 was taken');
+    expect(
+      describeBookProblem(problem(409, 'booking:user-overlap'), ctx).copy.description,
+    ).toContainEqual({ text: 'My bookings', href: '/bookings' });
+    expect(
+      describeBookProblem(problem(422, 'booking-rule:own-space'), ctx).copy.description,
+    ).toContainEqual({ text: 'Manage seats', href: '/owner/spaces/s1/seats' });
+  });
+
+  it('clears the pass when it is not offered', () => {
+    expect(describeBookProblem(problem(422, 'booking-rule:pass-not-offered'), ctx).clearPass).toBe(
+      true,
+    );
+  });
+
+  it('bare 404 refetches seats', () => {
+    const r = describeBookProblem(err(404), ctx);
+    expect(r.copy.title).toBe("That seat isn't available");
+    expect(r.refetch).toBe('seats');
+  });
+
+  it('400, unknown 422, 503 and network use the fallbacks', () => {
+    expect(describeBookProblem(err(400), ctx).copy).toEqual({
+      title: "We couldn't book that seat",
+      description: ['Check the details and try again.'],
+    });
+    expect(describeBookProblem(problem(422, 'booking-rule:new'), ctx).copy.description).toEqual([
+      'Check the details and try again.',
+    ]);
+    expect(describeBookProblem(err(503), ctx).copy.description).toEqual([
+      'Something went wrong on our side. Try again in a moment.',
+    ]);
+    expect(describeBookProblem(new TypeError('x'), ctx).copy.description).toEqual([
+      'Check your connection and try again.',
+    ]);
+  });
+
+  it('401 links to sign-in', () => {
+    expect(describeBookProblem(err(401), ctx).copy.title).toBe('Your session has ended');
   });
 });
