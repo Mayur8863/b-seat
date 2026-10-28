@@ -117,7 +117,7 @@ function RenterBody({ preferences }: { preferences: Preferences | null }) {
     <>
       <nav aria-label="Quick links" className="grid gap-3 sm:flex">
         <Button asChild className="max-sm:min-h-11">
-          <Link href="/book">
+          <Link href="/find">
             <SearchIcon aria-hidden="true" />
             Find a space
           </Link>
@@ -136,7 +136,7 @@ function RenterBody({ preferences }: { preferences: Preferences | null }) {
                 Find a space and book a seat by the day, week or month.
               </p>
               <Button asChild className="max-sm:min-h-11">
-                <Link href="/book">Find a space</Link>
+                <Link href="/find">Find a space</Link>
               </Button>
             </CardContent>
           </Card>
