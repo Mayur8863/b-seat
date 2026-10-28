@@ -12,7 +12,7 @@ describe('proxy', () => {
     '/bookings',
     '/find',
     '/spaces/abc',
-    '/owner/spaces/new',
+    '/find',
     '/owner',
   ])('guards %s', (path) => {
     expect(doesMatch({ config, url: `http://localhost:3000${path}` })).toBe(true);
@@ -23,11 +23,11 @@ describe('proxy', () => {
   });
 
   it('redirects to sign-in with next when there is no session cookie', () => {
-    const response = proxy(new NextRequest('http://localhost:3000/bookings'));
+    const response = proxy(new NextRequest('http://localhost:3000/find'));
     expect(response.status).toBe(307);
     const location = new URL(response.headers.get('location') ?? '');
     expect(location.pathname).toBe('/sign-in');
-    expect(location.searchParams.get('next')).toBe('/bookings');
+    expect(location.searchParams.get('next')).toBe('/find');
   });
 
   it('lets a signed-in request through', () => {

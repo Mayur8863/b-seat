@@ -1,5 +1,5 @@
 import { getMeGetMockHandler } from '@bseat/api-client/mocks';
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it } from 'vitest';
 
@@ -30,8 +30,9 @@ describe('DashboardView', () => {
     server.use(http.get('*/api/me', () => HttpResponse.json({ status: 500 }, { status: 500 })));
     renderWithQuery(<DashboardView />);
     await screen.findByRole('heading', { level: 1, name: 'Dashboard' });
-    await new Promise((r) => setTimeout(r, 50));
-    expect(screen.queryByText('Loading your dashboard…')).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByText('Loading your dashboard…')).not.toBeInTheDocument();
+    });
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 

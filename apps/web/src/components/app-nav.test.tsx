@@ -1,5 +1,6 @@
 import { getMeGetMockHandler } from '@bseat/api-client/mocks';
-import { screen, within } from '@testing-library/react';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -68,6 +69,7 @@ describe('AppNav', () => {
       'aria-current',
       'true',
     );
+    expect(document.querySelectorAll('[aria-current]')).toHaveLength(1);
   });
 
   it('on a non-auth error keeps Dashboard and Sign out, explains and offers retry', async () => {
@@ -117,5 +119,37 @@ describe('AppNav', () => {
     await user.click(toggle);
     await user.click(await screen.findByRole('link', { name: 'Find a space' }));
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('closes the menu when the pathname changes', async () => {
+    pathname = '/dashboard';
+    server.use(me('renter'));
+    const user = userEvent.setup();
+    const view = renderWithQuery(<AppNav />);
+    const toggle = screen.getByRole('button', { name: 'Menu' });
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    pathname = '/book';
+    view.rerender(
+      <QueryClientProvider client={view.client}>
+        <AppNav />
+      </QueryClientProvider>,
+    );
+    await waitFor(() => {
+      expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    });
+  });
+
+  it('keeps the cached nav when a background refetch fails with a non-401 error', async () => {
+    server.use(me('renter'));
+    const { client: queryClient } = renderWithQuery(<AppNav />);
+    await screen.findByRole('link', { name: 'Find a space' });
+    server.use(problem(500));
+    await queryClient.refetchQueries();
+    await waitFor(() => {
+      expect(queryClient.isFetching()).toBe(0);
+    });
+    expect(screen.getByRole('link', { name: 'Find a space' })).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });

@@ -13,7 +13,7 @@ export interface NavLink {
   parentExclude?: readonly string[];
 }
 
-const DASHBOARD: NavLink = {
+export const DASHBOARD: NavLink = {
   label: 'Dashboard',
   href: '/dashboard',
   exact: ['/dashboard'],
@@ -39,11 +39,20 @@ export function navLinksFor(role: NavRole): readonly NavLink[] {
   return LINKS[role];
 }
 
+export type PageAudience = NavRole | 'both';
+
+/** Who may use each `(app)` page. Every page, static or dynamic, must be listed (FR-004). */
+export const PAGE_ROLES: Record<string, PageAudience> = {
+  '/dashboard': 'both',
+  '/book': 'both',
+};
+
 /**
- * Static `(app)` pages that are not nav links, mapped to the nav page they are reached from.
- * The route-manifest test fails for a page that is neither here nor in the nav.
+ * `(app)` pages that are not nav links, mapped to the nav page they are reached from.
+ * Dynamic routes keep their `[param]` segment. The route-manifest test fails for a page
+ * that is neither in a role's nav nor here with a target in that role's nav.
  */
-export const REACHED_FROM: Record<string, string> = {};
+export const REACHED_FROM: Record<string, NavLink['href']> = {};
 
 export function navActive(link: NavLink, pathname: string): 'page' | 'true' | undefined {
   if (link.exact.includes(pathname)) return 'page';

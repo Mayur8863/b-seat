@@ -10,7 +10,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
-import { navActive, navLinksFor, type NavLink } from '@/lib/nav';
+import { DASHBOARD, navActive, navLinksFor, type NavLink } from '@/lib/nav';
 import { safeNext } from '@/lib/safe-next';
 
 import { SignOutButton } from './sign-out-button';
@@ -50,6 +50,16 @@ export function AppNav() {
 
   const unauthorized = error instanceof ApiError && error.status === 401;
   const me = data?.data;
+  // A failed background refetch keeps the cached account; only a 401 or a cold failure replaces it.
+  const showError = error !== null && (unauthorized || !data);
+  // Any navigation closes the mobile panel, not only a nav link click. Adjusting state during
+  // render (rather than in an effect) avoids a frame with a stale open panel.
+  const [panelPath, setPanelPath] = useState(pathname);
+  if (panelPath !== pathname) {
+    setPanelPath(pathname);
+    setOpen(false);
+  }
+
   // Escape closes the mobile panel and returns focus to its toggle (no focus trap).
   useEffect(() => {
     if (!open) return;
@@ -95,6 +105,11 @@ export function AppNav() {
             >
               {open ? <XIcon aria-hidden="true" /> : <MenuIcon aria-hidden="true" />}
             </Button>
+            {isPending ? (
+              <span role="status" aria-live="polite" className="sr-only">
+                Loading navigation…
+              </span>
+            ) : null}
             <nav
               aria-label="Main"
               aria-busy={isPending}
@@ -105,10 +120,11 @@ export function AppNav() {
             >
               {isPending ? (
                 <>
-                  <span role="status" aria-live="polite" className="sr-only">
-                    Loading navigation…
-                  </span>
-                  <ul id="main-nav-list" className="grid gap-1 sm:flex sm:gap-1 lg:gap-2">
+                  <ul
+                    id="main-nav-list"
+                    aria-hidden="true"
+                    className="grid gap-1 sm:flex sm:gap-1 lg:gap-2"
+                  >
                     {[0, 1, 2].map((i) => (
                       <li key={i}>
                         <Skeleton className="h-8 w-24" />
@@ -121,17 +137,8 @@ export function AppNav() {
                   id="main-nav-list"
                   className="grid gap-1 sm:flex sm:flex-1 sm:items-center sm:gap-1 lg:gap-2"
                 >
-                  {error ? (
-                    <NavItem
-                      link={{
-                        label: 'Dashboard',
-                        href: '/dashboard',
-                        exact: ['/dashboard'],
-                        parents: [],
-                      }}
-                      pathname={pathname}
-                      onNavigate={close}
-                    />
+                  {showError ? (
+                    <NavItem link={DASHBOARD} pathname={pathname} onNavigate={close} />
                   ) : (
                     links.map((l) => (
                       <NavItem key={l.label} link={l} pathname={pathname} onNavigate={close} />
@@ -143,7 +150,7 @@ export function AppNav() {
                         {me.name}
                       </span>
                     ) : null}
-                    <SignOutButton />
+                    <SignOutButton className="max-sm:min-h-11" />
                   </li>
                 </ul>
               )}
@@ -152,7 +159,7 @@ export function AppNav() {
         )}
       </div>
 
-      {error ? (
+      {showError ? (
         <div className="mx-auto max-w-6xl px-4 pb-3 sm:px-6">
           {unauthorized ? (
             <Alert variant="destructive" role="alert">

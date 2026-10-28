@@ -1,6 +1,6 @@
 'use client';
 
-import { useMeGet } from '@bseat/api-client';
+import { ApiError, useMeGet } from '@bseat/api-client';
 import { Button } from '@bseat/ui/components/button';
 import { Card, CardContent } from '@bseat/ui/components/card';
 import { Skeleton } from '@bseat/ui/components/skeleton';
@@ -58,17 +58,22 @@ function OwnerBody() {
 /** Dashboard body: the h1 always shows; the rest depends on the account role. */
 export function DashboardView() {
   const { data, isPending, error } = useMeGet();
+  const unauthorized = error instanceof ApiError && error.status === 401;
 
   return (
     <>
       <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
       {isPending ? (
-        <div aria-busy="true" aria-live="polite" className="grid gap-3">
-          <span className="sr-only">Loading your dashboard…</span>
-          <Skeleton className="h-5 w-48" />
-          <Skeleton className="h-28 rounded-xl" />
-        </div>
-      ) : error ? null : (
+        <>
+          <span role="status" aria-live="polite" className="sr-only">
+            Loading your dashboard…
+          </span>
+          <div aria-busy="true" aria-hidden="true" className="grid gap-3">
+            <Skeleton className="h-5 w-48" />
+            <Skeleton className="h-28 rounded-xl" />
+          </div>
+        </>
+      ) : unauthorized || !data ? null : (
         <>
           <p className="text-muted-foreground">Signed in as {data.data.name}</p>
           {data.data.accountType === 'owner' ? <OwnerBody /> : <RenterBody />}

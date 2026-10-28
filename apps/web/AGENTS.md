@@ -19,8 +19,8 @@ src/test/            vitest setup, MSW server, render helpers
 e2e/                 Playwright journeys + axe checks
 ```
 
-Reference implementations: `components/welcome.tsx` (generated hook with loading, error and
-success states) and `components/auth-form.tsx` (accessible RHF + Zod form).
+Reference implementations: `components/dashboard-view.tsx` (four-state hook pattern) and `components/app-nav.tsx` (role-aware nav and
+mobile panel), and `components/auth-form.tsx` (accessible RHF + Zod form).
 
 ## Rules
 
