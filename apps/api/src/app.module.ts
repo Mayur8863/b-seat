@@ -16,6 +16,7 @@ import { DbModule } from './db/db.module.js';
 import { HealthController } from './health/health.controller.js';
 import { MailModule } from './mail/mail.module.js';
 import { MeModule } from './me/me.module.js';
+import { OwnerSpacesModule } from './owner-spaces/owner-spaces.module.js';
 import { ReferenceController } from './reference/reference.controller.js';
 import { REDIS, RedisModule } from './redis/redis.module.js';
 import { SpacesModule } from './spaces/spaces.module.js';
@@ -56,6 +57,7 @@ import { SpacesModule } from './spaces/spaces.module.js';
     AuthModule,
     SpacesModule,
     MeModule,
+    OwnerSpacesModule,
   ],
   controllers: [HealthController, ReferenceController],
   providers: [

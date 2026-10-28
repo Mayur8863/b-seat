@@ -49,7 +49,7 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 | T017 | Docs US1                                                     | docs-writer    | T016                   | S    | todo   | `docs/002-us1-accounts`               |
 | T018 | UI spec: owner listing, seats, slots and prices              | ui-ux-designer | T010                   | M    | done   | `docs/002-ui-owner-listing`           |
 | T019 | Reference data API (countries, currencies, utilities)        | backend-dev    | T001                   | S    | done   | `feat/002-reference-api`              |
-| T020 | Owner spaces API: CRUD, publish, unpublish                   | backend-dev    | T002, T004, T019       | M    | todo   | `feat/002-owner-spaces-api`           |
+| T020 | Owner spaces API: CRUD, publish, unpublish                   | backend-dev    | T002, T004, T019       | M    | review | `feat/002-owner-spaces-api`           |
 | T021 | Seats and cubicles API                                       | backend-dev    | T005, T020             | M    | todo   | `feat/002-seats-cubicles-api`         |
 | T022 | Space details form and create page                           | frontend-dev   | T014, T018, T019, T020 | M    | todo   | `feat/002-space-form`                 |
 | T023 | Owner dashboard spaces, space overview, publish              | frontend-dev   | T022                   | M    | todo   | `feat/002-owner-dashboard`            |
@@ -346,7 +346,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given no session, Then 401 (FR-005). Given `gen:api`, Then `Reference` is committed.
 
 - [ ] T020 [US2] Build `apps/api/src/owner-spaces/` (schemas, service, controller, module; spaces only) with `apps/api/test/owner-spaces.int-spec.ts`; regenerate `apps/api/openapi.json`
-  - **Owner**: backend-dev · **Branch**: `feat/002-owner-spaces-api` · **Size**: M · **Depends on**: T002, T004, T019 · **Status**: todo
+  - **Owner**: backend-dev · **Branch**: `feat/002-owner-spaces-api` · **Size**: M · **Depends on**: T002, T004, T019 · **Status**: review
   - **Problem factories (T007 review)**: Create problems with extensions only through the factories in `common/errors/problem-types.ts`; don't call `new ProblemException` with extensions directly.
   - **Carry-over (T003 review)**: `ownerId`, `status` and `spaceId` come only from the session or route, never the request body, and the service maintains `space.updated_at`.
   - **Added (T004 review)**: every space has exactly one shared calendar (created with the space); the integration test asserts it.
