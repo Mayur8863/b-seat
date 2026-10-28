@@ -121,6 +121,8 @@ describe('seat availability API', () => {
       endsAt: to,
       pass: 'week',
       slot: slotKind,
+      startDate: date,
+      endDate: new Date(Date.parse(date) + 6 * 86400000).toISOString().slice(0, 10),
     });
     await insertHold(testDb(app), {
       seatId,
@@ -152,8 +154,8 @@ describe('seat availability API', () => {
     expect(list.find((s) => s.label === 'A3')?.status).toBe('taken');
     const free = list[0];
     expect(free).toMatchObject({
-      firstStartsAt: localInstant(MONDAY, '07:00', ZONE).toISOString().replace('.000Z', 'Z'),
-      lastEndsAt: localInstant('2030-01-13', '19:00', ZONE).toISOString().replace('.000Z', 'Z'),
+      firstStartsAt: localInstant(MONDAY, '07:00', ZONE).toISOString(),
+      lastEndsAt: localInstant('2030-01-13', '19:00', ZONE).toISOString(),
       includedDates: 7,
       closedDates: [],
     });
@@ -169,7 +171,7 @@ describe('seat availability API', () => {
       endsNextDay: true,
     });
     expect(seats(night.body)[0]?.lastEndsAt).toBe(
-      localInstant('2030-01-14', '07:00', ZONE).toISOString().replace('.000Z', 'Z'),
+      localInstant('2030-01-14', '07:00', ZONE).toISOString(),
     );
     const full = await renter.get(week('full_day'));
     expect(seats(full.body)[0]?.status).toBe('taken');

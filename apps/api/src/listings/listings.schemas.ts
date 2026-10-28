@@ -2,6 +2,8 @@ import { z } from 'zod';
 
 import {
   CountryCode,
+  Instant,
+  LocalDate,
   CurrencyCode,
   LocalTime,
   StandardUtility,
@@ -51,3 +53,38 @@ export const ListingSchema = z
   })
   .meta({ id: 'Listing' });
 export type Listing = z.infer<typeof ListingSchema>;
+
+export const PassTypeSchema = z.enum(['day', 'week', 'month']);
+
+/** Query of the seat availability read. Past and far dates are viewable; the booking rules apply on POST. */
+export const SeatAvailabilityInputSchema = z
+  .object({ pass: PassTypeSchema, slot: SLOT_KINDS, startDate: LocalDate })
+  .meta({ id: 'SeatAvailabilityInput' });
+export type SeatAvailabilityInput = z.infer<typeof SeatAvailabilityInputSchema>;
+
+/** Who holds a taken seat is never exposed (FR-022). */
+export const ListingSeatAvailabilitySchema = z
+  .object({
+    space: z.object({ id: z.uuid(), name: z.string(), timeZone: TimeZone }),
+    pass: PassTypeSchema,
+    slot: SLOT_KINDS,
+    startDate: LocalDate,
+    endDate: LocalDate,
+    slotTimes: z.object({ startTime: LocalTime, endTime: LocalTime, endsNextDay: z.boolean() }),
+    price: Money,
+    seats: z.array(
+      z.object({
+        id: z.uuid(),
+        label: z.string(),
+        features: z.array(z.string()),
+        cubicle: z.object({ id: z.uuid(), name: z.string() }).nullable(),
+        status: z.enum(['free', 'taken', 'closed']),
+        firstStartsAt: Instant.nullable(),
+        lastEndsAt: Instant.nullable(),
+        includedDates: z.int(),
+        closedDates: z.array(LocalDate),
+      }),
+    ),
+  })
+  .meta({ id: 'ListingSeatAvailability' });
+export type ListingSeatAvailability = z.infer<typeof ListingSeatAvailabilitySchema>;

@@ -64,7 +64,7 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 | T032 | QA US3: pricing e2e, axe                                     | qa-engineer    | T030, T031             | S    | todo                                                           | `test/002-us3-pricing-e2e`            |
 | T033 | Docs US3                                                     | docs-writer    | T032                   | S    | todo                                                           | `docs/002-us3-pricing`                |
 | T034 | Listing search and location suggestions API                  | backend-dev    | T027                   | M    | todo                                                           | `feat/002-listing-search-api`         |
-| T035 | Seat availability for a pass API                             | backend-dev    | T005, T028             | M    | todo                                                           | `feat/002-seat-availability-api`      |
+| T035 | Seat availability for a pass API                             | backend-dev    | T005, T028             | M    | review — dev done; next: QA (queued)                           | `feat/002-seat-availability-api`      |
 | T036 | Create pass booking API (rules, holds, races)                | backend-dev    | T008, T035             | M    | todo                                                           | `feat/002-create-pass-booking-api`    |
 | T037 | Renter and owner booking emails                              | backend-dev    | T036                   | S    | todo                                                           | `feat/002-booking-emails`             |
 | T038 | Search availability filter (date, pass, slot)                | backend-dev    | T034, T035             | M    | todo                                                           | `feat/002-search-availability-filter` |
@@ -525,7 +525,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given no match, Then `{ items: [], nextCursor: null }` (edge "city with no spaces"). Given `gen:api`, Then the schemas are committed.
 
 - [ ] T035 [US4] Add `GET /api/listings/{spaceId}/seats` to `apps/api/src/listings/` with `apps/api/test/listings-seats.int-spec.ts`; regenerate `apps/api/openapi.json`
-  - **Owner**: backend-dev · **Branch**: `feat/002-seat-availability-api` · **Size**: M · **Depends on**: T005, T028 · **Status**: todo
+  - **Owner**: backend-dev · **Branch**: `feat/002-seat-availability-api` · **Size**: M · **Depends on**: T005, T028 · **Status**: review — dev done; next: QA (queued)
   - **Added (T004 review)**: the availability engine treats a missing shared calendar as closed (fail closed), never open.
   - **Scope**: contracts/listings.md; research R-10 (one hold query over the envelope, spelled for the GiST index; occurrences computed once per distinct calendar).
   - **Acceptance criteria**:
