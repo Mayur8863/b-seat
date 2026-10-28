@@ -53,7 +53,7 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 | T021 | Seats and cubicles API                                       | backend-dev    | T005, T020             | M    | review — dev done; next: QA (queued)                           | `feat/002-seats-cubicles-api`         |
 | T022 | Space details form and create page                           | frontend-dev   | T014, T018, T019, T020 | M    | review — fix pass done; next: QA e2e in main checkout (queued) | `feat/002-space-form`                 |
 | T023 | Owner dashboard spaces, space overview, publish              | frontend-dev   | T022                   | M    | review — build done; next: QA (queued)                         | `feat/002-owner-dashboard`            |
-| T024 | Seats management page                                        | frontend-dev   | T021, T023             | M    | todo                                                           | `feat/002-seats-page`                 |
+| T024 | Seats management page                                        | frontend-dev   | T021, T023             | M    | review — dev done; next: QA (queued)                           | `feat/002-seats-page`                 |
 | T025 | QA US2: listing e2e, axe, owner scoping                      | qa-engineer    | T009, T011, T023, T024 | M    | todo                                                           | `test/002-us2-listing-e2e`            |
 | T026 | Docs US2                                                     | docs-writer    | T025                   | S    | todo                                                           | `docs/002-us2-listing`                |
 | T027 | Slots and pricing API                                        | backend-dev    | T007, T020             | M    | review — dev done; next: QA (queued)                           | `feat/002-pricing-api`                |
@@ -411,7 +411,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given B opens `/owner/spaces/{A's id}`, When the API returns 404, Then the not-found state shows (AC 2.6).
 
 - [ ] T024 [US2] Seats page `apps/web/src/app/(app)/owner/spaces/[spaceId]/seats/page.tsx` with `components/seat-manager.tsx` and `components/bulk-seat-form.tsx` (+ tests); add "Seats" to the sub-nav
-  - **Owner**: frontend-dev · **Branch**: `feat/002-seats-page` · **Size**: M · **Depends on**: T021, T023 · **Status**: todo
+  - **Owner**: frontend-dev · **Branch**: `feat/002-seats-page` · **Size**: M · **Depends on**: T021, T023 · **Status**: review — dev done; next: QA (queued)
   - **Acceptance criteria**:
     - Given the bulk form with `A-` 1 to 20, When filled in, Then the preview names the first and last label, and When "Add 20 seats" (the confirm, OQ-C) is pressed, Then 20 seats are listed (AC 2.3).
     - Given a duplicate label or the 200 limit, When the API refuses, Then the ui/02 copy shows in an alert (FR-007).

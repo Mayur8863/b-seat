@@ -9,7 +9,13 @@ export type OwnerAction =
   | 'publish this space'
   | 'unpublish this space'
   | 'load your spaces'
-  | 'load this space';
+  | 'load this space'
+  | 'add seats'
+  | 'save this seat'
+  | 'remove this seat'
+  | 'add this cubicle'
+  | 'rename this cubicle'
+  | 'remove this cubicle';
 
 export type MissingItem = 'seat' | 'pricedPass';
 
