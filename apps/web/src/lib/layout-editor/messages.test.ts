@@ -74,11 +74,11 @@ describe('describeChange', () => {
   });
   it('announces containment broken and restored', () => {
     let s = step(start(), { type: 'grab', id: 'a' }).after;
-    for (let i = 0; i < 3; i++) s = step(s, { type: 'move', dx: 0, dy: 1 }).after;
+    s = step(s, { type: 'move', dx: 0, dy: 1 }).after;
     const out = step(s, { type: 'move', dx: 0, dy: 1 });
-    expect(out.text).toBe('Seat A-1 moved to column 3, row 8. Seat A-1 is outside cubicle Pod 1.');
+    expect(out.text).toBe('Seat A-1 moved to column 3, row 6. Seat A-1 is outside cubicle Pod 1.');
     expect(step(out.after, { type: 'move', dx: 0, dy: -1 }).text).toBe(
-      'Seat A-1 moved to column 3, row 7. Seat A-1 is inside cubicle Pod 1 again.',
+      'Seat A-1 moved to column 3, row 5. Seat A-1 is inside cubicle Pod 1 again.',
     );
   });
   it('announces drop and cancel', () => {
