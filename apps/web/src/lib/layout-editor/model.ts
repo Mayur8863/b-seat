@@ -53,7 +53,9 @@ export type Action =
   | { type: 'renameArea'; id: string; label: string }
   | { type: 'removeFromPlan'; id: string }
   | { type: 'deleteArea'; id: string }
-  | { type: 'setGrid'; columns: number; rows: number };
+  | { type: 'setGrid'; columns: number; rows: number }
+  | { type: 'setCubicle'; id: string; cubicleId: string | null }
+  | { type: 'forget'; id: string };
 export interface Problem {
   code: 'seat-outside-cubicle' | 'outside-grid' | 'empty' | 'too-many';
   id?: string;
@@ -83,11 +85,12 @@ const withinGrid = (r: Rect, columns: number, rows: number) =>
 const compareText = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 const byPosition = (a: LayoutElementDraft, b: LayoutElementDraft) => a.y - b.y || a.x - b.x;
 
+// Cubicle assignment is saved immediately through the seat endpoints, so it is not draft state.
 // Dirty tracking compares geometry and labels with the loaded layout, so undoing a change is clean again.
 function snapshot(columns: number, rows: number, elements: LayoutElementDraft[]): string {
   const items = [...elements]
     .sort((a, b) => compareText(a.id, b.id))
-    .map((e) => [e.id, e.cubicleId ?? '', e.label, e.x, e.y, e.w, e.h]);
+    .map((e) => [e.id, e.label, e.x, e.y, e.w, e.h]);
   return JSON.stringify([columns, rows, items]);
 }
 
@@ -272,6 +275,22 @@ function remove(state: DraftState, id: string, onlyArea: boolean): DraftState {
   );
 }
 
+// An element deleted through its own endpoint is gone from the saved layout too, so the baseline drops it.
+function forget(state: DraftState, id: string): DraftState {
+  if (!find(state, id)) return state;
+  const [columns, rows, items] = JSON.parse(state.baseline) as [number, number, unknown[][]];
+  const baseline = JSON.stringify([columns, rows, items.filter((i) => i[0] !== id)]);
+  return withElements(
+    { ...state, baseline },
+    state.elements.filter((e) => e.id !== id),
+    {
+      baseline,
+      selectedId: state.selectedId === id ? null : state.selectedId,
+      grabbed: state.grabbed?.id === id ? null : state.grabbed,
+    },
+  );
+}
+
 function setGrid(state: DraftState, columns: number, rows: number): DraftState {
   const ok = (n: number) => Number.isInteger(n) && n >= GRID_MIN && n <= GRID_MAX;
   if (!ok(columns) || !ok(rows)) return refuse(state, { reason: 'invalid-grid' });
@@ -320,6 +339,18 @@ export function reduce(state: DraftState, action: Action): DraftState {
       return remove(state, action.id, true);
     case 'setGrid':
       return setGrid(state, action.columns, action.rows);
+    case 'setCubicle': {
+      const item = find(state, action.id);
+      if (item?.kind !== 'seat') return state;
+      const { cubicleId: _old, ...rest } = item;
+      const next = action.cubicleId ? { ...rest, cubicleId: action.cubicleId } : rest;
+      return withElements(
+        state,
+        state.elements.map((e) => (e.id === item.id ? next : e)),
+      );
+    }
+    case 'forget':
+      return forget(state, action.id);
   }
 }
 

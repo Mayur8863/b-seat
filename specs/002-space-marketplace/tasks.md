@@ -94,7 +94,7 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 | T062 | Layout schema and API (owner and renter)                     | backend-dev    | T021                   | M    | review — dev done; next: QA (queued)                           | `feat/002-layout-api`                 |
 | T063 | Seed a sample layout                                         | backend-dev    | T009, T062             | S    | todo                                                           | `feat/002-seed-layout`                |
 | T064 | Layout editor model (pure reducer, TDD)                      | frontend-dev   | T061, T062             | M    | review — dev done; next: QA (queued)                           | `feat/002-layout-editor-model`        |
-| T065 | Layout editor page (grid, pointer, keyboard, form)           | frontend-dev   | T023, T064             | M    | todo                                                           | `feat/002-layout-editor`              |
+| T065 | Layout editor page (grid, pointer, keyboard, form)           | frontend-dev   | T023, T064             | M    | review — dev done; next: QA (queued)                           | `feat/002-layout-editor`              |
 | T066 | Renter plan view on the listing page                         | frontend-dev   | T040, T061, T062       | M    | review                                                         | `feat/002-renter-plan`                |
 | T067 | QA US8: layout e2e (keyboard only), axe                      | qa-engineer    | T063, T065, T066       | M    | todo                                                           | `test/002-us8-layout`                 |
 | T068 | Docs US8                                                     | docs-writer    | T067                   | S    | todo                                                           | `docs/002-us8-layout`                 |
@@ -825,7 +825,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given the PR, Then tests were committed first and changed-line coverage is ≥ 80% (Constitution II).
 
 - [ ] T065 [US8] Layout editor page `apps/web/src/app/(app)/owner/spaces/[spaceId]/layout/page.tsx` with `components/layout-editor.tsx`, `components/layout-item-form.tsx` and `components/unplaced-tray.tsx` (+ tests); add "Layout" to the sub-nav
-  - **Owner**: frontend-dev · **Branch**: `feat/002-layout-editor` · **Size**: M · **Depends on**: T023, T064 · **Status**: todo
+  - **Owner**: frontend-dev · **Branch**: `feat/002-layout-editor` · **Size**: M · **Depends on**: T023, T064 · **Status**: review — dev done; next: QA (queued)
   - **Scope**: DOM/SVG grid, pointer events, keyboard model and form per ui/05. Seat and cubicle create, rename and delete call T021's endpoints immediately; Save calls the layout PUT. No new dependency (research R-12).
   - **Acceptance criteria**:
     - Given the editor, When the owner adds, moves, resizes, renames and deletes seats, cubicles and areas with a pointer, Then the plan updates and Save persists it (AC 8.1, FR-029).

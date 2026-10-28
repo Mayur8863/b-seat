@@ -630,3 +630,50 @@ describe('keyboard helpers', () => {
     expect(neighbour(far, 'a', 'down')).toBe('e');
   });
 });
+
+describe('saved-immediately changes (setCubicle, forget)', () => {
+  it('setCubicle reassigns a seat without making the draft dirty', () => {
+    const s = reduce(withCubicle(), { type: 'setCubicle', id: 'a', cubicleId: CUB2 });
+    expect(s.elements.find((e) => e.id === 'a')?.cubicleId).toBe(CUB2);
+    expect(s.dirty).toBe(false);
+  });
+  it('setCubicle with null clears the assignment, so the seat is no longer checked', () => {
+    const s = run(
+      withCubicle(),
+      { type: 'select', id: 'a' },
+      { type: 'move', dx: 10, dy: 0 },
+      { type: 'setCubicle', id: 'a', cubicleId: null },
+    );
+    expect(s.elements.find((e) => e.id === 'a')?.cubicleId).toBeUndefined();
+    expect(validate(s)).toEqual([]);
+  });
+  it('setCubicle ignores unknown items and non-seats', () => {
+    const s = withCubicle();
+    expect(reduce(s, { type: 'setCubicle', id: 'zz', cubicleId: CUB }).elements).toEqual(
+      s.elements,
+    );
+    expect(reduce(s, { type: 'setCubicle', id: 'c', cubicleId: CUB2 }).elements).toEqual(
+      s.elements,
+    );
+  });
+  it('forget removes an element for good and keeps the draft clean', () => {
+    const s = run(withCubicle(), { type: 'select', id: 'a' }, { type: 'forget', id: 'a' });
+    expect(s.elements.map((e) => e.id)).toEqual(['c']);
+    expect(s.selectedId).toBeNull();
+    expect(s.dirty).toBe(false);
+  });
+  it('forget keeps other unsaved edits dirty', () => {
+    const s = run(
+      withCubicle(),
+      { type: 'select', id: 'c' },
+      { type: 'move', dx: 0, dy: 1 },
+      { type: 'forget', id: 'a' },
+    );
+    expect(s.dirty).toBe(true);
+  });
+  it('forget drops a grab of that item and ignores unknown ids', () => {
+    const s = run(withCubicle(), { type: 'grab', id: 'a' }, { type: 'forget', id: 'a' });
+    expect(s.grabbed).toBeNull();
+    expect(reduce(withCubicle(), { type: 'forget', id: 'q' }).elements).toHaveLength(2);
+  });
+});
