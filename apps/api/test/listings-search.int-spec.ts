@@ -52,7 +52,14 @@ describe('listing search API', () => {
     });
     expect(res.status).toBe(201);
     const id = str(res.body.id);
-    await owner.put(`/api/owner/spaces/${id}/pricing`).send({ slots }).expect(200);
+    await owner
+      .put(`/api/owner/spaces/${id}/pricing`)
+      .send({
+        slots: [...slots, slot('night'), slot('full_day')].filter(
+          (x, i, a) => a.findIndex((y) => y.slot === x.slot) === i,
+        ),
+      })
+      .expect(200);
     if (publish)
       await testDb(app).update(space).set({ status: 'published' }).where(eq(space.id, id));
     return id;

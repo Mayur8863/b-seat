@@ -1625,6 +1625,273 @@
         ]
       }
     },
+    "/api/listings": {
+      "get": {
+        "operationId": "Listings_search",
+        "parameters": [
+          {
+            "name": "country",
+            "required": true,
+            "in": "query",
+            "description": "ISO 3166-1 alpha-2 country code, e.g. IN",
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Z]{2}$"
+            }
+          },
+          {
+            "name": "city",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "area",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "startDate",
+            "required": false,
+            "in": "query",
+            "description": "Availability filter (applied by T038)",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+            }
+          },
+          {
+            "name": "pass",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "day",
+                "week",
+                "month"
+              ]
+            }
+          },
+          {
+            "name": "slot",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "day",
+                "night",
+                "full_day",
+                "working_hours"
+              ]
+            }
+          },
+          {
+            "name": "utilities",
+            "required": false,
+            "in": "query",
+            "description": "Repeat the parameter; every one must be present",
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "wifi",
+                    "air_conditioning",
+                    "power_backup",
+                    "parking",
+                    "meeting_room",
+                    "tea_coffee",
+                    "printer",
+                    "lockers",
+                    "security_24h",
+                    "cafeteria",
+                    "accessible_entrance"
+                  ]
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "wifi",
+                      "air_conditioning",
+                      "power_backup",
+                      "parking",
+                      "meeting_room",
+                      "tea_coffee",
+                      "printer",
+                      "lockers",
+                      "security_24h",
+                      "cafeteria",
+                      "accessible_entrance"
+                    ]
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 500
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingSearchResults"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ],
+        "tags": [
+          "listings"
+        ]
+      }
+    },
+    "/api/listings/locations": {
+      "get": {
+        "operationId": "Listings_locations",
+        "parameters": [
+          {
+            "name": "country",
+            "required": true,
+            "in": "query",
+            "description": "ISO 3166-1 alpha-2 country code, e.g. IN",
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Z]{2}$"
+            }
+          },
+          {
+            "name": "field",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "city",
+                "area"
+              ]
+            }
+          },
+          {
+            "name": "city",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "q",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocationSuggestions"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ],
+        "tags": [
+          "listings"
+        ]
+      }
+    },
     "/api/listings/{spaceId}": {
       "get": {
         "operationId": "Listings_get",
@@ -3250,6 +3517,280 @@
         },
         "required": [
           "name"
+        ],
+        "additionalProperties": false
+      },
+      "SearchListingsInput": {
+        "type": "object",
+        "properties": {
+          "country": {
+            "type": "string",
+            "pattern": "^[A-Z]{2}$",
+            "description": "ISO 3166-1 alpha-2 country code, e.g. IN"
+          },
+          "city": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "area": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "startDate": {
+            "description": "Availability filter (applied by T038)",
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+          },
+          "pass": {
+            "type": "string",
+            "enum": [
+              "day",
+              "week",
+              "month"
+            ]
+          },
+          "slot": {
+            "type": "string",
+            "enum": [
+              "day",
+              "night",
+              "full_day",
+              "working_hours"
+            ]
+          },
+          "utilities": {
+            "description": "Repeat the parameter; every one must be present",
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "wifi",
+                  "air_conditioning",
+                  "power_backup",
+                  "parking",
+                  "meeting_room",
+                  "tea_coffee",
+                  "printer",
+                  "lockers",
+                  "security_24h",
+                  "cafeteria",
+                  "accessible_entrance"
+                ]
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "wifi",
+                    "air_conditioning",
+                    "power_backup",
+                    "parking",
+                    "meeting_room",
+                    "tea_coffee",
+                    "printer",
+                    "lockers",
+                    "security_24h",
+                    "cafeteria",
+                    "accessible_entrance"
+                  ]
+                }
+              }
+            ]
+          },
+          "cursor": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "limit": {
+            "default": 20,
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50
+          }
+        },
+        "required": [
+          "country"
+        ],
+        "additionalProperties": false
+      },
+      "ListingSearchResults": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ListingSummary"
+            }
+          },
+          "nextCursor": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "additionalProperties": false
+      },
+      "ListingSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string",
+            "pattern": "^[A-Z]{2}$",
+            "description": "ISO 3166-1 alpha-2 country code, e.g. IN"
+          },
+          "city": {
+            "type": "string"
+          },
+          "area": {
+            "type": "string"
+          },
+          "utilities": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "wifi",
+                "air_conditioning",
+                "power_backup",
+                "parking",
+                "meeting_room",
+                "tea_coffee",
+                "printer",
+                "lockers",
+                "security_24h",
+                "cafeteria",
+                "accessible_entrance"
+              ]
+            }
+          },
+          "customUtilities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$",
+            "description": "ISO 4217 currency code, e.g. INR"
+          },
+          "lowestPrices": {
+            "type": "object",
+            "properties": {
+              "day": {
+                "nullable": true,
+                "type": "string",
+                "description": "Decimal amount with two fraction digits"
+              },
+              "week": {
+                "nullable": true,
+                "type": "string",
+                "description": "Decimal amount with two fraction digits"
+              },
+              "month": {
+                "nullable": true,
+                "type": "string",
+                "description": "Decimal amount with two fraction digits"
+              }
+            },
+            "required": [
+              "day",
+              "week",
+              "month"
+            ],
+            "additionalProperties": false
+          },
+          "hasLayout": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "country",
+          "city",
+          "area",
+          "utilities",
+          "customUtilities",
+          "currency",
+          "lowestPrices",
+          "hasLayout"
+        ],
+        "additionalProperties": false
+      },
+      "LocationSuggestionsInput": {
+        "type": "object",
+        "properties": {
+          "country": {
+            "type": "string",
+            "pattern": "^[A-Z]{2}$",
+            "description": "ISO 3166-1 alpha-2 country code, e.g. IN"
+          },
+          "field": {
+            "type": "string",
+            "enum": [
+              "city",
+              "area"
+            ]
+          },
+          "city": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "q": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          }
+        },
+        "required": [
+          "country",
+          "field",
+          "q"
+        ],
+        "additionalProperties": false
+      },
+      "LocationSuggestions": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string"
+                },
+                "count": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "value",
+                "count"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "items"
         ],
         "additionalProperties": false
       },

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import {
   CountryCode,
   CurrencyCode,
+  LocalDate,
   LocalTime,
   StandardUtility,
   TimeZone,
@@ -51,3 +52,66 @@ export const ListingSchema = z
   })
   .meta({ id: 'Listing' });
 export type Listing = z.infer<typeof ListingSchema>;
+
+const PASS_TYPES = z.enum(['day', 'week', 'month']);
+const UtilityList = z
+  .union([StandardUtility, z.array(StandardUtility)])
+  .transform((v) => (Array.isArray(v) ? v : [v]));
+
+export const SearchListingsInputSchema = z
+  .strictObject({
+    country: CountryCode,
+    city: z.string().trim().max(100).optional(),
+    area: z.string().trim().max(100).optional(),
+    startDate: LocalDate.optional().describe('Availability filter (applied by T038)'),
+    pass: PASS_TYPES.optional(),
+    slot: SLOT_KINDS.optional(),
+    utilities: UtilityList.optional().describe('Repeat the parameter; every one must be present'),
+    cursor: z.string().max(500).optional(),
+    limit: z.coerce.number().int().min(1).max(50).default(20),
+  })
+  .meta({ id: 'SearchListingsInput' });
+export type SearchListingsInput = z.output<typeof SearchListingsInputSchema>;
+
+export const ListingSummarySchema = z
+  .object({
+    id: z.uuid(),
+    name: z.string(),
+    country: CountryCode,
+    city: z.string(),
+    area: z.string(),
+    utilities: z.array(StandardUtility),
+    customUtilities: z.array(z.string()),
+    currency: CurrencyCode,
+    lowestPrices: z.object({
+      day: Money.nullable(),
+      week: Money.nullable(),
+      month: Money.nullable(),
+    }),
+    hasLayout: z.boolean(),
+  })
+  .meta({ id: 'ListingSummary' });
+
+export const ListingSearchResultsSchema = z
+  .object({ items: z.array(ListingSummarySchema), nextCursor: z.string().nullable() })
+  .meta({ id: 'ListingSearchResults' });
+export type ListingSearchResults = z.infer<typeof ListingSearchResultsSchema>;
+
+export const LocationSuggestionsInputSchema = z
+  .strictObject({
+    country: CountryCode,
+    field: z.enum(['city', 'area']),
+    city: z.string().trim().min(1).max(100).optional(),
+    q: z.string().trim().min(1).max(100),
+  })
+  .refine((v) => v.field !== 'area' || v.city !== undefined, {
+    message: 'city is required when field is area',
+    path: ['city'],
+  })
+  .meta({ id: 'LocationSuggestionsInput' });
+export type LocationSuggestionsInput = z.output<typeof LocationSuggestionsInputSchema>;
+
+export const LocationSuggestionsSchema = z
+  .object({ items: z.array(z.object({ value: z.string(), count: z.int() })) })
+  .meta({ id: 'LocationSuggestions' });
+export type LocationSuggestions = z.infer<typeof LocationSuggestionsSchema>;

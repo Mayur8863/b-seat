@@ -63,7 +63,7 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 | T031 | Listing page v1: details and pass options                    | frontend-dev   | T014, T028, T029       | M    | review — dev done; next: QA (queued)                           | `feat/002-listing-page`               |
 | T032 | QA US3: pricing e2e, axe                                     | qa-engineer    | T030, T031             | S    | todo                                                           | `test/002-us3-pricing-e2e`            |
 | T033 | Docs US3                                                     | docs-writer    | T032                   | S    | todo                                                           | `docs/002-us3-pricing`                |
-| T034 | Listing search and location suggestions API                  | backend-dev    | T027                   | M    | todo                                                           | `feat/002-listing-search-api`         |
+| T034 | Listing search and location suggestions API                  | backend-dev    | T027                   | M    | review — dev done; next: QA (queued)                           | `feat/002-listing-search-api`         |
 | T035 | Seat availability for a pass API                             | backend-dev    | T005, T028             | M    | todo                                                           | `feat/002-seat-availability-api`      |
 | T036 | Create pass booking API (rules, holds, races)                | backend-dev    | T008, T035             | M    | todo                                                           | `feat/002-create-pass-booking-api`    |
 | T037 | Renter and owner booking emails                              | backend-dev    | T036                   | S    | todo                                                           | `feat/002-booking-emails`             |
@@ -513,7 +513,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 **Independent test**: two published spaces in different cities; search one city, book a weekly day-slot pass, confirm the booking, both emails, and the seat taken for those 7 days.
 
 - [ ] T034 [US4] Add `GET /api/listings` (search) and `GET /api/listings/locations` (suggestions) to `apps/api/src/listings/` with `apps/api/test/listings-search.int-spec.ts`; regenerate `apps/api/openapi.json`
-  - **Owner**: backend-dev · **Branch**: `feat/002-listing-search-api` · **Size**: M · **Depends on**: T027 · **Status**: todo
+  - **Owner**: backend-dev · **Branch**: `feat/002-listing-search-api` · **Size**: M · **Depends on**: T027 · **Status**: review — dev done; next: QA (queued)
   - **Scope**: contracts/listings.md; research R-9. Order and paging per **OQ-12**. Without `startDate`, `pass` and `slot` filter on "offered". The availability filter is T038.
   - **Boundary assumptions (T006 security review)**: see T007.
   - **Acceptance criteria**:

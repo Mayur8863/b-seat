@@ -1,4 +1,4 @@
-import { Controller, Get, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiCookieAuth,
@@ -12,7 +12,19 @@ import { z } from 'zod';
 import type { AuthSession } from '../auth/auth.js';
 import { AuthGuard, CurrentSession } from '../auth/auth.guard.js';
 import { ProblemSchema } from '../common/errors/problem.js';
-import { type Listing, ListingSchema } from './listings.schemas.js';
+import { ApiQueryFromSchema } from '../common/openapi/api-query-schema.js';
+import {
+  type Listing,
+  ListingSchema,
+  type ListingSearchResults,
+  ListingSearchResultsSchema,
+  type LocationSuggestions,
+  type LocationSuggestionsInput,
+  LocationSuggestionsInputSchema,
+  LocationSuggestionsSchema,
+  type SearchListingsInput,
+  SearchListingsInputSchema,
+} from './listings.schemas.js';
 import { ListingsService } from './listings.service.js';
 
 @ApiTags('listings')
@@ -22,6 +34,29 @@ import { ListingsService } from './listings.service.js';
 @ApiUnauthorizedResponse({ standardSchema: ProblemSchema, description: 'Not signed in' })
 export class ListingsController {
   constructor(private readonly listings: ListingsService) {}
+
+  @Get()
+  @ApiQueryFromSchema(SearchListingsInputSchema)
+  @ApiOkResponse({ standardSchema: ListingSearchResultsSchema })
+  @ApiBadRequestResponse({ standardSchema: ProblemSchema })
+  search(
+    @CurrentSession() _session: AuthSession,
+    @Query({ schema: SearchListingsInputSchema }) query: SearchListingsInput,
+  ): Promise<ListingSearchResults> {
+    return this.listings.search(query);
+  }
+
+  // Declared before `:spaceId` so "locations" is not read as an id.
+  @Get('locations')
+  @ApiQueryFromSchema(LocationSuggestionsInputSchema)
+  @ApiOkResponse({ standardSchema: LocationSuggestionsSchema })
+  @ApiBadRequestResponse({ standardSchema: ProblemSchema })
+  locations(
+    @CurrentSession() _session: AuthSession,
+    @Query({ schema: LocationSuggestionsInputSchema }) query: LocationSuggestionsInput,
+  ): Promise<LocationSuggestions> {
+    return this.listings.locations(query);
+  }
 
   @Get(':spaceId')
   @ApiOkResponse({ standardSchema: ListingSchema })
