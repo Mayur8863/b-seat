@@ -85,7 +85,7 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 | T053 | QA US6: calendar e2e, axe                                    | qa-engineer    | T036, T052             | S    | todo                                                           | `test/002-us6-calendar`               |
 | T054 | Docs US6                                                     | docs-writer    | T053                   | S    | todo                                                           | `docs/002-us6-calendar`               |
 | T055 | My bookings and cancel API                                   | backend-dev    | T036                   | M    | review                                                         | `feat/002-my-bookings-api`            |
-| T056 | Owner bookings list API                                      | backend-dev    | T036                   | S    | todo                                                           | `feat/002-owner-bookings-api`         |
+| T056 | Owner bookings list API                                      | backend-dev    | T036                   | S    | review                                                         | `feat/002-owner-bookings-api`         |
 | T057 | My bookings page, cancel, dashboard next booking             | frontend-dev   | T014, T029, T055       | M    | todo                                                           | `feat/002-my-bookings-page`           |
 | T058 | Owner bookings page with date filter                         | frontend-dev   | T023, T046, T056       | M    | todo                                                           | `feat/002-owner-bookings-page`        |
 | T059 | QA US7: bookings lists e2e, axe                              | qa-engineer    | T057, T058             | S    | todo                                                           | `test/002-us7-bookings`               |
@@ -751,7 +751,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given `limit=1`, Then only the next booking returns (AC 1.3). Given `gen:api`, Then `BookingList` and the cancel operation are committed.
 
 - [ ] T056 [P] [US7] Add `GET /api/owner/spaces/{spaceId}/bookings` to `apps/api/src/owner-operations/` with `apps/api/test/owner-bookings.int-spec.ts`; regenerate `apps/api/openapi.json`
-  - **Owner**: backend-dev · **Branch**: `feat/002-owner-bookings-api` · **Size**: S · **Depends on**: T036 · **Status**: todo
+  - **Owner**: backend-dev · **Branch**: `feat/002-owner-bookings-api` · **Size**: S · **Depends on**: T036 · **Status**: review — dev done; next: QA (queued)
   - **Acceptance criteria**:
     - Given three bookings by two renters at A's space and one at B's, When A lists its space's bookings, Then exactly the three return, with renter name and email, seat, pass, period and price (AC 7.3, FR-027).
     - Given `from` and `to`, When filtered, Then only bookings with an occurrence in that range return; Given `to < from` or a malformed `cursor`, Then 400 (AC 7.3).
