@@ -75,7 +75,7 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 | T043 | Retire legacy `GET /api/spaces` routes                       | backend-dev    | T042                   | S    | todo                                                           | `chore/002-retire-legacy-spaces-api`  |
 | T044 | QA US4: search and book e2e, races, performance, axe         | qa-engineer    | T009, T037, T038, T042 | M    | todo                                                           | `test/002-us4-search-book-e2e`        |
 | T045 | Docs US4                                                     | docs-writer    | T043, T044             | S    | todo                                                           | `docs/002-us4-search-book`            |
-| T046 | UI spec: occupancy, calendars, owner bookings                | ui-ux-designer | T018                   | M    | todo                                                           | `docs/002-ui-owner-operations`        |
+| T046 | UI spec: occupancy, calendars, owner bookings                | ui-ux-designer | T018                   | M    | review — spec done; next: frontend tasks can start             | `docs/002-ui-owner-operations`        |
 | T047 | Occupancy API and seat state today                           | backend-dev    | T006, T021             | M    | todo                                                           | `feat/002-occupancy-api`              |
 | T048 | Occupancy UI on the seats page                               | frontend-dev   | T024, T046, T047       | M    | todo                                                           | `feat/002-occupancy-ui`               |
 | T049 | QA US5: occupancy e2e, booking-vs-mark race, axe             | qa-engineer    | T036, T048             | M    | todo                                                           | `test/002-us5-occupancy`              |
@@ -648,7 +648,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 **Independent test**: mark a seat occupied for next week; renters see it taken and cannot book it; marking it vacant frees it.
 
 - [ ] T046 [P] [US5] Write `specs/002-space-marketplace/ui/04-owner-operations.md`
-  - **Owner**: ui-ux-designer · **Branch**: `docs/002-ui-owner-operations` · **Size**: M · **Depends on**: T018 · **Status**: todo
+  - **Owner**: ui-ux-designer · **Branch**: `docs/002-ui-owner-operations` · **Size**: M · **Depends on**: T018 · **Status**: review — spec done; next: frontend tasks can start
   - **Scope**: seat state today (vacant, occupied by me with note, booked by a renter), mark occupied (multi-select seats, dates, optional end, private note), conflict refusal listing dates per seat, mark vacant and future marks (**OQ-5**), shared and per-seat calendars (date range, weekday toggles, switch to own / back to shared, the "N bookings fall outside the new calendar" notice), owner bookings list with date filter and paging (`nextCursor`, architect T001).
   - **Acceptance criteria**:
     - Given each screen, When read, Then all eight states are specified (FR-032).
