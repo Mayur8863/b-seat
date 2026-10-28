@@ -34,6 +34,10 @@ function deadlock(): DrizzleQueryError {
   return new DrizzleQueryError('insert', [], cause);
 }
 
+/** A transaction that runs its callback against a stand-in that accepts every statement. */
+const runs = (cb: (tx: unknown) => unknown) =>
+  cb({ execute: vi.fn().mockResolvedValue(undefined) });
+
 function setup(transaction: ReturnType<typeof vi.fn>) {
   const logger = { setContext: vi.fn(), info: vi.fn(), warn: vi.fn() };
   const hook: BookingCreatedHook = { onCreated: vi.fn(() => Promise.resolve()) };
@@ -45,16 +49,15 @@ function setup(transaction: ReturnType<typeof vi.fn>) {
     hook,
   );
   vi.spyOn(service, 'loadFacts').mockResolvedValue(facts);
-  return { service, logger, hook };
+  const insert = vi.spyOn(service as unknown as { insert: () => Promise<unknown> }, 'insert');
+  return { service, logger, hook, insert };
 }
 
 describe('BookingsService.create', () => {
   it('retries once on a deadlock and logs one warn without user data', async () => {
-    const transaction = vi
-      .fn()
-      .mockRejectedValueOnce(deadlock())
-      .mockResolvedValueOnce({ id: 'b-1', createdAt: new Date('2026-11-02T10:00:00Z') });
-    const { service, logger, hook } = setup(transaction);
+    const transaction = vi.fn().mockRejectedValueOnce(deadlock()).mockImplementationOnce(runs);
+    const { service, logger, hook, insert } = setup(transaction);
+    insert.mockResolvedValue({ id: 'b-1', createdAt: new Date('2026-11-02T10:00:00Z') });
 
     const booking = await service.create('renter-secret', 'space-1', input);
 
@@ -96,8 +99,9 @@ describe('BookingsService.create', () => {
   });
 
   it('the response has no user id and the hook failing does not fail the booking', async () => {
-    const transaction = vi.fn().mockResolvedValue({ id: 'b-2', createdAt: new Date() });
-    const { service, hook } = setup(transaction);
+    const transaction = vi.fn().mockImplementation(runs);
+    const { service, hook, insert } = setup(transaction);
+    insert.mockResolvedValue({ id: 'b-2', createdAt: new Date() });
     vi.mocked(hook.onCreated).mockRejectedValue(new Error('redis down'));
     const booking = await service.create('renter', 'space-1', input);
     expect(JSON.stringify(booking)).not.toContain('renter');

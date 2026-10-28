@@ -1047,3 +1047,9 @@ Level 12: T071
 See [plan.md → Open questions](./plan.md#open-questions) (OQ-1 to OQ-12) and the architect questions (AQ-1 to AQ-8).
 Tasks that depend on an answer: OQ-1 all; OQ-2 T069; OQ-3 T005, T055; OQ-4 T038, T039; OQ-5 T047, T048;
 OQ-6 T021, T065; OQ-7 T003, T006, T022; OQ-8 T019; OQ-9 T014, T057; OQ-11 T003, T009; OQ-12 T034, T039.
+
+## Review follow-ups
+
+- Migration-based status trigger change (security n5): not done in the API fix pass.
+- Dependency bumps from the security review: not done in the API fix pass.
+- Web changes (show the pricing per-field errors on `slots` and `shiftChangeAt`; continue a search while `nextCursor` is set and the page is short): frontend task.

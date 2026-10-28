@@ -3,12 +3,13 @@ import { randomUUID } from 'node:crypto';
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { APP_FILTER, APP_PIPE } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_PIPE } from '@nestjs/core';
 import { TerminusModule } from '@nestjs/terminus';
 import type { Redis } from 'ioredis';
 import { LoggerModule } from 'nestjs-pino';
 
 import { AuthModule } from './auth/auth.module.js';
+import { CsrfGuard } from './common/csrf/csrf.guard.js';
 import { ProblemFilter } from './common/errors/problem.filter.js';
 import { validationPipe } from './common/errors/validation.js';
 import { type Env, loadEnv } from './config/env.js';
@@ -73,6 +74,7 @@ import { REDIS, RedisModule } from './redis/redis.module.js';
   providers: [
     { provide: APP_PIPE, useValue: validationPipe },
     { provide: APP_FILTER, useClass: ProblemFilter },
+    { provide: APP_GUARD, useClass: CsrfGuard },
   ],
 })
 export class AppModule {}

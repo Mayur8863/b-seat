@@ -105,6 +105,27 @@ describe('create pass booking (POST /api/listings/:spaceId/bookings)', () => {
   });
   afterAll(() => app.close());
 
+  it('prices a booking with a price that committed before its space lock', async () => {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('SELECT 1 FROM space WHERE id = $1 FOR UPDATE', [spaceId]);
+      await client.query(
+        `UPDATE pass_price SET amount = '777.00' WHERE space_id = $1 AND slot = 'day' AND pass = 'day'`,
+        [spaceId],
+      );
+      // The booking blocks on the space share lock until the price change commits.
+      const pending = post(renter, dayBody(s0)).then((r) => r);
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      await client.query('COMMIT');
+      const res = await pending;
+      expect(res.status).toBe(201);
+      expect((res.body as { price: { amount: string } }).price.amount).toBe('777.00');
+    } finally {
+      client.release();
+    }
+  });
+
   it('201: a week pass with 7 days and a price snapshot, no user id, then taken', async () => {
     const res = await post(renter, weekBody(s0)).expect(201);
     const s = start();
