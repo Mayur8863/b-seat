@@ -273,4 +273,18 @@ describe('PricingForm', () => {
       });
     });
   });
+
+  it('after only the fixed hours change elsewhere, the working-hours time text updates', async () => {
+    const { client } = setup(fixed);
+    await screen.findByRole('group', { name: 'Working hours' });
+    expect(screen.getByText(/09:00 to 18:00/)).toBeInTheDocument();
+    const later: SpacePricing = {
+      ...fixed,
+      openingHours: { mode: 'fixed_hours', opensAt: '08:00', closesAt: '17:00' },
+      slots: [slot('working_hours', '08:00', '17:00', false, true, fixed.slots[0]?.prices)],
+    };
+    server.use(getOwnerSpacesGetPricingMockHandler(later));
+    await client.invalidateQueries({ queryKey: [`/api/owner/spaces/s1/pricing`] });
+    expect(await screen.findByText(/08:00 to 17:00/)).toBeInTheDocument();
+  });
 });

@@ -116,9 +116,9 @@ const currencyName = (code: string) => {
 const timeText = (start: string, end: string, nextDay: boolean) =>
   `${start} to ${end}${nextDay ? ' next day' : ''}`;
 
-/** A new hours mode or currency means different slots and prices, so the form starts again from the server. */
+/** A new hours mode, currency or slot time means different slots and prices, so the form starts again from the server. */
 const formKey = (p: SpacePricing) =>
-  `${p.openingHours.mode}|${p.currency}|${p.slots.map((s) => s.slot).join(',')}`;
+  `${p.openingHours.mode}|${p.currency}|${p.slots.map((s) => `${s.slot}@${s.startTime}-${s.endTime}`).join(',')}`;
 
 interface FormProps {
   spaceId: string;
