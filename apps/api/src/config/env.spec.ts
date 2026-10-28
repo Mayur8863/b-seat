@@ -52,4 +52,36 @@ describe('loadEnv', () => {
       /SEED_DEMO_PASSWORD must be at least 12 characters/,
     );
   });
+
+  describe('object storage', () => {
+    it('defaults to AWS S3 settings with no credentials', () => {
+      const env = loadEnv(valid);
+      expect(env.S3_ENDPOINT).toBeUndefined();
+      expect(env.S3_BUCKET_PHOTOS).toBe('bseat-photos');
+      expect(env.S3_FORCE_PATH_STYLE).toBe(false);
+      expect(env.PHOTO_URL_TTL_SECONDS).toBe(3600);
+    });
+
+    it('accepts a TTL of 2 and rejects 1 and 3601', () => {
+      expect(loadEnv({ ...valid, PHOTO_URL_TTL_SECONDS: '2' }).PHOTO_URL_TTL_SECONDS).toBe(2);
+      expect(() => loadEnv({ ...valid, PHOTO_URL_TTL_SECONDS: '1' })).toThrow(
+        /PHOTO_URL_TTL_SECONDS/,
+      );
+      expect(() => loadEnv({ ...valid, PHOTO_URL_TTL_SECONDS: '3601' })).toThrow(
+        /PHOTO_URL_TTL_SECONDS/,
+      );
+    });
+
+    it('requires the access key pair together', () => {
+      expect(() => loadEnv({ ...valid, S3_ACCESS_KEY_ID: 'k' })).toThrow(/set together/);
+      expect(() => loadEnv({ ...valid, S3_SECRET_ACCESS_KEY: 's' })).toThrow(/set together/);
+      expect(
+        loadEnv({ ...valid, S3_ACCESS_KEY_ID: 'k', S3_SECRET_ACCESS_KEY: 's' }).S3_ACCESS_KEY_ID,
+      ).toBe('k');
+    });
+
+    it('parses S3_FORCE_PATH_STYLE as a boolean', () => {
+      expect(loadEnv({ ...valid, S3_FORCE_PATH_STYLE: 'true' }).S3_FORCE_PATH_STYLE).toBe(true);
+    });
+  });
 });

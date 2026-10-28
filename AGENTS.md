@@ -28,23 +28,23 @@ changing anything it covers.
 The host needs **only Docker**. Every Node command runs in the `tools`
 container via `bin/` wrappers. Never run `npm`/`pnpm`/`node` directly on the host.
 
-| Task                        | Command                                                                   |
-| --------------------------- | ------------------------------------------------------------------------- |
-| Run everything (hot reload) | `docker compose up` → web :3000, api :3001, mail UI :8025                 |
-| Install deps                | `bin/pnpm install`                                                        |
-| Lint / typecheck (all)      | `bin/pnpm lint` · `bin/pnpm typecheck`                                    |
-| Unit + integration tests    | `bin/pnpm test` (needs `docker compose up -d postgres redis mailpit`)     |
-| Coverage                    | `bin/pnpm test:coverage`                                                  |
-| E2E + accessibility         | `docker compose --profile e2e run --rm e2e` (stack running)               |
-| Build                       | `bin/pnpm build`                                                          |
-| One package                 | `bin/pnpm --filter @bseat/api test` (api, web, ui, api-client)            |
-| Regenerate API contract     | `bin/pnpm gen:api` → commits `apps/api/openapi.json`                      |
-| New DB migration            | `bin/pnpm --filter @bseat/api db:generate --name <change>`                |
-| Apply migrations / seed     | `bin/pnpm db:migrate` · `bin/pnpm db:seed`                                |
-| Add a changeset             | `bin/pnpm changeset`                                                      |
-| Secret scan / SAST / CVEs   | `bin/gitleaks dir .` · `bin/security`                                     |
-| Shell in the toolbox        | `bin/tools bash`                                                          |
-| Add a shadcn component      | `bin/tools bash -c 'cd packages/ui && pnpm dlx shadcn@latest add <name>'` |
+| Task                        | Command                                                                       |
+| --------------------------- | ----------------------------------------------------------------------------- |
+| Run everything (hot reload) | `docker compose up` → web :3000, api :3001, mail UI :8025                     |
+| Install deps                | `bin/pnpm install`                                                            |
+| Lint / typecheck (all)      | `bin/pnpm lint` · `bin/pnpm typecheck`                                        |
+| Unit + integration tests    | `bin/pnpm test` (needs `docker compose up -d postgres redis mailpit storage`) |
+| Coverage                    | `bin/pnpm test:coverage`                                                      |
+| E2E + accessibility         | `docker compose --profile e2e run --rm e2e` (stack running)                   |
+| Build                       | `bin/pnpm build`                                                              |
+| One package                 | `bin/pnpm --filter @bseat/api test` (api, web, ui, api-client)                |
+| Regenerate API contract     | `bin/pnpm gen:api` → commits `apps/api/openapi.json`                          |
+| New DB migration            | `bin/pnpm --filter @bseat/api db:generate --name <change>`                    |
+| Apply migrations / seed     | `bin/pnpm db:migrate` · `bin/pnpm db:seed`                                    |
+| Add a changeset             | `bin/pnpm changeset`                                                          |
+| Secret scan / SAST / CVEs   | `bin/gitleaks dir .` · `bin/security`                                         |
+| Shell in the toolbox        | `bin/tools bash`                                                              |
+| Add a shadcn component      | `bin/tools bash -c 'cd packages/ui && pnpm dlx shadcn@latest add <name>'`     |
 
 API docs (Swagger UI): http://localhost:3001/docs. Caught email: http://localhost:8025.
 
