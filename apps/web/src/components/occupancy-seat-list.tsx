@@ -212,7 +212,7 @@ export function OccupancySeatList(props: ListProps) {
           const { state, markId } = seat.today;
           return (
             <div className="grid gap-2 sm:flex sm:items-center sm:gap-3">
-              <SeatState seat={seat} />
+              <SeatState seat={seat} bookingsHref={`/owner/spaces/${spaceId}/bookings`} />
               {list.length > 0 && (
                 <Button
                   id={marksButtonId(seat.id)}
