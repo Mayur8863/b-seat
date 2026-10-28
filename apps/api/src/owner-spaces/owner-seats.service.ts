@@ -20,7 +20,7 @@ import {
   seat,
   space,
 } from '../db/schema/index.js';
-import { LOCK_TIMEOUT, lockSeats, type SeatLockTx } from '../bookings/seat-lock.js';
+import { lockSeats, type SeatLockTx, withLockTimeout } from '../bookings/seat-lock.js';
 import {
   type CreateCubicleInput,
   type CreateSeatsInput,
@@ -68,11 +68,13 @@ export class OwnerSeatsService {
 
   /** Locks the caller's space row (R-15) or throws the shared 404; others' spaces look missing. */
   private async lockSpace(tx: Tx, ownerId: string, spaceId: string): Promise<void> {
-    const rows = await tx
-      .select({ id: space.id })
-      .from(space)
-      .where(and(eq(space.id, spaceId), eq(space.ownerId, ownerId)))
-      .for('update');
+    const rows = await withLockTimeout(tx, this.logger, { spaceId }, () =>
+      tx
+        .select({ id: space.id })
+        .from(space)
+        .where(and(eq(space.id, spaceId), eq(space.ownerId, ownerId)))
+        .for('update'),
+    );
     if (rows.length === 0) throw new NotFoundException();
   }
 
@@ -262,8 +264,9 @@ export class OwnerSeatsService {
 
   /** Booking writers take the per-seat advisory locks, so holding them here excludes a racing booking. */
   private async lockAndCheck(tx: Tx, seatIds: string[]): Promise<void> {
-    await tx.execute(sql`select set_config('lock_timeout', ${LOCK_TIMEOUT}, true)`);
-    await lockSeats(tx, seatIds);
+    await withLockTimeout(tx, this.logger, { seatId: seatIds[0] ?? '' }, () =>
+      lockSeats(tx, seatIds),
+    );
     if (await this.hasFutureBookings(tx, seatIds)) throw seatHasFutureBookings();
   }
 

@@ -12,6 +12,7 @@ import {
   MAX_LOCKED_SEATS,
   SEAT_HOLD_LOCK_CLASS,
   type SeatLockTx,
+  withLockTimeout,
   withSeatLocks,
 } from './seat-lock.js';
 
@@ -278,5 +279,31 @@ describe('lockSeats', () => {
 
     await lockSeats(tx, [...many.slice(0, MAX_LOCKED_SEATS), ...many.slice(0, 5)]);
     expect(execute).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('withLockTimeout', () => {
+  const tx = { execute: vi.fn().mockResolvedValue(undefined) };
+  const logger = { warn: vi.fn() };
+  const run = <T>(wait: () => Promise<T>) =>
+    withLockTimeout(tx as never, logger as never, { spaceId: 's1' }, wait);
+
+  it('sets the timeout, then waits, and returns the result', async () => {
+    await expect(run(() => Promise.resolve(7))).resolves.toBe(7);
+    expect(tx.execute).toHaveBeenCalledTimes(1);
+    expect(logger.warn).not.toHaveBeenCalled();
+  });
+
+  it('logs ids only on 55P03 and rethrows the same error', async () => {
+    const err = driverError('55P03');
+    await expect(run(() => Promise.reject(err))).rejects.toBe(err);
+    expect(logger.warn).toHaveBeenCalledWith({ spaceId: 's1' }, 'space.lock_timeout');
+  });
+
+  it('rethrows other errors without logging', async () => {
+    logger.warn.mockClear();
+    const err = driverError('23505');
+    await expect(run(() => Promise.reject(err))).rejects.toBe(err);
+    expect(logger.warn).not.toHaveBeenCalled();
   });
 });

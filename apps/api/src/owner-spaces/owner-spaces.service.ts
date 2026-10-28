@@ -6,6 +6,7 @@ import { publishIncomplete } from '../common/errors/problem-types.js';
 import { spacesWithLayout } from '../owner-operations/layout.queries.js';
 import { Clock } from '../common/time/clock.js';
 import { toLocal } from '../common/time/zoned-time.js';
+import { withLockTimeout } from '../bookings/seat-lock.js';
 import type { Database } from '../db/db.js';
 import { DB } from '../db/db.module.js';
 import { availabilityCalendar, passPrice, space, spaceSlot } from '../db/schema/index.js';
@@ -166,11 +167,13 @@ export class OwnerSpacesService {
         ...(rest.customUtilities !== undefined && { customUtilities: rest.customUtilities }),
         ...(openingHours !== undefined && this.openingColumns(openingHours)),
       };
-      const updated = await tx
-        .update(space)
-        .set({ ...set, updatedAt: sql`now()` })
-        .where(and(eq(space.id, spaceId), eq(space.ownerId, ownerId)))
-        .returning({ id: space.id });
+      const updated = await withLockTimeout(tx, this.logger, { spaceId }, () =>
+        tx
+          .update(space)
+          .set({ ...set, updatedAt: sql`now()` })
+          .where(and(eq(space.id, spaceId), eq(space.ownerId, ownerId)))
+          .returning({ id: space.id }),
+      );
       if (updated.length === 0) throw this.notFound();
       if (openingHours) await this.ensureSlotRows(tx, spaceId, openingHours.mode);
     });
@@ -182,11 +185,13 @@ export class OwnerSpacesService {
       // Serialises with other writers of the space row (edit, unpublish, publish) only; it does
       // not block a concurrent seat or price removal. Such a removal is equivalent to
       // publishing first and removing after, which FR-008 allows.
-      const [row] = await tx
-        .select({ status: space.status, seats: seatCount, priced: hasOfferedPass })
-        .from(space)
-        .where(and(eq(space.id, spaceId), eq(space.ownerId, ownerId)))
-        .for('update', { of: space });
+      const [row] = await withLockTimeout(tx, this.logger, { spaceId }, () =>
+        tx
+          .select({ status: space.status, seats: seatCount, priced: hasOfferedPass })
+          .from(space)
+          .where(and(eq(space.id, spaceId), eq(space.ownerId, ownerId)))
+          .for('update', { of: space }),
+      );
       if (!row) throw this.notFound();
       // Idempotent: a published space is not re-checked (contract).
       if (row.status === 'published') return;
@@ -205,11 +210,15 @@ export class OwnerSpacesService {
   }
 
   async unpublish(ownerId: string, spaceId: string): Promise<OwnerSpace> {
-    const updated = await this.db
-      .update(space)
-      .set({ status: 'unpublished', updatedAt: sql`now()` })
-      .where(and(eq(space.id, spaceId), eq(space.ownerId, ownerId), ne(space.status, 'draft')))
-      .returning({ id: space.id });
+    const updated = await this.db.transaction((tx) =>
+      withLockTimeout(tx, this.logger, { spaceId }, () =>
+        tx
+          .update(space)
+          .set({ status: 'unpublished', updatedAt: sql`now()` })
+          .where(and(eq(space.id, spaceId), eq(space.ownerId, ownerId), ne(space.status, 'draft')))
+          .returning({ id: space.id }),
+      ),
+    );
     // A draft was never published, so it stays a draft; load() still 404s a foreign id.
     if (updated.length > 0) this.logger.info({ spaceId, ownerId }, 'listing.unpublished');
     return this.load(ownerId, spaceId);
@@ -225,11 +234,13 @@ export class OwnerSpacesService {
     input: UpdatePricingInput,
   ): Promise<SpacePricing> {
     await this.db.transaction(async (tx) => {
-      const [row] = await tx
-        .select({ mode: space.openingMode })
-        .from(space)
-        .where(and(eq(space.id, spaceId), eq(space.ownerId, ownerId)))
-        .for('update', { of: space });
+      const [row] = await withLockTimeout(tx, this.logger, { spaceId }, () =>
+        tx
+          .select({ mode: space.openingMode })
+          .from(space)
+          .where(and(eq(space.id, spaceId), eq(space.ownerId, ownerId)))
+          .for('update', { of: space }),
+      );
       if (!row?.mode) throw this.notFound();
       const kinds = SLOTS_BY_MODE[row.mode];
       const sent = input.slots.map((s) => s.slot);

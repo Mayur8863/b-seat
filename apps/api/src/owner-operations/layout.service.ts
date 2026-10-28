@@ -4,6 +4,7 @@ import { PinoLogger } from 'nestjs-pino';
 
 import { ProblemException } from '../common/errors/problem.exception.js';
 import { PROBLEM_TYPES } from '../common/errors/problem-types.js';
+import { withLockTimeout } from '../bookings/seat-lock.js';
 import type { Database } from '../db/db.js';
 import { DB } from '../db/db.module.js';
 import { cubicle, layoutElement, seat, space, spaceLayout } from '../db/schema/index.js';
@@ -120,11 +121,13 @@ export class LayoutService {
   async save(ownerId: string, spaceId: string, input: SaveLayoutInput): Promise<OwnerLayout> {
     const out = await this.db.transaction(async (tx) => {
       // Same lock as the seat and cubicle writers (R-15): no seat disappears mid-save.
-      const owned = await tx
-        .select({ id: space.id })
-        .from(space)
-        .where(and(eq(space.id, spaceId), eq(space.ownerId, ownerId)))
-        .for('update');
+      const owned = await withLockTimeout(tx, this.logger, { spaceId }, () =>
+        tx
+          .select({ id: space.id })
+          .from(space)
+          .where(and(eq(space.id, spaceId), eq(space.ownerId, ownerId)))
+          .for('update'),
+      );
       if (owned.length === 0) throw new NotFoundException();
 
       const [current] = await tx.select().from(spaceLayout).where(eq(spaceLayout.spaceId, spaceId));
