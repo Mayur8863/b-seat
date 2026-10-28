@@ -1,5 +1,6 @@
 import { ApiError } from '@bseat/api-client';
 
+import type { ProblemCopy } from './problem-copy';
 import { safeNext } from './safe-next';
 
 export type BookingAction = 'availability' | 'book' | 'cancel';
@@ -13,14 +14,6 @@ export interface ProblemContext {
   path?: string;
   /** Title for list loads ("We couldn't load seats"), used only for the generic outcomes. */
   fallbackTitle?: string;
-}
-
-/** Text with optional inline links, so callers render real anchors. */
-export type ProblemPart = string | { text: string; href: string };
-
-export interface ProblemCopy {
-  title: string;
-  description: ProblemPart[];
 }
 
 const PREFIX = 'urn:bseat:problem:';

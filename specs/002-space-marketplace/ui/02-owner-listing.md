@@ -104,6 +104,8 @@ space's details. You'll add seats and prices next." then the "All fields are req
 
 ### 4.1 Fields and DOM order (this is the tab order)
 
+**Order note:** rows 3 to 8 are listed by topic. The DOM and tab order is the 4.6 grid order: Name, Description, Country, Time zone, City, Area or locality, Street address, Currency, then rows 9 to 14. Time zone follows Country because its suggestion depends on the country.
+
 | #   | Control                                 | Label                           | Notes and hint                                                                                                                                                                                                                                                |
 | --- | --------------------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1   | `Input`                                 | Name                            | max 100                                                                                                                                                                                                                                                       |

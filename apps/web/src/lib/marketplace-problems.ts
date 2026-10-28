@@ -1,7 +1,7 @@
 import { ApiError } from '@bseat/api-client';
 
 import { safeNext } from './safe-next';
-import type { ProblemCopy } from './booking-problems';
+import type { ProblemCopy } from './problem-copy';
 
 /** Screens that use this copy; the Alert title reads "We couldn't {action}" (ui/02 9.1). */
 export type OwnerAction =

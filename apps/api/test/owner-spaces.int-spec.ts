@@ -83,8 +83,12 @@ describe('owner spaces API', () => {
         seatId: null,
         endDate: null,
         weekdays: 127,
-        startDate: toLocal(new Date(), 'Asia/Kolkata').date,
+        startDate: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
       });
+      expect([
+        toLocal(new Date(), 'Asia/Kolkata').date,
+        toLocal(new Date(Date.now() - 86_400_000), 'Asia/Kolkata').date,
+      ]).toContain(cals[0]?.startDate);
       const slots = await db().select().from(spaceSlot).where(eq(spaceSlot.spaceId, id));
       expect(slots.map((s) => s.slot).sort()).toEqual(['day', 'full_day', 'night']);
       expect(slots.every((s) => s.enabled)).toBe(true);
@@ -109,27 +113,66 @@ describe('owner spaces API', () => {
     });
 
     it.each([
-      ['name missing', { name: undefined }],
-      ['name too long', { name: 'x'.repeat(101) }],
-      ['description too long', { description: 'x'.repeat(2001) }],
-      ['unknown country', { country: 'ZZ' }],
-      ['invalid time zone', { timeZone: 'Mars/Base' }],
-      ['not offered time zone', { timeZone: 'Asia/Calcutta' }],
-      ['unknown currency', { currency: 'XXX' }],
+      ['name missing', { name: undefined }, 'name'],
+      ['name too long', { name: 'x'.repeat(101) }, 'name'],
+      ['description too long', { description: 'x'.repeat(2001) }, 'description'],
+      ['unknown country', { country: 'ZZ' }, 'country'],
+      ['invalid time zone', { timeZone: 'Mars/Base' }, 'timeZone'],
+      ['not offered time zone', { timeZone: 'Asia/Calcutta' }, 'timeZone'],
+      ['unknown currency', { currency: 'XXX' }, 'currency'],
       [
         'closing before opening',
         { openingHours: { mode: 'fixed_hours', opensAt: '18:00', closesAt: '09:00' } },
+        'openingHours.closesAt',
       ],
       [
         'shift change after noon',
         { openingHours: { mode: 'always_open', shiftChangeAt: '12:00' } },
+        'openingHours.shiftChangeAt',
       ],
-      ['six custom utilities', { customUtilities: ['a', 'b', 'c', 'd', 'e', 'f'] }],
-      ['duplicate custom utilities', { customUtilities: ['Quiet', 'quiet'] }],
-      ['duplicate utilities', { utilities: ['wifi', 'wifi'] }],
-    ])('400 for %s', async (_n, over) => {
+      [
+        'six custom utilities',
+        { customUtilities: ['a', 'b', 'c', 'd', 'e', 'f'] },
+        'customUtilities',
+      ],
+      ['duplicate custom utilities', { customUtilities: ['Quiet', 'quiet'] }, 'customUtilities'],
+      ['duplicate utilities', { utilities: ['wifi', 'wifi'] }, 'utilities'],
+      ['zero-width space in name', { name: 'Ba\u200Bner' }, 'name'],
+    ])('400 for %s', async (_n, over, path) => {
       const res = await create(over);
       expect(res.status).toBe(400);
+      expect((res.body.errors as { path: string }[]).map((e) => e.path)).toContain(path);
+    });
+
+    it('caps a huge invalid body at a small 400 with at most 20 errors', async () => {
+      const res = await create({
+        utilities: Array.from({ length: 1000 }, () => 'nope'),
+        customUtilities: Array.from({ length: 1000 }, () => ''),
+      });
+      expect(res.status).toBe(400);
+      expect((res.body.errors as unknown[]).length).toBeLessThanOrEqual(20);
+      expect(JSON.stringify(res.body).length).toBeLessThan(5000);
+    });
+
+    it('accepts a multi-line description and normalises CRLF', async () => {
+      const res = await create({ description: 'Line one\r\nLine two\nLine three' }).expect(201);
+      expect(res.body.description).toBe('Line one\nLine two\nLine three');
+      await create({ description: 'a\u0000b' }).expect(400);
+    });
+
+    it.each([
+      'name',
+      'description',
+      'country',
+      'city',
+      'area',
+      'streetAddress',
+      'timeZone',
+      'currency',
+      'openingHours',
+    ])('400 when %s is missing', async (field) => {
+      const res = await create({ [field]: undefined }).expect(400);
+      expect(JSON.stringify(res.body)).toContain(field);
     });
 
     it('400 names the field', async () => {
@@ -164,6 +207,49 @@ describe('owner spaces API', () => {
         hasOfferedPass: false,
         upcomingBookingCount: 0,
       });
+    });
+
+    it('orders names case-insensitively', async () => {
+      await create({ name: 'banana' }).expect(201);
+      await create({ name: 'Cherry' }).expect(201);
+      await create({ name: 'Apple' }).expect(201);
+      const res = await a.get('/api/owner/spaces').expect(200);
+      expect((res.body.items as { name: string }[]).map((i) => i.name)).toEqual([
+        'Apple',
+        'banana',
+        'Cherry',
+      ]);
+    });
+
+    it('counts only active pass bookings that have not ended', async () => {
+      const id = (await create().expect(201)).body.id as string;
+      const [s] = await createSeats(db(), id, 1);
+      if (!s) throw new Error('no seat');
+      const { userId } = await signedInUser(app, 'bk@example.com');
+      const day = (d: string) => ({
+        seatId: s.id,
+        userId,
+        startsAt: new Date(`${d}T00:00:00Z`),
+        endsAt: new Date(`${d}T23:00:00Z`),
+      });
+      await insertPassBooking(db(), day('2030-01-01'));
+      await insertPassBooking(db(), day('2030-01-02'));
+      await insertPassBooking(db(), { ...day('2030-01-03'), status: 'cancelled' });
+      await insertPassBooking(db(), day('2020-01-01'));
+      const res = await a.get('/api/owner/spaces').expect(200);
+      expect(res.body.items[0].upcomingBookingCount).toBe(2);
+    });
+
+    it('does not count removed seats in seatCount', async () => {
+      const id = (await create().expect(201)).body.id as string;
+      const [one, two] = await createSeats(db(), id, 2);
+      await db()
+        .update(seat)
+        .set({ removedAt: new Date() })
+        .where(eq(seat.id, two?.id ?? ''));
+      const res = await a.get('/api/owner/spaces').expect(200);
+      expect(res.body.items[0].seatCount).toBe(1);
+      expect(one).toBeDefined();
     });
 
     it('gets an owned space', async () => {
@@ -217,9 +303,18 @@ describe('owner spaces API', () => {
         .expect(200);
       expect(res.body.name).toBe('New name');
       expect(res.body.utilities).toEqual(['wifi']);
-      expect(Date.parse(str(res.body.updatedAt))).toBeGreaterThanOrEqual(
+      expect(Date.parse(str(res.body.updatedAt))).toBeGreaterThan(
         Date.parse(str(created.updatedAt)),
       );
+    });
+
+    it('updates a multi-line description', async () => {
+      const id = (await create().expect(201)).body.id;
+      const res = await a
+        .patch(`/api/owner/spaces/${id}`)
+        .send({ description: 'One\r\nTwo\nThree' })
+        .expect(200);
+      expect(res.body.description).toBe('One\nTwo\nThree');
     });
 
     it('400 for an empty body, unknown key, or invalid field', async () => {
@@ -271,6 +366,31 @@ describe('owner spaces API', () => {
       expect(unpub.body.status).toBe('unpublished');
       const [after] = await db().select().from(booking).where(eq(booking.id, bk.id));
       expect(after).toEqual(bk);
+    });
+
+    it('unpublish keeps a draft a draft and an unpublished space unpublished', async () => {
+      const id = (await create().expect(201)).body.id as string;
+      const draft = await a.post(`/api/owner/spaces/${id}/unpublish`).expect(200);
+      expect(draft.body.status).toBe('draft');
+      await createSeats(db(), id, 1);
+      await db().insert(passPrice).values({ spaceId: id, slot: 'day', pass: 'day', amount: '10' });
+      await a.post(`/api/owner/spaces/${id}/publish`).expect(200);
+      await a.post(`/api/owner/spaces/${id}/unpublish`).expect(200);
+      const again = await a.post(`/api/owner/spaces/${id}/unpublish`).expect(200);
+      expect(again.body.status).toBe('unpublished');
+    });
+
+    it('publishing a published space is 200 even if it no longer has an offered pass', async () => {
+      const id = (await create().expect(201)).body.id as string;
+      await createSeats(db(), id, 1);
+      await db().insert(passPrice).values({ spaceId: id, slot: 'day', pass: 'day', amount: '10' });
+      await a.post(`/api/owner/spaces/${id}/publish`).expect(200);
+      await a
+        .patch(`/api/owner/spaces/${id}`)
+        .send({ openingHours: { mode: 'fixed_hours', opensAt: '09:00', closesAt: '17:00' } })
+        .expect(200);
+      const res = await a.post(`/api/owner/spaces/${id}/publish`).expect(200);
+      expect(res.body).toMatchObject({ status: 'published', hasOfferedPass: false });
     });
 
     it('does not count removed seats', async () => {

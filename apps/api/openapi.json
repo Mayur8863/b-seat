@@ -1153,14 +1153,14 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 100,
-            "pattern": "^[^\\p{Cc}\\u202A-\\u202E\\u2066-\\u2069]*$"
+            "pattern": "^(?:[^\\p{Cc}\\p{Cf}\\u2028\\u2029]|\\u200D)*$"
           },
           "area": {
             "nullable": true,
             "type": "string",
             "minLength": 1,
             "maxLength": 100,
-            "pattern": "^[^\\p{Cc}\\u202A-\\u202E\\u2066-\\u2069]*$"
+            "pattern": "^(?:[^\\p{Cc}\\p{Cf}\\u2028\\u2029]|\\u200D)*$"
           }
         },
         "required": [
@@ -1250,13 +1250,11 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 100,
-            "pattern": "^[^\\p{Cc}\\u202A-\\u202E\\u2066-\\u2069]*$"
+            "pattern": "^(?:[^\\p{Cc}\\p{Cf}\\u2028\\u2029]|\\u200D)*$"
           },
           "description": {
             "type": "string",
-            "minLength": 1,
-            "maxLength": 2000,
-            "pattern": "^[^\\p{Cc}\\u202A-\\u202E\\u2066-\\u2069]*$"
+            "pattern": "^(?:[^\\p{Cc}\\p{Cf}\\u2028\\u2029]|\\u200D|\\n)*$"
           },
           "country": {
             "type": "string",
@@ -1267,19 +1265,19 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 100,
-            "pattern": "^[^\\p{Cc}\\u202A-\\u202E\\u2066-\\u2069]*$"
+            "pattern": "^(?:[^\\p{Cc}\\p{Cf}\\u2028\\u2029]|\\u200D)*$"
           },
           "area": {
             "type": "string",
             "minLength": 1,
             "maxLength": 100,
-            "pattern": "^[^\\p{Cc}\\u202A-\\u202E\\u2066-\\u2069]*$"
+            "pattern": "^(?:[^\\p{Cc}\\p{Cf}\\u2028\\u2029]|\\u200D)*$"
           },
           "streetAddress": {
             "type": "string",
             "minLength": 1,
             "maxLength": 200,
-            "pattern": "^[^\\p{Cc}\\u202A-\\u202E\\u2066-\\u2069]*$"
+            "pattern": "^(?:[^\\p{Cc}\\p{Cf}\\u2028\\u2029]|\\u200D)*$"
           },
           "timeZone": {
             "type": "string",
@@ -1345,6 +1343,7 @@
           },
           "utilities": {
             "default": [],
+            "maxItems": 11,
             "type": "array",
             "items": {
               "type": "string",
@@ -1371,13 +1370,12 @@
               "type": "string",
               "minLength": 1,
               "maxLength": 40,
-              "pattern": "^[^\\p{Cc}\\u202A-\\u202E\\u2066-\\u2069]*$"
+              "pattern": "^(?:[^\\p{Cc}\\p{Cf}\\u2028\\u2029]|\\u200D)*$"
             }
           }
         },
         "required": [
           "name",
-          "description",
           "country",
           "city",
           "area",
@@ -1563,13 +1561,11 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 100,
-            "pattern": "^[^\\p{Cc}\\u202A-\\u202E\\u2066-\\u2069]*$"
+            "pattern": "^(?:[^\\p{Cc}\\p{Cf}\\u2028\\u2029]|\\u200D)*$"
           },
           "description": {
             "type": "string",
-            "minLength": 1,
-            "maxLength": 2000,
-            "pattern": "^[^\\p{Cc}\\u202A-\\u202E\\u2066-\\u2069]*$"
+            "pattern": "^(?:[^\\p{Cc}\\p{Cf}\\u2028\\u2029]|\\u200D|\\n)*$"
           },
           "country": {
             "type": "string",
@@ -1580,19 +1576,19 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 100,
-            "pattern": "^[^\\p{Cc}\\u202A-\\u202E\\u2066-\\u2069]*$"
+            "pattern": "^(?:[^\\p{Cc}\\p{Cf}\\u2028\\u2029]|\\u200D)*$"
           },
           "area": {
             "type": "string",
             "minLength": 1,
             "maxLength": 100,
-            "pattern": "^[^\\p{Cc}\\u202A-\\u202E\\u2066-\\u2069]*$"
+            "pattern": "^(?:[^\\p{Cc}\\p{Cf}\\u2028\\u2029]|\\u200D)*$"
           },
           "streetAddress": {
             "type": "string",
             "minLength": 1,
             "maxLength": 200,
-            "pattern": "^[^\\p{Cc}\\u202A-\\u202E\\u2066-\\u2069]*$"
+            "pattern": "^(?:[^\\p{Cc}\\p{Cf}\\u2028\\u2029]|\\u200D)*$"
           },
           "timeZone": {
             "type": "string",
@@ -1657,6 +1653,7 @@
             ]
           },
           "utilities": {
+            "maxItems": 11,
             "type": "array",
             "items": {
               "type": "string",
@@ -1682,7 +1679,7 @@
               "type": "string",
               "minLength": 1,
               "maxLength": 40,
-              "pattern": "^[^\\p{Cc}\\u202A-\\u202E\\u2066-\\u2069]*$"
+              "pattern": "^(?:[^\\p{Cc}\\p{Cf}\\u2028\\u2029]|\\u200D)*$"
             }
           }
         },
