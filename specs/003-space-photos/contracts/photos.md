@@ -4,7 +4,8 @@ New module `apps/api/src/photos/` (`space-photos.controller.ts`, `space-photos.s
 `space-photos.schemas.ts`, `photo-processing.ts`, `photo-purge.processor.ts`) and `apps/api/src/storage/`
 (`storage.module.ts`, `storage.service.ts`, `url-signing.ts`). Owner controller:
 `@Controller('owner/spaces/:spaceId/photos')`, `@UseGuards(AuthGuard, RolesGuard)`, `@RequireRole('owner')`.
-Path ids are `z.uuid()`.
+Path ids are `z.uuid()`. The upload route also has `OriginGuard` and upload admission (README, ADR-0011 sections
+2 and 3). This file includes the architect's T001 amendments.
 
 ## Shared response schemas
 
@@ -67,19 +68,30 @@ const ReorderSpacePhotosInput = z
 
 ### Behaviour
 
-- **Upload** (R-2, R-3, R-6, R-7): Origin check → multer limits → validate and process (semaphore) → insert the
-  upload intent → put `card.webp` and `display.webp` → transaction (`lock_timeout`, space `FOR UPDATE` with
-  `owner_id`, count; 409 if 10; insert at `n + 1`; delete the intent) → 201. On a 409 or 404 after the put, the
-  objects are deleted at once (best effort) and the intent stays as the fallback. Log `photo.added`
+- **Upload** (R-2, R-3, R-6, R-7, ADR-0011 sections 2, 4 and 9), in this order:
+  1. guards, Origin check and admission;
+  2. multer limits;
+  3. validate and process (semaphore of 2, waiters for at most 20 s);
+  4. generate the photo id and insert the upload intent (`due_at = now() + 1 hour`);
+  5. put `card.webp` and `display.webp`;
+  6. the transaction: `lock_timeout`, space `FOR UPDATE` with `owner_id` (404 when no row), count (409 at 10),
+     delete its own unclaimed intent (exactly one row, otherwise roll back with 503), insert at `n + 1`;
+  7. 201.
+
+  On any failure after step 4 (404, 409, 503, a storage error, a failed insert), the API sets the intent's
+  `due_at = now()`, and the next purge sweep removes whatever was written. There is no inline storage delete. Log
+  `photo.added`
   (`spaceId`, `photoId`, `format`, `width`, `height`, `bytesIn`, `bytesStored`, `ms`) or `photo.rejected`
   (`spaceId`, `reason` = problem type, `bytesIn`). Never the file name, never the bytes.
+
 - **Describe**: same lock order; updates `description` and `updated_at`. Log `photo.described` (ids only).
-- **Reorder**: same lock order; `photoIds` must equal the current set exactly (same ids, same count, no
-  duplicates), otherwise 409 `photo:order-stale`. `SET CONSTRAINTS space_photo_position_unique DEFERRED`, then
-  positions = index + 1. Returns the new list. Log `photo.reordered`.
-- **Delete**: same lock order; deletes the row, decrements later positions, inserts a purge row
-  (`reason = 'deleted'`, `due_at = now()`), commits, then enqueues the `photo-purge` job (job id = purge row id).
-  A deleted id is 404 afterwards. Log `photo.deleted`.
+- **Reorder**: the same lock order. `photoIds` must equal the current set exactly (the same ids and count, no
+  duplicates), otherwise 409 `photo:order-stale`. Then **one** `UPDATE … FROM (VALUES …)` sets
+  position = index + 1. The deferrable-immediate unique is checked at the end of that statement, and no
+  `SET CONSTRAINTS` is used. Returns the new list. Log `photo.reordered`.
+- **Delete**: the same lock order. Deletes the row, decrements the later positions in **one** `UPDATE`, and
+  inserts a purge row (`reason = 'deleted'`, `due_at = now()`). The objects go at the next purge sweep (every
+  5 minutes); no job is enqueued per delete. A deleted id is 404 afterwards. Log `photo.deleted`.
 
 ## Renter additions (002 listing responses)
 
@@ -119,8 +131,10 @@ export function uploadSpacePhoto(
 ```
 
 `XMLHttpRequest` `POST /api/owner/spaces/{spaceId}/photos` with `FormData` (`file`), `withCredentials`,
-`upload.onprogress` → `onProgress(loaded / total)`, and abort on `signal`. A network failure rejects with
-`ApiError` status 0 and type `urn:bseat:problem:network` (client-only, for the "connection lost" copy). Exported
+`upload.onprogress` → `onProgress(loaded / total)`, and abort on `signal`. A network failure, or an error response
+without a problem body (for example Node's 408 after `requestTimeout`), rejects with `ApiError`. A network failure
+has status 0; a bare error response keeps its HTTP status. Both carry type `urn:bseat:problem:network`, which is
+client-only and drives the "connection lost" copy. Exported
 from `packages/api-client/src/index.ts`. Its MSW handler for component tests sits next to the generated mocks.
 
 ## Storage port (internal, not HTTP)
@@ -128,22 +142,34 @@ from `packages/api-client/src/index.ts`. Its MSW handler for component tests sit
 ```ts
 interface StorageService {
   putObject(key: string, body: Buffer, contentType: 'image/webp'): Promise<void>;
-  deleteObjects(keys: readonly string[]): Promise<void>; // missing keys are not an error
-  signedGetUrl(key: string, now?: Date): { url: string; expiresAt: Date }; // windowed (R-4)
+  // One DeleteObject per key (not DeleteObjects, which reports per-key failures inside a 200). A missing key is
+  // success, so the purge is idempotent.
+  deleteObject(key: string): Promise<void>;
+  // Async: presigning may refresh credentials. The caller passes one `now` per response, so every URL in a
+  // response shares one window. Signed with response-cache-control "private" and response-expires = expiresAt.
+  signGetUrls(keys: readonly string[], now: Date): Promise<{ urls: string[]; expiresAt: Date }>;
 }
 ```
 
+The S3 client uses a 3 s connection timeout, a 15 s request timeout and at most 3 attempts. The checksum settings
+are `WHEN_REQUIRED` if the local server needs them (T004). The signing window is a pure function in
+`url-signing.ts`: `W = floor(TTL / 2)`, `signingDate = floor(now / W) × W`, `expiresAt = signingDate + TTL`.
+
 ## Environment (apps/api/src/config/env.ts and .env.example)
 
-| Variable                | Default (dev)  | Notes                                                                       |
-| ----------------------- | -------------- | --------------------------------------------------------------------------- |
-| `S3_ENDPOINT`           | unset (AWS)    | `http://minio:9000` in compose; the API's own address for put and delete    |
-| `S3_PUBLIC_ENDPOINT`    | unset (AWS)    | `http://localhost:9000` in compose; the host signed into GET URLs           |
-| `S3_REGION`             | `us-east-1`    | MinIO ignores it; AWS uses the bucket's region                              |
-| `S3_BUCKET_PHOTOS`      | `bseat-photos` | Integration tests use `S3_BUCKET_PHOTOS_TEST` (default `bseat-photos-test`) |
-| `S3_FORCE_PATH_STYLE`   | `false`        | `true` for MinIO                                                            |
-| `S3_ACCESS_KEY_ID`      | unset          | Dev only (MinIO root user). In AWS the task role is used; never set there   |
-| `S3_SECRET_ACCESS_KEY`  | unset          | Dev only, a secret: never logged                                            |
-| `PHOTO_URL_TTL_SECONDS` | `3600`         | 60–3600 (FR-019 caps it at 1 hour)                                          |
+| Variable                | Default (dev)  | Notes                                                                                                        |
+| ----------------------- | -------------- | ------------------------------------------------------------------------------------------------------------ |
+| `S3_ENDPOINT`           | unset (AWS)    | `http://storage:9000` in compose; the API's own address for put and delete                                   |
+| `S3_PUBLIC_ENDPOINT`    | unset (AWS)    | `http://localhost:9000` in compose; the host signed into GET URLs. Integration tests set it to `S3_ENDPOINT` |
+| `S3_REGION`             | `us-east-1`    | The local server ignores it; AWS uses the bucket's region                                                    |
+| `S3_BUCKET_PHOTOS`      | `bseat-photos` | Integration tests use `S3_BUCKET_PHOTOS_TEST` (default `bseat-photos-test`; override per clone)              |
+| `S3_FORCE_PATH_STYLE`   | `false`        | `true` for the local server                                                                                  |
+| `S3_ACCESS_KEY_ID`      | unset          | Dev only (local server credentials). In AWS the task role is used, so never set it there                     |
+| `S3_SECRET_ACCESS_KEY`  | unset          | Dev only, a secret: never logged                                                                             |
+| `PHOTO_URL_TTL_SECONDS` | `3600`         | Integer 2–3600 (FR-019 caps it at 1 hour; the low end exists for expiry tests)                               |
 
-The env schema refuses `S3_ACCESS_KEY_ID` without `S3_SECRET_ACCESS_KEY` and the reverse.
+The env schema refuses `S3_ACCESS_KEY_ID` without `S3_SECRET_ACCESS_KEY`, and the reverse.
+
+Fixed constants, not env (ADR-0011): upload admission 16 per process, processing semaphore 2, processing wait
+20 s, sharp timeout 15 s, Node `requestTimeout` 120 s, purge sweep every 5 minutes with a 10-minute lease, and
+`photo.purge_overdue` after 12 hours.

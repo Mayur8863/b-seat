@@ -5,10 +5,10 @@ A run guide that proves the feature end to end once the tasks are merged into `d
 
 ## Prerequisites
 
-- Docker only (AGENTS.md). A fresh stack: `docker compose down -v` (drops the Postgres, Redis and MinIO volumes),
+- Docker only (AGENTS.md). A fresh stack: `docker compose down -v` (drops the Postgres, Redis and storage volumes),
   then `docker compose up`.
-- The stack now includes `minio` (S3 API on :9000, console on :9001) and the one-shot `storage-init`, which
-  creates the `bseat-photos` bucket. `migrate` waits for it, then migrates and seeds.
+- The stack now includes `storage` (an S3-compatible server on :9000, chosen in T003 per ADR-0011 section 1) and the
+  one-shot `storage-init`, which creates the `bseat-photos` bucket. `migrate` waits for it, then migrates and seeds.
 - Demo accounts and password as in the 002 quickstart (`SEED_DEMO_PASSWORD`).
 
 ## 1. Seeded photos, offline (US5, FR-023 to FR-025, SC-009)
@@ -39,15 +39,15 @@ A run guide that proves the feature end to end once the tasks are merged into `d
 2. As a renter, copy a cover URL from a published space. The owner unpublishes it. **Expect** the space gone from
    search at once, and the copied URL to return 403 within 1 hour (locally, set `PHOTO_URL_TTL_SECONDS=120` in
    `.env` to see it within 2 minutes).
-3. The owner deletes a photo. **Expect** its objects gone from the MinIO console (http://localhost:9001,
-   bucket `bseat-photos`) within a minute.
+3. The owner deletes a photo. **Expect** its objects to be gone from the `bseat-photos` bucket after the next purge
+   sweep (every 5 minutes). Check with the read-only steps in `docs/runbooks/photo-storage.md` (T027).
 
 ## 4. Automated checks
 
-| What                                                       | Command                                                                               | Expect                           |
-| ---------------------------------------------------------- | ------------------------------------------------------------------------------------- | -------------------------------- |
-| Unit + integration (needs postgres, redis, mailpit, minio) | `docker compose up -d postgres redis mailpit minio storage-init` then `bin/pnpm test` | all green                        |
-| Photo integration only                                     | `bin/pnpm --filter @bseat/api test:integration -- photos`                             | incl. SC-005, SC-006 races       |
-| Contract current                                           | `bin/pnpm gen:api` then `git diff --exit-code apps/api/openapi.json`                  | no diff                          |
-| e2e + axe (stack running)                                  | `docker compose --profile e2e run --rm e2e`                                           | photos specs green               |
-| Dependency CVEs                                            | `bin/security`                                                                        | no multer or body-parser finding |
+| What                                                         | Command                                                                                 | Expect                           |
+| ------------------------------------------------------------ | --------------------------------------------------------------------------------------- | -------------------------------- |
+| Unit + integration (needs postgres, redis, mailpit, storage) | `docker compose up -d postgres redis mailpit storage storage-init` then `bin/pnpm test` | all green                        |
+| Photo integration only                                       | `bin/pnpm --filter @bseat/api test:integration -- photos`                               | incl. SC-005, SC-006 races       |
+| Contract current                                             | `bin/pnpm gen:api` then `git diff --exit-code apps/api/openapi.json`                    | no diff                          |
+| e2e + axe (stack running)                                    | `docker compose --profile e2e run --rm e2e`                                             | photos specs green               |
+| Dependency CVEs                                              | `bin/security`                                                                          | no multer or body-parser finding |

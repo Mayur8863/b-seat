@@ -4,6 +4,31 @@ Phase 0 of [plan.md](./plan.md). Each item ends in a **proposed** decision. The 
 rejects each one in T001 and records the result in ADR-0011 and the plan verdict. Items marked **(ADR)** go into
 ADR-0011.
 
+> **Architect review (T001, 2026-10-28).** The proposals below were reviewed, and the decisions are recorded in
+> [ADR-0011](../../docs/adr/0011-space-photo-storage.md). **Where this file and ADR-0011 disagree, ADR-0011 wins.**
+> The items below are kept as written, for the record. The changes:
+>
+> - **R-1:** no MinIO by default (upstream archived on 2026-04-25, no new community binaries). A maintained
+>   S3-compatible compose service named `storage` must pass a conformance list (SeaweedFS is the first
+>   candidate). Purges use per-key `DeleteObject`. The S3 client has timeouts.
+> - **R-2:** upload admission (16 in flight per process) runs before the body is read. `requestTimeout` is
+>   120 s. `/api` must stay out of the `proxy.ts` matcher. The Origin check is a reusable `OriginGuard`.
+> - **R-3:**
+>   - No `allowBuilds` entry for sharp: 0.35.5 has no install script, so "its install script is already
+>     skipped" was wrong.
+>   - APNG is detected by the `acTL` chunk. A 15 s sharp timeout applies.
+>   - The input is decoded once into a ≤ 1600 px intermediate, and both variants come from it. `card` is
+>     always 640 × 480 and may upscale.
+>   - Peak memory is measured, then the task is sized.
+> - **R-4:** `PHOTO_URL_TTL_SECONDS` is 2–3600. The signed headers are `response-cache-control: private` plus a
+>   `response-expires` equal to the URL's expiry, not `max-age=1800`. One `now` per response. Web: global
+>   `images.unoptimized`, no `remotePatterns`.
+> - **R-6:** no `SET CONSTRAINTS`; every reorder and renumber is one `UPDATE`. `23505` maps to 500, not 409.
+> - **R-7:** one 5-minute sweep with a lease claim. No per-delete job and no inline deletes. The intent delete is
+>   guarded by `last_attempt_at IS NULL`.
+> - **R-12:** integration tests set `S3_PUBLIC_ENDPOINT` to the internal endpoint.
+> - `byte_size` is dropped from `space_photo`.
+
 Facts checked in the codebase on 2026-10-28 (`dev/002-integration` at `6d0c1b5`):
 
 - The API is NestJS on Express (`@nestjs/platform-express` 12.2.0), which pulls `multer` 2.4.0 and, through
