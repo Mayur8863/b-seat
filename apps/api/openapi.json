@@ -718,6 +718,168 @@
           "owner-spaces"
         ]
       }
+    },
+    "/api/owner/spaces/{spaceId}/pricing": {
+      "get": {
+        "operationId": "OwnerSpaces_getPricing",
+        "parameters": [
+          {
+            "name": "spaceId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpacePricing"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Renter account",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ],
+        "tags": [
+          "owner-spaces"
+        ]
+      },
+      "put": {
+        "operationId": "OwnerSpaces_updatePricing",
+        "parameters": [
+          {
+            "name": "spaceId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePricingInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpacePricing"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Renter account",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ],
+        "tags": [
+          "owner-spaces"
+        ]
+      }
     }
   },
   "info": {
@@ -1738,6 +1900,208 @@
           "title",
           "status",
           "missing"
+        ],
+        "additionalProperties": false
+      },
+      "SpacePricing": {
+        "type": "object",
+        "properties": {
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$",
+            "description": "ISO 4217 currency code, e.g. INR"
+          },
+          "openingHours": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "always_open"
+                    ]
+                  },
+                  "shiftChangeAt": {
+                    "type": "string",
+                    "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+                    "description": "Wall-clock time in the space's time zone (HH:mm)"
+                  }
+                },
+                "required": [
+                  "mode",
+                  "shiftChangeAt"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "fixed_hours"
+                    ]
+                  },
+                  "opensAt": {
+                    "type": "string",
+                    "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+                    "description": "Wall-clock time in the space's time zone (HH:mm)"
+                  },
+                  "closesAt": {
+                    "type": "string",
+                    "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+                    "description": "Wall-clock time in the space's time zone (HH:mm)"
+                  }
+                },
+                "required": [
+                  "mode",
+                  "opensAt",
+                  "closesAt"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "slots": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "slot": {
+                  "type": "string",
+                  "enum": [
+                    "day",
+                    "night",
+                    "full_day",
+                    "working_hours"
+                  ]
+                },
+                "enabled": {
+                  "type": "boolean"
+                },
+                "startTime": {
+                  "type": "string",
+                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+                  "description": "Wall-clock time in the space's time zone (HH:mm)"
+                },
+                "endTime": {
+                  "type": "string",
+                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+                  "description": "Wall-clock time in the space's time zone (HH:mm)"
+                },
+                "endsNextDay": {
+                  "type": "boolean"
+                },
+                "prices": {
+                  "type": "object",
+                  "properties": {
+                    "day": {
+                      "nullable": true,
+                      "type": "string",
+                      "description": "Decimal amount with two fraction digits"
+                    },
+                    "week": {
+                      "nullable": true,
+                      "type": "string",
+                      "description": "Decimal amount with two fraction digits"
+                    },
+                    "month": {
+                      "nullable": true,
+                      "type": "string",
+                      "description": "Decimal amount with two fraction digits"
+                    }
+                  },
+                  "required": [
+                    "day",
+                    "week",
+                    "month"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "slot",
+                "enabled",
+                "startTime",
+                "endTime",
+                "endsNextDay",
+                "prices"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "currency",
+          "openingHours",
+          "slots"
+        ],
+        "additionalProperties": false
+      },
+      "UpdatePricingInput": {
+        "type": "object",
+        "properties": {
+          "shiftChangeAt": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+            "description": "Wall-clock time in the space's time zone (HH:mm)"
+          },
+          "slots": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "slot": {
+                  "type": "string",
+                  "enum": [
+                    "day",
+                    "night",
+                    "full_day",
+                    "working_hours"
+                  ]
+                },
+                "enabled": {
+                  "type": "boolean"
+                },
+                "prices": {
+                  "type": "object",
+                  "properties": {
+                    "day": {
+                      "nullable": true,
+                      "type": "string",
+                      "pattern": "^(0|[1-9]\\d{0,9})(\\.\\d{1,2})?$"
+                    },
+                    "week": {
+                      "nullable": true,
+                      "type": "string",
+                      "pattern": "^(0|[1-9]\\d{0,9})(\\.\\d{1,2})?$"
+                    },
+                    "month": {
+                      "nullable": true,
+                      "type": "string",
+                      "pattern": "^(0|[1-9]\\d{0,9})(\\.\\d{1,2})?$"
+                    }
+                  },
+                  "required": [
+                    "day",
+                    "week",
+                    "month"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "slot",
+                "enabled",
+                "prices"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "slots"
         ],
         "additionalProperties": false
       }

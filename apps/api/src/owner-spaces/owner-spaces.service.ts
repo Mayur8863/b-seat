@@ -1,5 +1,5 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, asc, eq, ne, sql } from 'drizzle-orm';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { and, asc, eq, inArray, ne, sql } from 'drizzle-orm';
 import { PinoLogger } from 'nestjs-pino';
 
 import { publishIncomplete } from '../common/errors/problem-types.js';
@@ -7,12 +7,15 @@ import { Clock } from '../common/time/clock.js';
 import { toLocal } from '../common/time/zoned-time.js';
 import type { Database } from '../db/db.js';
 import { DB } from '../db/db.module.js';
-import { availabilityCalendar, space, spaceSlot } from '../db/schema/index.js';
+import { availabilityCalendar, passPrice, space, spaceSlot } from '../db/schema/index.js';
+import { formatDecimal, parseDecimal } from '../common/money/money.js';
 import type { SlotKind } from '../marketplace/slots.js';
 import type {
   CreateSpaceInput,
   OwnerSpace,
   OwnerSpaceList,
+  SpacePricing,
+  UpdatePricingInput,
   UpdateSpaceInput,
 } from './owner-spaces.schemas.js';
 
@@ -52,6 +55,23 @@ function openingHoursOf(row: {
   return row.openingMode === 'fixed_hours'
     ? { mode: 'fixed_hours', opensAt: hhmm(row.opensAt), closesAt: hhmm(row.closesAt) }
     : { mode: 'always_open', shiftChangeAt: hhmm(row.shiftChangeAt) };
+}
+
+const PASSES = ['day', 'week', 'month'] as const;
+
+const plusHalfDay = (time: string): string =>
+  `${String((Number(time.slice(0, 2)) + 12) % 24).padStart(2, '0')}${time.slice(2)}`;
+
+/** Slot times in the space's local wall clock; the day boundary is the shift change (R-4). */
+function slotTimes(hours: OwnerSpace['openingHours'], slot: SlotKind) {
+  if (hours.mode === 'fixed_hours') {
+    return { startTime: hours.opensAt, endTime: hours.closesAt, endsNextDay: false };
+  }
+  const shift = hours.shiftChangeAt;
+  const half = plusHalfDay(shift);
+  if (slot === 'day') return { startTime: shift, endTime: half, endsNextDay: false };
+  if (slot === 'night') return { startTime: half, endTime: shift, endsNextDay: true };
+  return { startTime: shift, endTime: shift, endsNextDay: true };
 }
 
 @Injectable()
@@ -192,6 +212,115 @@ export class OwnerSpacesService {
     // A draft was never published, so it stays a draft; load() still 404s a foreign id.
     if (updated.length > 0) this.logger.info({ spaceId, ownerId }, 'listing.unpublished');
     return this.load(ownerId, spaceId);
+  }
+
+  async getPricing(ownerId: string, spaceId: string): Promise<SpacePricing> {
+    return this.loadPricing(this.db, ownerId, spaceId);
+  }
+
+  async updatePricing(
+    ownerId: string,
+    spaceId: string,
+    input: UpdatePricingInput,
+  ): Promise<SpacePricing> {
+    await this.db.transaction(async (tx) => {
+      const [row] = await tx
+        .select({ mode: space.openingMode })
+        .from(space)
+        .where(and(eq(space.id, spaceId), eq(space.ownerId, ownerId)))
+        .for('update', { of: space });
+      if (!row?.mode) throw this.notFound();
+      const kinds = SLOTS_BY_MODE[row.mode];
+      const sent = input.slots.map((s) => s.slot);
+      if (sent.length !== kinds.length || !kinds.every((k) => sent.includes(k))) {
+        throw new BadRequestException(`slots must hold each of ${kinds.join(', ')} exactly once`);
+      }
+      if (row.mode === 'fixed_hours') {
+        if (input.shiftChangeAt !== undefined) {
+          throw new BadRequestException('shiftChangeAt only applies to 24-hour spaces');
+        }
+        if (input.slots.some((s) => !s.enabled)) {
+          throw new BadRequestException('working_hours cannot be disabled');
+        }
+      }
+      await tx
+        .update(space)
+        .set({
+          ...(input.shiftChangeAt !== undefined && { shiftChangeAt: input.shiftChangeAt }),
+          updatedAt: sql`now()`,
+        })
+        .where(eq(space.id, spaceId));
+      for (const s of input.slots) {
+        await tx
+          .insert(spaceSlot)
+          .values({ spaceId, slot: s.slot, enabled: s.enabled })
+          .onConflictDoUpdate({
+            target: [spaceSlot.spaceId, spaceSlot.slot],
+            set: { enabled: s.enabled },
+          });
+        for (const pass of PASSES) {
+          const price = s.prices[pass];
+          if (price === null) {
+            await tx
+              .delete(passPrice)
+              .where(
+                and(
+                  eq(passPrice.spaceId, spaceId),
+                  eq(passPrice.slot, s.slot),
+                  eq(passPrice.pass, pass),
+                ),
+              );
+            continue;
+          }
+          const amount = formatDecimal(parseDecimal(price));
+          await tx
+            .insert(passPrice)
+            .values({ spaceId, slot: s.slot, pass, amount })
+            .onConflictDoUpdate({
+              target: [passPrice.spaceId, passPrice.slot, passPrice.pass],
+              set: { amount, updatedAt: sql`now()` },
+            });
+        }
+      }
+    });
+    this.logger.info({ spaceId, ownerId }, 'listing.pricing-updated');
+    return this.loadPricing(this.db, ownerId, spaceId);
+  }
+
+  private async loadPricing(
+    db: Database | Tx,
+    ownerId: string,
+    spaceId: string,
+  ): Promise<SpacePricing> {
+    const [s] = await db
+      .select()
+      .from(space)
+      .where(and(eq(space.id, spaceId), eq(space.ownerId, ownerId)));
+    if (!s?.openingMode) throw this.notFound();
+    const kinds = SLOTS_BY_MODE[s.openingMode];
+    const [slots, prices] = await Promise.all([
+      db.select().from(spaceSlot).where(eq(spaceSlot.spaceId, spaceId)),
+      db
+        .select()
+        .from(passPrice)
+        .where(and(eq(passPrice.spaceId, spaceId), inArray(passPrice.slot, kinds))),
+    ]);
+    const openingHours = openingHoursOf(s);
+    return {
+      currency: s.currency ?? '',
+      openingHours,
+      slots: kinds.map((kind) => {
+        const price = (pass: (typeof PASSES)[number]) =>
+          prices.find((p) => p.slot === kind && p.pass === pass)?.amount ?? null;
+        return {
+          slot: kind,
+          // A missing row reads as enabled, matching what ensureSlotRows seeds.
+          enabled: slots.find((r) => r.slot === kind)?.enabled ?? true,
+          ...slotTimes(openingHours, kind),
+          prices: { day: price('day'), week: price('week'), month: price('month') },
+        };
+      }),
+    };
   }
 
   // Identical for another owner's space and an unknown id (FR-009).

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Patch, Post, Put } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiCookieAuth,
@@ -21,6 +21,10 @@ import {
   type CreateSpaceInput,
   CreateSpaceInputSchema,
   type OwnerSpace,
+  type SpacePricing,
+  SpacePricingSchema,
+  type UpdatePricingInput,
+  UpdatePricingInputSchema,
   type OwnerSpaceList,
   OwnerSpaceListSchema,
   OwnerSpaceSchema,
@@ -105,5 +109,28 @@ export class OwnerSpacesController {
     @Param('spaceId', { schema: SpaceId }) spaceId: string,
   ): Promise<OwnerSpace> {
     return this.spaces.unpublish(session.user.id, spaceId);
+  }
+
+  @Get(':spaceId/pricing')
+  @ApiOkResponse({ standardSchema: SpacePricingSchema })
+  @ApiBadRequestResponse({ standardSchema: ProblemSchema })
+  @ApiNotFoundResponse({ standardSchema: ProblemSchema })
+  getPricing(
+    @CurrentSession() session: AuthSession,
+    @Param('spaceId', { schema: SpaceId }) spaceId: string,
+  ): Promise<SpacePricing> {
+    return this.spaces.getPricing(session.user.id, spaceId);
+  }
+
+  @Put(':spaceId/pricing')
+  @ApiOkResponse({ standardSchema: SpacePricingSchema })
+  @ApiBadRequestResponse({ standardSchema: ProblemSchema })
+  @ApiNotFoundResponse({ standardSchema: ProblemSchema })
+  updatePricing(
+    @CurrentSession() session: AuthSession,
+    @Param('spaceId', { schema: SpaceId }) spaceId: string,
+    @Body({ schema: UpdatePricingInputSchema }) input: UpdatePricingInput,
+  ): Promise<SpacePricing> {
+    return this.spaces.updatePricing(session.user.id, spaceId, input);
   }
 }
