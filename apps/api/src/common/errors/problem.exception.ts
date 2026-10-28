@@ -1,5 +1,9 @@
 import { HttpException } from '@nestjs/common';
 
+import type { ProblemExtensions } from './problem-types.js';
+
+export type { ProblemExtensions };
+
 /**
  * A domain failure with its own RFC 9457 problem `type` (e.g.
  * `urn:bseat:problem:booking:seat-unavailable`). `ProblemFilter` uses `type`, `title` and
@@ -12,8 +16,11 @@ export class ProblemException extends HttpException {
     readonly type: string,
     readonly title: string,
     readonly detail: string,
-    /** Extra members for the body; the filter never lets them override standard ones. */
-    readonly extensions?: Readonly<Record<string, unknown>>,
+    /**
+     * Extra members for the body. Typed to the documented extension shapes, so build them
+     * with the factories in `problem-types.ts`; the filter also drops reserved keys.
+     */
+    readonly extensions?: ProblemExtensions,
   ) {
     super(detail, status);
   }

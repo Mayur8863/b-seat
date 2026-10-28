@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { LocalDate } from '../schemas/field-formats.js';
+import { ProblemException } from './problem.exception.js';
 import { ProblemSchema } from './problem.js';
 
 /**
@@ -62,3 +63,46 @@ export const OccupancyConflictProblem = ProblemSchema.extend({
     )
     .min(1),
 }).meta({ id: 'OccupancyConflictProblem' });
+
+/** The only extension shapes a `ProblemException` accepts. */
+export type ProblemExtensions =
+  | Pick<z.infer<typeof PublishIncompleteProblem>, 'missing'>
+  | Pick<z.infer<typeof LabelTakenProblem>, 'labels'>
+  | Pick<z.infer<typeof OccupancyConflictProblem>, 'conflicts'>;
+
+/** 422 publish without an active seat and/or an offered pass. */
+export function publishIncomplete(
+  missing: z.infer<typeof PublishIncompleteProblem>['missing'],
+): ProblemException {
+  return new ProblemException(
+    422,
+    PROBLEM_TYPES.publishIncomplete,
+    'Listing incomplete',
+    'Add at least one seat and price at least one pass before publishing.',
+    { missing },
+  );
+}
+
+/** 409 duplicate label among the active seats of a space. */
+export function labelTaken(labels: z.infer<typeof LabelTakenProblem>['labels']): ProblemException {
+  return new ProblemException(
+    409,
+    PROBLEM_TYPES.labelTaken,
+    'Seat label taken',
+    'Another active seat in this space already uses that label.',
+    { labels },
+  );
+}
+
+/** 409 marking seats occupied over renter bookings. */
+export function occupancyConflict(
+  conflicts: z.infer<typeof OccupancyConflictProblem>['conflicts'],
+): ProblemException {
+  return new ProblemException(
+    409,
+    PROBLEM_TYPES.occupancyConflictsWithBookings,
+    'Seats are booked',
+    'Some of these seats are booked by renters on those dates.',
+    { conflicts },
+  );
+}

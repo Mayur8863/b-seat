@@ -1,11 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  labelTaken,
   LabelTakenProblem,
+  occupancyConflict,
   OccupancyConflictProblem,
   PROBLEM_TYPES,
+  publishIncomplete,
   PublishIncompleteProblem,
 } from './problem-types.js';
+import { ProblemException } from './problem.exception.js';
 import { ProblemSchema } from './problem.js';
 
 const base = { type: 't', title: 'T', status: 409 };
@@ -68,5 +72,52 @@ describe('extension problem schemas', () => {
       ['detail', 'errors', 'instance', 'requestId', 'status', 'title', 'type'].sort(),
     );
     expect(Object.keys(LabelTakenProblem.shape)).toContain('title');
+  });
+});
+
+describe('extension keys', () => {
+  it('never intersect the standard problem members', () => {
+    const reserved = Object.keys(ProblemSchema.shape);
+    for (const schema of [PublishIncompleteProblem, LabelTakenProblem, OccupancyConflictProblem]) {
+      const extra = Object.keys(schema.shape).filter((key) => !reserved.includes(key));
+      expect(extra).toHaveLength(1);
+    }
+    expect(Object.keys(PublishIncompleteProblem.shape)).toEqual(
+      expect.arrayContaining(['missing']),
+    );
+  });
+});
+
+describe('problem factories', () => {
+  it('build a 422 publish-incomplete problem with its extension', () => {
+    const err = publishIncomplete(['seat']);
+    expect(err).toBeInstanceOf(ProblemException);
+    expect(err.getStatus()).toBe(422);
+    expect(err.type).toBe(PROBLEM_TYPES.publishIncomplete);
+    expect(err.extensions).toEqual({ missing: ['seat'] });
+  });
+
+  it('build a 409 label-taken problem with its extension', () => {
+    const err = labelTaken(['A-1']);
+    expect(err.getStatus()).toBe(409);
+    expect(err.type).toBe(PROBLEM_TYPES.labelTaken);
+    expect(err.extensions).toEqual({ labels: ['A-1'] });
+  });
+
+  it('build a 409 occupancy conflict problem with its extension', () => {
+    const conflicts = [{ seatId: id, label: 'A-1', bookedDates: ['2026-11-02'], marks: [] }];
+    const err = occupancyConflict(conflicts);
+    expect(err.getStatus()).toBe(409);
+    expect(err.type).toBe(PROBLEM_TYPES.occupancyConflictsWithBookings);
+    expect(err.extensions).toEqual({ conflicts });
+  });
+
+  it('reject untyped extension objects at compile time', () => {
+    const build = () =>
+      // @ts-expect-error extensions must come from a factory shape
+      new ProblemException(409, 't', 'T', 'D', { anything: 1 });
+    expect(build).not.toThrow();
+    // @ts-expect-error labels must be strings
+    expect(() => labelTaken([1])).not.toThrow();
   });
 });

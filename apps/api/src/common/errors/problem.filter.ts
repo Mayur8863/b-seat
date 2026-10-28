@@ -9,8 +9,18 @@ import type { Request, Response } from 'express';
 import { PinoLogger } from 'nestjs-pino';
 
 import type { Problem } from './problem.js';
+import { ProblemSchema } from './problem.js';
 import { ProblemException } from './problem.exception.js';
 import { RequestValidationException } from './validation.js';
+
+const RESERVED_KEYS: ReadonlySet<string> = new Set(Object.keys(ProblemSchema.shape));
+
+/** Extension members minus every standard problem member, so they can never replace one. */
+function safeExtensions(extensions: object | undefined): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(extensions ?? {}).filter(([key]) => !RESERVED_KEYS.has(key)),
+  );
+}
 
 /** Maps every thrown error to an RFC 9457 `application/problem+json` response. */
 @Catch()
@@ -48,7 +58,7 @@ export class ProblemFilter implements ExceptionFilter {
 
     if (exception instanceof ProblemException) {
       return {
-        ...exception.extensions,
+        ...safeExtensions(exception.extensions),
         ...base,
         type: exception.type,
         title: exception.title,

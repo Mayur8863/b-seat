@@ -7,9 +7,11 @@ import {
 import type { PinoLogger } from 'nestjs-pino';
 import { describe, expect, it, vi } from 'vitest';
 
-import { ProblemException } from './problem.exception.js';
+import { type ProblemExtensions, ProblemException } from './problem.exception.js';
 import { ProblemFilter } from './problem.filter.js';
 import { RequestValidationException, validationPipe } from './validation.js';
+
+const widen = (value: object) => value as unknown as ProblemExtensions;
 
 function run(exception: unknown, reqId: unknown = 'req-1') {
   const logger = { setContext: vi.fn(), error: vi.fn() } as unknown as PinoLogger;
@@ -110,7 +112,7 @@ describe('ProblemFilter extensions', () => {
   });
 
   it('leaves the body unchanged when the extensions are empty', () => {
-    const { body } = run(new ProblemException(409, 'urn:t', 'T', 'D', {}));
+    const { body } = run(new ProblemException(409, 'urn:t', 'T', 'D', widen({})));
     expect(Object.keys(body as Record<string, unknown>).sort()).toEqual(
       ['detail', 'instance', 'requestId', 'status', 'title', 'type'].sort(),
     );
@@ -118,15 +120,21 @@ describe('ProblemFilter extensions', () => {
 
   it('never lets an extension override a standard member', () => {
     const { body, res } = run(
-      new ProblemException(409, 'urn:bseat:problem:listing:label-taken', 'Label taken', 'Taken.', {
-        labels: ['A-1'],
-        type: 'x',
-        title: 'x',
-        status: 200,
-        detail: 'x',
-        instance: 'x',
-        requestId: 'x',
-      }),
+      new ProblemException(
+        409,
+        'urn:bseat:problem:listing:label-taken',
+        'Label taken',
+        'Taken.',
+        widen({
+          labels: ['A-1'],
+          type: 'x',
+          title: 'x',
+          status: 200,
+          detail: 'x',
+          instance: 'x',
+          requestId: 'x',
+        }),
+      ),
     );
     expect(res.status).toHaveBeenCalledWith(409);
     expect(body).toEqual({
@@ -138,6 +146,31 @@ describe('ProblemFilter extensions', () => {
       instance: '/x',
       requestId: 'req-1',
     });
+  });
+});
+
+describe('ProblemFilter reserved extension keys', () => {
+  // The factories make these unreachable at compile time; the filter still defends at runtime.
+  it('drops an errors extension', () => {
+    const { body } = run(
+      new ProblemException(
+        409,
+        'urn:t',
+        'T',
+        'D',
+        widen({ labels: ['A-1'], errors: [{ path: 'x', message: 'y' }] }),
+      ),
+    );
+    expect(body).not.toHaveProperty('errors');
+    expect(body).toMatchObject({ labels: ['A-1'] });
+  });
+
+  it('drops a requestId extension when the request has no id', () => {
+    const { body } = run(
+      new ProblemException(409, 'urn:t', 'T', 'D', widen({ requestId: 'x' })),
+      null,
+    );
+    expect(body).not.toHaveProperty('requestId');
   });
 });
 
