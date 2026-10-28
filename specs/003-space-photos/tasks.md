@@ -36,7 +36,7 @@ only a human merges.
 | ID   | Title                                                            | Owner             | Depends on                   | Size | Status | Branch                                 |
 | ---- | ---------------------------------------------------------------- | ----------------- | ---------------------------- | ---- | ------ | -------------------------------------- |
 | T001 | Approve plan; write ADR-0011; amend ADR-0007 and ADR-0009 9.3    | architect         | none                         | M    | done   | `spec/003-space-photos`                |
-| T002 | Bump multer ≥ 2.5.0 and body-parser ≥ 2.4.0 (CVEs)               | devops            | T001                         | S    | todo   | `chore/003-multer-body-parser-cves`    |
+| T002 | Bump multer ≥ 2.5.0 and body-parser ≥ 2.4.0 (CVEs)               | devops            | T001                         | S    | review | `chore/003-multer-body-parser-cves`    |
 | T003 | Local S3 storage service, bucket init, e2e forwarder and S3 env  | devops            | T001                         | M    | todo   | `chore/003-local-storage`              |
 | T004 | Storage module, S3 env and windowed URL signing (TDD)            | backend-dev       | T003                         | M    | todo   | `feat/003-object-storage`              |
 | T005 | Photo schema and migration, constraint tests first               | backend-dev       | T001                         | S    | todo   | `feat/003-photo-schema`                |
@@ -93,7 +93,7 @@ only a human merges.
 first (T002, T003). After T001: T002, T003, T005, T006, T011 and T012 can start in parallel; T004 follows T003.
 
 - [ ] T002 [P] Fix CVE-2026-113872 (`multer` 2.4.0 → ≥ 2.5.0) and CVE-2026-111181 (`body-parser` 2.3.0 → ≥ 2.4.0): upgrade `@nestjs/platform-express` / `express` if a release pins the fixed versions, otherwise add `overrides` to `pnpm-workspace.yaml` with a comment naming both CVEs and when to remove it; update `pnpm-lock.yaml`
-  - **Owner**: devops · **Branch**: `chore/003-multer-body-parser-cves` · **Size**: S · **Depends on**: T001 · **Status**: todo
+  - **Owner**: devops · **Branch**: `chore/003-multer-body-parser-cves` · **Size**: S · **Depends on**: T001 · **Status**: review (2026-10-29; Nest bump instead of overrides, no overrides needed)
   - **Acceptance criteria**:
     - Given the lockfile, When `bin/pnpm why multer` and `bin/pnpm why body-parser` run, Then only versions ≥ 2.5.0 and ≥ 2.4.0 resolve (research R-14).
     - Given `bin/security`, When Trivy scans the lockfile, Then neither CVE is reported.
