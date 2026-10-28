@@ -79,9 +79,9 @@ describe('calendars API (T051)', () => {
   });
   afterAll(() => app.close());
 
-  async function bookWednesday(seatId: string) {
-    const startsAt = localInstant(FUTURE_WED, '07:00', ZONE);
-    const endsAt = localInstant(FUTURE_WED, '19:00', ZONE);
+  async function bookWednesday(seatId: string, date = FUTURE_WED) {
+    const startsAt = localInstant(date, '07:00', ZONE);
+    const endsAt = localInstant(date, '19:00', ZONE);
     const b = await insertPassBooking(db(), {
       seatId,
       userId: renterId,
@@ -89,8 +89,8 @@ describe('calendars API (T051)', () => {
       endsAt,
       pass: 'day',
       slot: 'day',
-      startDate: FUTURE_WED,
-      endDate: FUTURE_WED,
+      startDate: date,
+      endDate: date,
     });
     await insertHold(db(), {
       seatId,
@@ -98,7 +98,7 @@ describe('calendars API (T051)', () => {
       bookingId: b.id,
       startsAt,
       endsAt,
-      serviceDate: FUTURE_WED,
+      serviceDate: date,
     });
   }
   const statuses = async (date: string) =>
@@ -182,7 +182,7 @@ describe('calendars API (T051)', () => {
 
   it('counts bookings that fall outside the new calendar and leaves them alone (AC 6.5)', async () => {
     await bookWednesday(s(0));
-    await bookWednesday(s(1));
+    await bookWednesday(s(1), '2099-01-14');
     const res = await owner
       .put(shared())
       .send(input({ weekdays: ['mon', 'tue', 'thu', 'fri', 'sat', 'sun'] }))
@@ -196,7 +196,7 @@ describe('calendars API (T051)', () => {
 
   it('counts only seats that use the shared calendar for a shared change', async () => {
     await bookWednesday(s(0));
-    await bookWednesday(s(1));
+    await bookWednesday(s(1), '2099-01-14');
     await owner.put(own(1)).send(input()).expect(200);
     const res = await owner
       .put(shared())
