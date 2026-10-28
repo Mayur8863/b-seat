@@ -53,7 +53,7 @@ const CreateSpaceInput = z
     city: z.string().trim().min(1).max(100),
     area: z.string().trim().min(1).max(100),
     streetAddress: z.string().trim().min(1).max(200),
-    timeZone: TimeZone /* refine isValidTimeZone */,
+    timeZone: OfferedTimeZone, // allow-list, see below (OQ-B)
     currency: CurrencyCode,
     openingHours: OpeningHoursInput,
     utilities: z.array(StandardUtility).default([]), // unique
@@ -65,6 +65,24 @@ const CreateSpaceInput = z
 Publish and unpublish are idempotent (publishing a published space returns 200). Changing `openingHours` never
 changes existing bookings (edge case); only new bookings use the new slots. Log `listing.published` /
 `listing.unpublished` with ids.
+
+Decided in the T018 review (ui/02 section 11):
+
+- **Time zone (OQ-B).** `timeZone` is `OfferedTimeZone` (`common/schemas/field-formats.ts`): the union of every
+  `countries[].timeZones` in `GET /api/reference` plus `UTC`, at most 64 characters. Anything else is 400 on
+  `timeZone`. The web offers exactly that set.
+- **Shift change time (OQ-A).** `shiftChangeAt` stays required when `openingHours.mode` is `always_open` (the
+  `space_opening_hours_valid` check needs it). The web prefills 07:00. It is one stored value, written by `PATCH`
+  (`openingHours`) and by `PUT …/pricing` (`shiftChangeAt`).
+- **`UpdateSpaceInput`** is `CreateSpaceInput` with every field optional (`z.strictObject`, no defaults, so an
+  absent `utilities` is not reset to `[]`), refined to at least one field. `openingHours` is replaced whole.
+- **Slot rows.** Create inserts the `space_slot` rows of the chosen mode with `enabled = true` (`always_open`:
+  `day`, `night`, `full_day`; `fixed_hours`: `working_hours`). A `PATCH` that switches the mode inserts the new
+  mode's missing rows the same way (`ON CONFLICT DO NOTHING`) and never deletes or changes the other mode's rows or
+  prices. Every reader then uses the data-model rule for "offered" unchanged.
+- **Currency and mode changes (OQ-G, assumption).** Allowed in any status, with or without prices or bookings.
+  Price amounts are not converted, and bookings keep their snapshot (FR-013). A switch may leave a published space
+  with no offered pass; it stays published, and FR-008 is checked only on publish.
 
 ## Seats and cubicles (T021)
 
@@ -85,23 +103,31 @@ const OwnerSeat = z
   })
   .meta({ id: 'OwnerSeat' });
 
+// Field rules (OQ-D, decided in T018). All free text is PlainText (control and bidi characters refused).
+const label = PlainText.trim().min(1).max(20);
+const features = z.array(PlainText.trim().min(1).max(40)).max(10).refine(uniqueIgnoringCase); // 400 on a repeat; create adds .default([]), update has no default
+const cubicleName = PlainText.trim().min(1).max(100); // = cubicle_name_length check
+
 const CreateSeatsInput = z
   .union([
     z.strictObject({
       seats: z
-        .array(z.strictObject({ label, cubicleId: z.uuid().optional(), features }))
+        .array(
+          z.strictObject({ label, cubicleId: z.uuid().optional(), features: features.default([]) }),
+        )
         .min(1)
         .max(200),
     }),
     z.strictObject({
       pattern: z.strictObject({
-        prefix: z.string().max(15),
+        prefix: PlainText.max(15), // may be empty
         from: z.int().min(0),
         to: z.int(),
         padTo: z.int().min(1).max(4).optional(),
-      }),
+      }), // refines: path ['to'] to >= from and to - from + 1 <= 200;
+      //     path ['prefix'] every generated label (prefix + padded number) is at most 20 characters
       cubicleId: z.uuid().optional(),
-      features,
+      features: features.default([]),
     }),
   ])
   .meta({ id: 'CreateSeatsInput' });
@@ -118,7 +144,8 @@ const CreateSeatsInput = z
 | `PATCH …/cubicles/{cubicleId}`  | `UpdateCubicleInput { name }`                                  | 200 `Cubicle` · 409 `listing:cubicle-name-taken` · 404                                                                                         |
 | `DELETE …/cubicles/{cubicleId}` |                                                                | 204 (soft-removes the cubicle and its seats as one unit, OQ-6) · 409 `listing:seat-has-future-bookings` · 404                                  |
 
-All-or-nothing for bulk creation. Pattern `{ prefix: 'A-', from: 1, to: 20 }` → `A-1` … `A-20` (AC 2.3). Removal
+`CreateCubicleInput` and `UpdateCubicleInput` are `{ name: cubicleName }`; `UpdateSeatInput` uses `label` and
+`features` from above (each optional, `cubicleId` nullable, at least one field). All-or-nothing for bulk creation. Pattern `{ prefix: 'A-', from: 1, to: 20 }` → `A-1` … `A-20` (AC 2.3). Removal
 of a seat or a cubicle is soft (`removed_at`), so past bookings keep their seat label and cubicle name.
 
 ## Pricing (T027)
@@ -167,3 +194,16 @@ const UpdatePricingInput = z
 A slot kind not valid for the opening mode → 400. `working_hours` cannot be disabled for fixed-hours spaces
 (AC 3.2). Null price → row deleted (not offered, AC 3.3). Existing bookings keep their snapshot (AC 3.6).
 **200** `SpacePricing` · 400 · 404.
+
+Rules decided in the T018 review (ui/02 section 11):
+
+- `PUT` replaces the pricing of the **current mode** only: `slots` holds each of the mode's slot kinds exactly once
+  (a missing, repeated or other-mode kind → 400 on `slots`). The other mode's rows and prices are untouched.
+- `shiftChangeAt` is accepted only for `always_open` spaces (present on a fixed-hours space → 400); omitted means
+  unchanged. It writes `space.shift_change_at`, the same value as `PATCH` `openingHours` (OQ-A).
+- **Disabled slots keep their prices (OQ-E).** A slot sent with `enabled: false` stores the prices sent with it,
+  and `GET` returns them, but none is offered (listing, search, publish check and booking ignore them) until the
+  slot is enabled again.
+- **Money (OQ-F, assumption).** `DecimalString` allows up to two decimals for **every** currency, including ones
+  with no minor unit (JPY) or three (KWD); output always has two decimals (R-8). The web formats without rounding
+  (ui/02 section 8.3).
