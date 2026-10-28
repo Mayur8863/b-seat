@@ -61,13 +61,13 @@ describe('DashboardView', () => {
     const quick = screen.getByRole('navigation', { name: 'Quick links' });
     expect(within(quick).getByRole('link', { name: 'Find a space' })).toHaveAttribute(
       'href',
-      '/book',
+      '/find',
     );
     const section = screen.getByRole('region', { name: 'Next booking' });
     expect(within(section).getByText(/Find a space and book a seat/)).toBeInTheDocument();
     expect(within(section).getByRole('link', { name: 'Find a space' })).toHaveAttribute(
       'href',
-      '/book',
+      '/find',
     );
     expect(screen.queryByRole('heading', { name: 'My spaces' })).not.toBeInTheDocument();
   });

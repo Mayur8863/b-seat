@@ -55,7 +55,7 @@ describe('AppNav', () => {
       const dashboard = await within(nav).findByRole('link', { name: 'Dashboard' });
       expect(dashboard).toHaveAttribute('aria-current', 'page');
       const find = within(nav).getByRole('link', { name: 'Find a space' });
-      expect(find).toHaveAttribute('href', '/book');
+      expect(find).toHaveAttribute('href', '/find');
       expect(find).not.toHaveAttribute('aria-current');
       expect(screen.getByText('Ada')).toBeInTheDocument();
     },

@@ -6,9 +6,10 @@ import { Badge } from '@bseat/ui/components/badge';
 import { Button } from '@bseat/ui/components/button';
 import { Card, CardContent } from '@bseat/ui/components/card';
 import { Skeleton } from '@bseat/ui/components/skeleton';
-import { InfoIcon } from 'lucide-react';
+import { ArrowLeftIcon, InfoIcon } from 'lucide-react';
 import type { Route } from 'next';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 
 import { type PassChoice, PassOptions } from '@/components/pass-options';
@@ -84,7 +85,7 @@ function Body({ listing }: { listing: Listing }) {
             <p className="font-medium">This space isn&apos;t offering passes right now.</p>
             <p className="text-muted-foreground">Check back later or find another space.</p>
             <Button asChild>
-              <Link href="/book">Find a space</Link>
+              <Link href="/find">Find a space</Link>
             </Button>
           </CardContent>
         </Card>
@@ -99,10 +100,22 @@ function Body({ listing }: { listing: Listing }) {
 export function ListingDetails({ spaceId }: { spaceId: string }) {
   const { data, isPending, error, refetch } = useListingsGet(spaceId);
   const listing = data?.data;
+  // The search that led here; a link without one (or a shared deep link) just says "Find a space".
+  const params = useSearchParams();
+  const carried = params.get('country') ? params.toString() : '';
 
   const back = (
     <Button variant="link" size="sm" asChild className="justify-self-start px-0">
-      <Link href="/book">Find a space</Link>
+      <Link href={carried ? `/find?${carried}` : '/find'}>
+        {carried ? (
+          <>
+            <ArrowLeftIcon aria-hidden="true" />
+            Back to results
+          </>
+        ) : (
+          'Find a space'
+        )}
+      </Link>
     </Button>
   );
 
@@ -134,7 +147,7 @@ export function ListingDetails({ spaceId }: { spaceId: string }) {
           </h1>
           <p className="text-muted-foreground">It may have been unlisted.</p>
           <Button asChild>
-            <Link href="/book">Find a space</Link>
+            <Link href="/find">Find a space</Link>
           </Button>
         </main>
       );

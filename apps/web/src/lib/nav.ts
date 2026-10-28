@@ -4,7 +4,7 @@ export type NavRole = 'renter' | 'owner';
 export interface NavLink {
   label: string;
   /** Literal union so `typedRoutes` rejects a link to a page that does not exist. */
-  href: '/dashboard' | '/book' | '/owner/spaces/new';
+  href: '/dashboard' | '/book' | '/find' | '/owner/spaces/new';
   /** Pathnames where this link is the current page (`aria-current="page"`). */
   exact: readonly string[];
   /** Path prefixes where the user is inside this area (`aria-current="true"`). */
@@ -21,11 +21,10 @@ export const DASHBOARD: NavLink = {
   parentExclude: ['/owner/spaces/new'],
 };
 
-// `/book` until T039 switches this to `/find` (and T042 retires `/book`).
 const FIND: NavLink = {
   label: 'Find a space',
-  href: '/book',
-  exact: ['/book'],
+  href: '/find',
+  exact: ['/find'],
   parents: ['/spaces/'],
 };
 
@@ -52,6 +51,7 @@ export type PageAudience = NavRole | 'both';
 export const PAGE_ROLES: Record<string, PageAudience> = {
   '/dashboard': 'both',
   '/book': 'both',
+  '/find': 'both',
   '/spaces/[spaceId]': 'both',
   '/owner/spaces/new': 'owner',
   '/owner/spaces/[spaceId]': 'owner',
@@ -68,7 +68,8 @@ export const REACHED_FROM: Record<string, NavLink['href']> = {
   '/owner/spaces/[spaceId]': '/dashboard',
   '/owner/spaces/[spaceId]/seats': '/dashboard',
   '/owner/spaces/[spaceId]/pricing': '/dashboard',
-  '/spaces/[spaceId]': '/book',
+  '/spaces/[spaceId]': '/find',
+  '/book': '/find',
 };
 
 export function navActive(link: NavLink, pathname: string): 'page' | 'true' | undefined {
