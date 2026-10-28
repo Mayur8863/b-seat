@@ -63,10 +63,11 @@ describe('startDateError', () => {
     expect(startDateError('', today)).toBeUndefined();
     expect(startDateError('2026-11-01', today)).toBeUndefined();
     expect(startDateError('2026-12-01', today)).toBeUndefined();
-    expect(startDateError('2026-10-31', today)).toBe(
-      'Choose a date from 1 Nov 2026 to 1 Dec 2026.',
-    );
-    expect(startDateError('2026-12-02', today)).toMatch(/^Choose a date from/);
+    expect(startDateError('2026-10-31', today)).toBeUndefined();
+    expect(startDateError('2026-12-02', today)).toBeUndefined();
+    expect(startDateError('2026-10-30', today)).toBe('Choose a date within the next 30 days.');
+    expect(startDateError('2026-12-03', today)).toBe('Choose a date within the next 30 days.');
+    expect(startDateError('soon', today)).toBe('Enter a valid date.');
   });
 });
 

@@ -2,6 +2,7 @@ import { getListingsGetMockHandler, getListingsGetResponseMock } from '@bseat/ap
 import type { Listing } from '@bseat/api-client';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -76,6 +77,26 @@ describe('ListingDetails', () => {
     );
   });
 
+  it('back link keeps pass, slot and startDate and ignores later URL changes', async () => {
+    server.use(getListingsGetMockHandler(listing()));
+    const q = 'country=IN&pass=week&slot=day&startDate=2026-11-02';
+    search = q;
+    const view = renderWithQuery(<ListingDetails spaceId="s1" />);
+    const back = await screen.findByRole('link', { name: 'Back to results' });
+    expect(back).toHaveAttribute('href', `/find?${q}`);
+    search = 'country=IN&pass=month&slot=night&startDate=2026-11-09';
+    view.rerender(
+      <QueryClientProvider client={view.client}>
+        <ListingDetails spaceId="s1" />
+      </QueryClientProvider>,
+    );
+    expect(screen.getByRole('link', { name: 'Back to results' })).toHaveAttribute(
+      'href',
+      `/find?${q}`,
+    );
+    search = '';
+  });
+
   it('loading: busy status', () => {
     server.use(getListingsGetMockHandler(listing()));
     renderWithQuery(<ListingDetails spaceId="s1" />);
@@ -145,6 +166,18 @@ describe('ListingDetails', () => {
       ),
     );
     renderWithQuery(<ListingDetails spaceId="s1" />);
+    expect(
+      await screen.findByRole('heading', { name: "We couldn't find that space" }),
+    ).toBeInTheDocument();
+  });
+
+  it('400 for a malformed id: not-found state', async () => {
+    server.use(
+      http.get('*/api/listings/:id', () =>
+        HttpResponse.json({ status: 400, title: 'Bad Request' }, { status: 400 }),
+      ),
+    );
+    renderWithQuery(<ListingDetails spaceId="nope" />);
     expect(
       await screen.findByRole('heading', { name: "We couldn't find that space" }),
     ).toBeInTheDocument();
