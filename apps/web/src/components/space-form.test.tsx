@@ -113,7 +113,7 @@ describe('SpaceForm (create)', () => {
     expect(screen.getByRole('radiogroup', { name: 'Opening hours' })).toHaveAccessibleDescription(
       'Choose when your space is open',
     );
-    expect(screen.getByLabelText('Name')).toHaveFocus();
+    await waitFor(() => expect(screen.getByLabelText('Name')).toHaveFocus());
     expect(bodies).toHaveLength(0);
   });
 
@@ -494,6 +494,27 @@ describe('SpaceForm (edit)', () => {
     expect(await screen.findByRole('status')).toHaveTextContent('Details saved');
     expect(bodies).toEqual([{ name: 'Hub 2' }]);
     expect(push).not.toHaveBeenCalled();
+  });
+
+  it('refreshes the pricing query after saving, and calendars and occupancy when the zone changes', async () => {
+    useReference();
+    const user = userEvent.setup();
+    const { client } = renderWithQuery(<SpaceForm mode="edit" space={stored} />);
+    const spy = vi.spyOn(client, 'invalidateQueries');
+    await screen.findByRole('option', { name: 'India' });
+    const zone = screen.getByLabelText('Time zone');
+    const other = Array.from(zone.querySelectorAll('option'))
+      .map((o) => o.value)
+      .find((v) => v && v !== stored.timeZone);
+    if (!other) throw new Error('no other zone offered');
+    captureUpdate({ ...stored, timeZone: other });
+    await user.selectOptions(zone, other);
+    await user.click(screen.getByRole('button', { name: 'Save details' }));
+    await screen.findByRole('status');
+    const keys = spy.mock.calls.map((c) => JSON.stringify(c[0]?.queryKey));
+    for (const part of ['/pricing', '/calendars', '/occupancy']) {
+      expect(keys.some((k) => k.includes(part))).toBe(true);
+    }
   });
 
   it('keeps the stored zone when the country changes and sends openingHours whole', async () => {

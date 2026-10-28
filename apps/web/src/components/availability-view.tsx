@@ -455,7 +455,7 @@ export function AvailabilityView({ spaceId }: { spaceId: string }) {
         weekdays: [...PRESETS.everyDay],
       };
       return (
-        <div className="grid gap-4 md:max-w-3xl">
+        <div className="grid gap-4">
           {intro}
           <Alert variant="destructive" role="alert">
             <AlertTitle>This space has no shared calendar</AlertTitle>
@@ -495,7 +495,7 @@ export function AvailabilityView({ spaceId }: { spaceId: string }) {
   const sharedSeats = allSeats.filter((s) => s.calendar === 'shared');
 
   return (
-    <div className="grid gap-6 lg:max-w-3xl">
+    <div className="grid gap-6">
       <div className="grid gap-2">{intro}</div>
       <SharedCard spaceId={spaceId} shared={shared} onChanged={refresh} />
       <OwnCalendars

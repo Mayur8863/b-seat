@@ -58,7 +58,10 @@ export function OwnUtilitiesFieldset({ id, items, error, inputSize, onChange }: 
     <fieldset className="grid min-w-0 gap-3 md:col-span-2">
       <legend className="text-sm font-medium">Your own utilities</legend>
       <div className="grid gap-2">
-        <Label htmlFor={id}>Add your own utility</Label>
+        {/* The legend is the visible name; this label names the input for assistive tech only. */}
+        <Label htmlFor={id} className="sr-only">
+          Add your own utility
+        </Label>
         <div className="grid gap-2 sm:flex sm:items-start">
           <Input
             id={id}

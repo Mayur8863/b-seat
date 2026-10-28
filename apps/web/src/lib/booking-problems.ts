@@ -1,5 +1,7 @@
 import { ApiError } from '@bseat/api-client';
 
+import type { Route } from 'next';
+
 import type { ProblemCopy } from './problem-copy';
 import { safeNext } from './safe-next';
 
@@ -46,7 +48,7 @@ export function describeProblem(
     const next = path ? `?next=${encodeURIComponent(path)}` : '';
     return {
       title: 'Your session has ended',
-      description: [{ text: 'Sign in', href: `/sign-in${next}` }, ' again to continue.'],
+      description: [{ text: 'Sign in', href: `/sign-in${next}` as Route }, ' again to continue.'],
     };
   }
 

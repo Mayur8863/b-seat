@@ -6,8 +6,7 @@ import { useId, useState } from 'react';
 
 import type { SeatSelection } from '@/components/listing-seat-list';
 import type { PassChoice } from '@/components/pass-options';
-import { formatMoney, PASS_LABELS } from '@/lib/format';
-import { formatInstant } from '@/lib/seat-picker';
+import { formatInstant, formatMoney, PASS_LABELS } from '@/lib/format';
 
 /** What T041 books: the pass, slot, start date and seat. */
 export interface BookingSelection {

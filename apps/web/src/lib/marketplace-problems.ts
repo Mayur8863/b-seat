@@ -1,4 +1,5 @@
 import { ApiError } from '@bseat/api-client';
+import type { Route } from 'next';
 
 import { safeNext } from './safe-next';
 import type { ProblemCopy } from './problem-copy';
@@ -58,7 +59,10 @@ export function describeOwnerProblem(
       return {
         title: 'Your session has ended',
         description: [
-          { text: 'Sign in', href: `/sign-in${next ? `?next=${encodeURIComponent(next)}` : ''}` },
+          {
+            text: 'Sign in',
+            href: `/sign-in${next ? `?next=${encodeURIComponent(next)}` : ''}` as Route,
+          },
           ' again to continue.',
         ],
       };
@@ -82,6 +86,12 @@ export function describeOwnerProblem(
       };
   }
 }
+
+/** The slot of the chosen start date began earlier today; shared by the date picker note and the book error. */
+export const SLOT_STARTED: ProblemCopy = {
+  title: 'That slot has already started',
+  description: ['Choose a later start date.'],
+};
 
 export interface BookProblem {
   copy: ProblemCopy;
@@ -142,7 +152,7 @@ export function describeBookProblem(
   if (is('booking-rule:own-space')) {
     return out('This is your space', [
       "You can't book a seat in your own space. Mark it occupied instead. ",
-      { text: 'Manage seats', href: `/owner/spaces/${ctx.spaceId}/seats` },
+      { text: 'Manage seats', href: `/owner/spaces/${ctx.spaceId}/seats` as Route },
     ]);
   }
   if (is('booking-rule:pass-not-offered')) {
@@ -162,7 +172,7 @@ export function describeBookProblem(
     );
   }
   if (is('booking-rule:slot-started')) {
-    return out('That slot has already started', ['Choose a later start date.']);
+    return out(SLOT_STARTED.title, SLOT_STARTED.description);
   }
   if (is('booking-rule:too-far-ahead')) {
     return out("That's too far ahead", [

@@ -4,6 +4,7 @@ import { cn } from '@bseat/ui/lib/utils';
 import { ArmchairIcon, SquareDashedIcon, TagIcon, TriangleAlertIcon } from 'lucide-react';
 import { type PointerEvent, useEffect, useRef, useState } from 'react';
 
+import { ScrollRegion } from '@/components/scroll-region';
 import { planKey } from '@/lib/layout-editor/keys';
 import {
   type Action,
@@ -192,12 +193,10 @@ export function LayoutPlan({
   };
 
   return (
-    <div
+    <ScrollRegion
       ref={region}
-      role="region"
       aria-label={`Floor plan, ${String(state.columns)} by ${String(state.rows)} squares`}
-      tabIndex={-1}
-      className="bg-card max-h-[70vh] overflow-auto rounded-xl border"
+      className="bg-card focus-visible:outline-ring max-h-[70vh] overflow-auto rounded-xl border focus-visible:outline-2"
     >
       <div
         role="group"
@@ -301,6 +300,6 @@ export function LayoutPlan({
           );
         })}
       </div>
-    </div>
+    </ScrollRegion>
   );
 }

@@ -1,18 +1,23 @@
-import type { Calendar, CalendarInput } from '@bseat/api-client';
+import { type Calendar, type CalendarInput, CalendarInputWeekdaysItem } from '@bseat/api-client';
 
 import { formatDay } from './occupancy-values';
 
 export type Weekday = CalendarInput['weekdays'][number];
 
-export const WEEKDAYS: readonly { key: Weekday; short: string; full: string }[] = [
-  { key: 'mon', short: 'Mon', full: 'Monday' },
-  { key: 'tue', short: 'Tue', full: 'Tuesday' },
-  { key: 'wed', short: 'Wed', full: 'Wednesday' },
-  { key: 'thu', short: 'Thu', full: 'Thursday' },
-  { key: 'fri', short: 'Fri', full: 'Friday' },
-  { key: 'sat', short: 'Sat', full: 'Saturday' },
-  { key: 'sun', short: 'Sun', full: 'Sunday' },
-];
+const NAMES: Record<Weekday, string> = {
+  mon: 'Monday',
+  tue: 'Tuesday',
+  wed: 'Wednesday',
+  thu: 'Thursday',
+  fri: 'Friday',
+  sat: 'Saturday',
+  sun: 'Sunday',
+};
+
+// Keys come from the generated enum so a contract change breaks the build here; the API lists Monday first.
+export const WEEKDAYS: readonly { key: Weekday; short: string; full: string }[] = Object.values(
+  CalendarInputWeekdaysItem,
+).map((key) => ({ key, short: NAMES[key].slice(0, 3), full: NAMES[key] }));
 
 export const PRESETS: Record<'everyDay' | 'weekdays' | 'weekends', readonly Weekday[]> = {
   everyDay: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],

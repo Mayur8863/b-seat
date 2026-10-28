@@ -1,5 +1,6 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, asc, eq, gte, inArray, isNull, sql } from 'drizzle-orm';
+import { naturalSeatOrder } from '../marketplace/seat-order.js';
+import { and, asc, eq, gte, inArray, isNull } from 'drizzle-orm';
 import { PinoLogger } from 'nestjs-pino';
 
 import { withLockTimeout } from '../bookings/seat-lock.js';
@@ -134,7 +135,7 @@ export class CalendarsService {
       .from(availabilityCalendar)
       .innerJoin(seat, eq(seat.id, availabilityCalendar.seatId))
       .where(and(eq(availabilityCalendar.spaceId, spaceId), isNull(seat.removedAt)))
-      .orderBy(asc(sql`lower(${seat.label})`), asc(seat.label), asc(seat.id));
+      .orderBy(...naturalSeatOrder(), asc(seat.id));
     return {
       shared: toCalendar(shared),
       seats: rows.map((r) => ({ seatId: r.seatId, label: r.label, calendar: toCalendar(r) })),

@@ -10,6 +10,7 @@
     "SMTP_HOST",
     "SMTP_PORT",
     "MAIL_FROM",
+    "MAILPIT_URL",
     "BETTER_AUTH_SECRET",
     "BETTER_AUTH_URL",
     "TRUSTED_ORIGINS",

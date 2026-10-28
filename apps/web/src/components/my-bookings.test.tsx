@@ -64,6 +64,16 @@ describe('MyBookings', () => {
     expect(screen.getByRole('link', { name: 'Find a space' })).toHaveAttribute('href', '/find');
   });
 
+  it('says so when the list is at the 50 cap', async () => {
+    server.use(
+      getBookingsListMineMockHandler({
+        items: Array.from({ length: 50 }, (_, n) => booking(`b${n}`, `Hub ${n}`)),
+      }),
+    );
+    renderWithQuery(<MyBookings />);
+    expect(await screen.findByText(/Showing your next 50 bookings/)).toBeInTheDocument();
+  });
+
   it('shows an error with a retry', async () => {
     let calls = 0;
     server.use(

@@ -14,13 +14,22 @@ import { Checkbox } from '@bseat/ui/components/checkbox';
 import { Label } from '@bseat/ui/components/label';
 import { RadioGroup, RadioGroupItem } from '@bseat/ui/components/radio-group';
 import { Skeleton } from '@bseat/ui/components/skeleton';
-import { BanIcon, CalendarXIcon, CircleCheckIcon, LayoutGridIcon, ListIcon } from 'lucide-react';
+import {
+  BanIcon,
+  CalendarXIcon,
+  CircleCheckIcon,
+  ClockIcon,
+  LayoutGridIcon,
+  ListIcon,
+} from 'lucide-react';
 import { useEffect, useId, useState } from 'react';
 
 import { ListingPlan, placeSeats } from '@/components/listing-plan';
 import type { PassChoice } from '@/components/pass-options';
 import { formatLocalDate } from '@/lib/booking-format';
-import { filterSeats, formatInstant } from '@/lib/seat-picker';
+import { formatInstant } from '@/lib/format';
+import { SLOT_STARTED } from '@/lib/marketplace-problems';
+import { filterSeats, slotHasStarted } from '@/lib/seat-picker';
 
 export interface SeatSelection {
   seat: Seat;
@@ -59,21 +68,31 @@ function SeatTile({
   startDate,
   timeZone,
   closedDays,
+  started,
 }: {
   seat: Seat;
   startDate: string;
   timeZone: string;
   closedDays: number;
+  started: boolean;
 }) {
   const id = useId();
-  const free = seat.status === 'free';
+  const free = seat.status === 'free' && !started;
   const stateText =
     seat.status === 'free'
-      ? 'Free'
+      ? started
+        ? 'Already started'
+        : 'Free'
       : seat.status === 'taken'
         ? 'Taken'
         : `Closed on ${formatLocalDate(startDate)}`;
-  const Icon = free ? CircleCheckIcon : seat.status === 'taken' ? BanIcon : CalendarXIcon;
+  const Icon = free
+    ? CircleCheckIcon
+    : seat.status === 'taken'
+      ? BanIcon
+      : seat.status === 'free'
+        ? ClockIcon
+        : CalendarXIcon;
   const name = `${seat.label}, ${seat.cubicle ? `${seat.cubicle.name}, ` : ''}${stateText}`;
   return (
     <Label
@@ -205,9 +224,10 @@ export function ListingSeatList({
     body = <p className="text-muted-foreground">This space has no seats right now.</p>;
   } else {
     const seats = availability.seats;
-    const free = seats.filter((s) => s.status === 'free').length;
+    const started = slotHasStarted(startDate, availability.slotTimes.startTime, timeZone);
+    const free = started ? 0 : seats.filter((s) => s.status === 'free').length;
     const shown = filterSeats(seats, hide);
-    const onPlan = new Set(hasPlan ? placeSeats(layout, seats).map((p) => p.id) : []);
+    const onPlan = new Set(hasPlan ? placeSeats(layout, seats, started).map((p) => p.id) : []);
     const offPlan = seats.filter((s) => !onPlan.has(s.id));
     const choose = (id: string) => {
       const seat = seats.find((s) => s.id === id);
@@ -230,6 +250,7 @@ export function ListingSeatList({
             startDate={startDate}
             timeZone={timeZone}
             closedDays={seat.closedDates.length}
+            started={started}
           />
         ))}
       </RadioGroup>
@@ -247,21 +268,31 @@ export function ListingSeatList({
         {free === 0 && (
           <Card>
             <CardContent className="grid gap-1">
-              <p className="font-medium">No seat is free for the whole period.</p>
-              <p className="text-muted-foreground">Try another start date, pass or slot.</p>
+              <p className="font-medium">
+                {started ? SLOT_STARTED.title : 'No seat is free for the whole period.'}
+              </p>
+              <p className="text-muted-foreground">
+                {started
+                  ? SLOT_STARTED.description
+                      .map((d) => (typeof d === 'string' ? d : d.text))
+                      .join(' ')
+                  : 'Try another start date, pass or slot.'}
+              </p>
             </CardContent>
           </Card>
         )}
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id={hideId}
-            checked={hide}
-            onCheckedChange={(v) => {
-              setHide(v === true);
-            }}
-          />
-          <Label htmlFor={hideId}>Hide seats that aren&apos;t free</Label>
-        </div>
+        {!(hasPlan && view === 'plan') && (
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id={hideId}
+              checked={hide}
+              onCheckedChange={(v) => {
+                setHide(v === true);
+              }}
+            />
+            <Label htmlFor={hideId}>Hide seats that aren&apos;t free</Label>
+          </div>
+        )}
         {hasPlan && (
           <div role="group" aria-label="Seat view" className="flex gap-2">
             <Button
@@ -324,6 +355,7 @@ export function ListingSeatList({
               layout={layout}
               seats={seats}
               startDate={startDate}
+              started={started}
               selectedSeatId={selectedSeatId}
               labelledBy={headingId}
               onSelect={choose}

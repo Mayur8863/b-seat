@@ -68,6 +68,7 @@ export function ListingSearchForm() {
     handleSubmit,
     reset,
     setFocus,
+    setValue,
     getValues,
     formState: { errors, isDirty },
   } = form;
@@ -84,6 +85,11 @@ export function ListingSearchForm() {
   const prefilled = useRef(false);
   const preferences = me.data?.data.preferences;
   const countries = reference.data?.data.countries;
+  // The select has no options while the list loads, so a value from the URL is lost; set it again
+  // once the options exist.
+  useEffect(() => {
+    if (countries) setValue('country', getValues('country'));
+  }, [countries, setValue, getValues]);
   const referenceSettled = reference.isSuccess || reference.isError;
   useEffect(() => {
     if (prefilled.current || me.isPending || !referenceSettled) return;

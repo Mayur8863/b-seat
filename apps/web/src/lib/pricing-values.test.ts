@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { derivedTimes, formatMoney, moneyError } from './pricing-values';
+import { derivedTimes, moneyError } from './pricing-values';
 
 describe('moneyError', () => {
   it.each(['', '  ', '1500', '1500.5', '1500.50', '0.50', ' 20 ', '9999999999'])(
@@ -36,13 +36,5 @@ describe('derivedTimes', () => {
     expect(derivedTimes('')).toBeUndefined();
     expect(derivedTimes('12:00')).toBeUndefined();
     expect(derivedTimes('xx')).toBeUndefined();
-  });
-});
-
-describe('formatMoney', () => {
-  it('formats INR and never rounds', () => {
-    expect(formatMoney('1500', 'INR')).toBe('₹1,500.00');
-    expect(formatMoney('1500.50', 'JPY')).toBe('¥1,500.50');
-    expect(formatMoney('1500.00', 'JPY')).toBe('¥1,500');
   });
 });

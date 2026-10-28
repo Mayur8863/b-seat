@@ -12,21 +12,24 @@ export function parseListingParams(
   offers: Pick<Listing['offers'][number], 'slot' | 'prices'>[],
   range: { min: string; max: string },
 ): { choice: PassChoice | null; startDate: string } {
-  const pass = params.get('pass');
+  const date = params.get('startDate') ?? '';
+  const startDate = isStartDateAllowed(date, range) ? date : '';
   const slot = params.get('slot');
-  const offer = offers.find((o) => o.slot === slot);
+  const given = params.get('pass');
+  // A search with only a start date treats it as a day pass (OQ-4); take the first offer that sells one.
+  const dayOnly = given === null && slot === null && startDate !== '';
+  const pass = dayOnly ? 'day' : given;
+  const offer = dayOnly
+    ? offers.find((o) => o.prices.day !== null)
+    : offers.find((o) => o.slot === slot);
   if (
     !offer ||
     !(pass === 'day' || pass === 'week' || pass === 'month') ||
     offer.prices[pass] === null
   ) {
-    return { choice: null, startDate: '' };
+    return { choice: null, startDate };
   }
-  const date = params.get('startDate') ?? '';
-  return {
-    choice: { pass, slot: offer.slot },
-    startDate: isStartDateAllowed(date, range) ? date : '',
-  };
+  return { choice: { pass, slot: offer.slot }, startDate };
 }
 
 /** The query string with pass, slot and startDate set (or removed when empty); other params stay. */
@@ -43,9 +46,4 @@ export function withListingParams(
     if (startDate) next.set('startDate', startDate);
   }
   return next.toString();
-}
-
-/** The search part of the URL without the booking choice, for "Back to results". */
-export function searchOnly(current: URLSearchParams): string {
-  return withListingParams(current, null, '');
 }

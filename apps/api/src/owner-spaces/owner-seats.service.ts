@@ -1,4 +1,5 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { naturalSeatOrder } from '../marketplace/seat-order.js';
 import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { PinoLogger } from 'nestjs-pino';
 
@@ -144,7 +145,7 @@ export class OwnerSeatsService {
       .select()
       .from(seat)
       .where(and(eq(seat.spaceId, spaceId), isNull(seat.removedAt)))
-      .orderBy(asc(sql`lower(${seat.label})`), asc(seat.label), asc(seat.id));
+      .orderBy(...naturalSeatOrder(), asc(seat.id));
     return { items: await this.toSeats(this.db, rows) };
   }
 

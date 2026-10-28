@@ -17,6 +17,9 @@ export const reactRules = defineConfig(
     settings: { react: { version: 'detect' } },
     rules: {
       'react/prop-types': 'off',
+      // Only the region role may take tabindex. A labelled region that scrolls must be focusable, or keyboard
+      // users cannot scroll it (axe scrollable-region-focusable, WCAG 2.1.1).
+      'jsx-a11y/no-noninteractive-tabindex': ['error', { roles: ['region'] }],
     },
   },
 );

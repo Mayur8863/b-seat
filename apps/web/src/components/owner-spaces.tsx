@@ -7,7 +7,6 @@ import { Button } from '@bseat/ui/components/button';
 import { Card, CardContent } from '@bseat/ui/components/card';
 import { Skeleton } from '@bseat/ui/components/skeleton';
 import { PlusIcon } from 'lucide-react';
-import type { Route } from 'next';
 import Link from 'next/link';
 import { useId } from 'react';
 
@@ -150,11 +149,7 @@ function ListError({ error, onRetry }: { error: unknown; onRetry: () => void }) 
               typeof part === 'string' ? (
                 part
               ) : (
-                <Link
-                  key={part.href}
-                  href={part.href as Route}
-                  className="underline underline-offset-4"
-                >
+                <Link key={part.href} href={part.href} className="underline underline-offset-4">
                   {part.text}
                 </Link>
               ),
