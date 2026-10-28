@@ -171,9 +171,10 @@ dependency and more expressive than the spec).
     covers bookings and occupancy together (FR-018, SC-005 both halves).
   - `seat_hold_user_no_overlap EXCLUDE USING gist (user_id WITH =, tstzrange(starts_at, ends_at, '[)') WITH &&) WHERE (active AND user_id IS NOT NULL)`
     (FR-019; occupancy rows have no user, so owners can mark many seats at once).
-- **Create**: one transaction: `SET LOCAL lock_timeout = '5s'`, then the **seat lock**
-  `pg_advisory_xact_lock(1112735745, hashtext(seat_id::text))` via `lockSeats` (ADR-0009 section 9; always the first
-  lock taken), then lock the seat `FOR SHARE` (so a concurrent removal waits; R-15), insert the header,
+- **Create**: one transaction: `SET LOCAL lock_timeout = '5s'`, then the space row `FOR SHARE`, then the **seat
+  lock** `pg_advisory_xact_lock(1112735745, hashtext(seat_id::text))` via `lockSeats` (ADR-0009 section 9.3, amended
+  2026-10-28: the space row comes before the seat lock, the order seat removal uses), then lock the seat
+  `FOR SHARE` (R-15), insert the header,
   then insert all holds in chronological order (one multi-row INSERT). Map errors from `DrizzleQueryError.cause`:
   `23P01` on `seat_hold_seat_no_overlap` → 409 `booking:seat-unavailable`; on `seat_hold_user_no_overlap` → 409
   `booking:user-overlap`; `40P01` → retry the **whole transaction**, at most 3 attempts; anything else → rethrow.
@@ -332,8 +333,8 @@ slot rules and their DST policy).
 - A mark covers whole days: from the space's **day boundary** on the start date to the day boundary after the end
   date. The day boundary is the shift change time for 24-hour spaces and 00:00 for fixed-hours spaces, so a mark
   never clips the night slot of the day before. No end date → unbounded hold (`ends_at` null).
-- One request may mark several seats. The transaction first sets `lock_timeout = '5s'` and takes **every requested
-  seat's lock** with `lockSeats(tx, seatIds)`: de-duplicated and taken in ascending **lock-key** order in one
+- One request may mark several seats. The transaction first sets `lock_timeout = '5s'`, locks the space row
+  `FOR SHARE` (ADR-0009 section 9.3, amended 2026-10-28), and then takes **every requested seat's lock** with `lockSeats(tx, seatIds)`: de-duplicated and taken in ascending **lock-key** order in one
   statement, so overlapping requests and bookings cannot deadlock on lock order (ADR-0009 section 9). Then all marks
   and holds are inserted, ordered by `(seat_id, starts_at)`, all or nothing. A `40P01` should no longer occur, but it
   still retries the **whole transaction**, at most 3 attempts in total, with the same helper as booking create
@@ -428,14 +429,17 @@ fail-fast follow-up from 001 (T012 (c)) is carried into T069.
 - Labels are unique among a space's active seats: partial unique index `(space_id, label) WHERE removed_at IS
 NULL` replaces 001's `seat_space_id_label_unique`, so a removed seat's label can be reused.
 - Removal is soft (`removed_at`), because past bookings keep pointing at the seat. It runs in a transaction that
-  locks the seat `FOR UPDATE` and refuses with 409 `listing:seat-has-future-bookings` if any active hold of a
-  booking ends after now (FR-007, edge case). Booking takes `FOR SHARE` on the seat, so the two serialise.
+  locks the space row `FOR UPDATE`, then takes the seat lock (`lockSeats`), and refuses with 409
+  `listing:seat-has-future-bookings` if any active hold of a booking ends after now (FR-007, edge case). Booking
+  takes the space row `FOR SHARE` and then the same seat lock, so the two serialise in one order (ADR-0009
+  section 9.3, amended 2026-10-28; the first text locked the seat row `FOR UPDATE`).
 - The 200-seat cap: adding seats locks the space row `FOR UPDATE`, counts active seats, and refuses with 422
   `listing:seat-limit`. Bulk adds are all-or-nothing; duplicate labels give 409 `listing:label-taken` listing the
   labels.
 - Bulk pattern: `{ prefix, from, to, padTo? }` → `prefix + n` (e.g. `A-1` … `A-20`), at most 200 per request.
 - Cubicles are soft-removed too (`cubicle.removed_at`, name unique among active cubicles). Deleting one removes
-  its seats with it (OQ-6) in one transaction that locks those seats `FOR UPDATE`. A hard delete would break the
+  its seats with it (OQ-6) in one transaction that locks the space row `FOR UPDATE` and then those seats' locks (ADR-0009
+  section 9.3). A hard delete would break the
   composite FK from the removed seats and lose the cubicle name on past bookings (architect, T001). A duplicate
   cubicle name is 409 `listing:cubicle-name-taken`.
 
