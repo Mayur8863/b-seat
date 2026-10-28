@@ -312,8 +312,9 @@ Layout: one column on mobile; from `md` Country, City and Area in `grid-cols-3`,
   zone, labelled the same way. Tests cover several zones and a DST day.
 
 - **Money**: API `{ amount, currency }` formatted with `Intl.NumberFormat('en', { style: 'currency', currency,
-currencyDisplay: 'symbol' })`, always, never hand-built: "₹1,500.00", "$1,500.00", "¥1,500". Prices read "₹1,500.00 per
-  day pass". Savings: "Save ₹300.00 (17%)", whole-number percent, text only.
+currencyDisplay: 'symbol' })`, always, never hand-built: "₹1,500.00", "$1,500.00", "¥1,500". **Amended (T018, OQ-F):** one
+  helper, `formatMoney` in `lib/format.ts`, adds fraction-digit options so a price is never rounded (a JPY "1500.50" shows
+  "¥1,500.50"); the rule is in ui/02 section 8.3. Prices read "₹1,500.00 per day pass". Savings: "Save ₹300.00 (17%)", whole-number percent, text only.
 - **Counts**: "1 seat", "12 seats", "No seats yet".
 - **Problem copy approach (`lib/marketplace-problems.ts`)**: map `problem.type` (prefix `urn:bseat:problem:`) plus an
   `action` key to `{ title, description }`, same shape and `ProblemAlert` pattern as `booking-problems.ts` (001 ui.md

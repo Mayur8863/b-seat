@@ -124,10 +124,14 @@ space's details. You'll add seats and prices next." then the "All fields are req
 Time inputs are native (`type="time"`, value `HH:mm`; the browser may show AM/PM, the stored value is 24-hour). Shift change time has
 `min="00:00" max="11:59"`. Choosing a radio **reveals** its time fields in place (rows 10 or 11 appear right after the group; focus stays on the
 radio); the hidden option's fields are unmounted and not sent. Nothing is preselected for opening hours. **Shift change time is prefilled "07:00"
-(OQ-A, section 11).**
+(OQ-A, decided in section 11).** It is the same stored value that Passes and prices edits (8.1): both pages read it from `OwnerSpace` /
+`SpacePricing`, and each save invalidates both queries, so neither page shows a stale time.
 
 Edit mode adds, in row 9's fieldset under the legend, muted: "Changing opening hours applies to new bookings only. Existing bookings keep
-their times. Check Passes and prices afterwards."
+their times. Check Passes and prices afterwards." It also adds a second hint line under Currency (row 8), muted: "Changing the currency doesn't
+convert your prices. Check Passes and prices afterwards." (OQ-G). Edit mode sends **only the changed fields** in `UpdateSpaceInput` (RHF
+`dirtyFields`); `openingHours` is sent whole (mode plus its times) when any part of it changed. Nothing changed: "Save details" shows "Details
+saved" without a request.
 
 ### 4.2 Country, time zone, currency
 
@@ -135,8 +139,9 @@ their times. Check Passes and prices afterwards."
   `dirty` on that field; in edit mode the stored zone is never overwritten). Hint under Time zone: "Suggested for {country name}: {zone}." (the
   first zone) while a country is chosen, "Choose a country first to see suggestions." otherwise (the select is still usable).
 - Options: `<optgroup label="Suggested for {country name}">` with that country's `timeZones`, then `<optgroup label="All time zones">` with the
-  rest of `Intl.supportedValuesOf('timeZone')`, without repeats. Without a country only the second group shows. Option text is the IANA id.
-  **Risk: the API may accept only suggested zones plus UTC (OQ-B).**
+  rest of the **offered set**, without repeats. The offered set is the union of every `countries[].timeZones` in `/api/reference` plus `UTC`,
+  sorted by id (OQ-B, decided): exactly what the API accepts (`OfferedTimeZone`). Never use `Intl.supportedValuesOf('timeZone')`: browsers
+  still list pre-rename ids (`Asia/Calcutta`) that the API refuses. Without a country only the second group shows. Option text is the IANA id.
 - Reference loading: Country, Time zone and Currency are `disabled` with one option "Loading…", `aria-busy`; text fields work.
   Reference error: under Country, "We couldn't load the country list." with `Button variant="link" size="sm"` "Try again"; submitting stays possible
   but the three selects are required, so the submit shows their errors.
@@ -164,7 +169,7 @@ className="size-11 sm:size-8"` `XIcon`, `aria-label="Remove {name}"`.
 | Country        | "Choose a country"                                                                                                         |
 | City, Area     | "Enter a city" · "Enter an area or locality" · "Use 100 characters or fewer"                                               |
 | Street address | "Enter a street address" · "Use 200 characters or fewer"                                                                   |
-| Time zone      | "Choose a time zone" · from the API: "That time zone isn't supported. Choose one from the suggested list."                 |
+| Time zone      | "Choose a time zone" · from the API (only if the lists drift): "That time zone isn't supported. Choose one from the list." |
 | Currency       | "Choose a currency"                                                                                                        |
 | Opening hours  | "Choose when your space is open" (error under the legend; group `aria-describedby`, `aria-invalid`; focus the first radio) |
 | Shift change   | "Enter a shift change time" · "Use a time from 00:00 to 11:59"                                                             |
@@ -185,7 +190,7 @@ the details" (section 9) and focuses it.
 | Loading  | Create: form renders at once, selects as 4.2. Edit: page-level, `aria-busy`, 6 x `Skeleton h-16`, sr-only polite "Loading details…" (the layout in section 5 has already loaded the space, so this shows only when the details query is separate).                                                                    |
 | Empty    | n/a (a form). The empty "no custom utilities yet" is just an empty list with no placeholder text.                                                                                                                                                                                                                     |
 | Error    | Field errors (4.4). Non-field failure: destructive Alert at the top of the form, focused: 400 without a field, 404 (edit) shows the layout's not-found state instead, 401 per 01, other statuses and network per section 9 (title "We couldn't save your space", description from the fallback table). Input is kept. |
-| Success  | Create: go to `/owner/spaces/{id}`, `toast.success("Space created")` (until T023 merges: `/dashboard`, same toast). Edit: inline status "Details saved" (2.3); the Badge in the layout (section 5) is unchanged.                                                                                                      |
+| Success  | Create: go to `/owner/spaces/{id}`, `toast.success("Space created")` (until T023 merges: `/dashboard`, same toast). Edit: inline status "Details saved" (2.3), the form resets to the returned `OwnerSpace`, and the pricing query is invalidated; the Badge in the layout (section 5) is unchanged.                  |
 
 ### 4.6 Layout
 
@@ -272,8 +277,10 @@ Order of sections (= DOM and tab order): page Alert slot (focus target for list-
 ### 7.1 Add one seat (`Card`, h3 "Add one seat")
 
 Fields: **Label** (`Input`, hint "Up to 20 characters, for example A-12."), **Cubicle (optional)** (`NativeSelect`, first option "No cubicle"), **Features (optional)**
-(`Input`, hint "Separate with commas, for example standing desk, monitor arm."; split on commas, trimmed, blanks dropped). Button "Add seat".
-Errors: Label "Enter a label" · "Use 20 characters or fewer". Cubicle select states: loading, one disabled option "Loading cubicles…"; load
+(`Input`, hint "Separate with commas, for example standing desk, monitor arm. Up to 10, 40 characters each."; split on commas, trimmed, blanks
+dropped, repeats dropped ignoring case). Button "Add seat".
+Errors: Label "Enter a label" · "Use 20 characters or fewer". Features "Use 10 features or fewer" · "Keep each feature to 40 characters or fewer"
+(OQ-D: contract limits, owner-spaces.md). Cubicle select states: loading, one disabled option "Loading cubicles…"; load
 error, only "No cubicle" plus muted "We couldn't load cubicles." and `Button variant="link" size="sm"` "Try again".
 
 Success: `toast.success("Seat {label} added")`, the list updates, **Label clears and keeps focus**, Cubicle and Features keep their values (so
@@ -310,7 +317,8 @@ empty, focus goes to field 1, the list updates. The request is all-or-nothing: o
 List `<ul aria-label="Cubicles">`, one row per cubicle: name (`font-medium`), muted "{n} seats" ("No seats yet"), `Button variant="outline" size="sm"` "Rename"
 with sr-only " cubicle {name}", and "Remove" with the same suffix. Above the list: `Input` "Cubicle name" (hint "Groups seats, for example Bay 1.") and `Button` "Add cubicle", in one row
 from `sm`, stacked below. Rename turns that row into an inline form (Input prefilled and focused, "Save", "Cancel"; focus returns to its Rename button after
-either). Name errors: "Enter a name" · "Use {max} characters or fewer" (`{max}` from the generated schema, OQ-D) · `cubicle-name-taken` as a **field error**.
+either). Name errors: "Enter a name" · "Use 100 characters or fewer" (OQ-D: cubicle names are 1 to 100 characters, as the database check) ·
+`cubicle-name-taken` as a **field error**. Long names wrap (`break-words`), in the list and in the Cubicle selects.
 
 Remove opens `AlertDialog`: title "Remove {name}?", description "This removes the cubicle and its {n} seats together. Bookings that ended keep the
 seat and cubicle names. You can't remove it while any of its seats has upcoming bookings." (for 0 seats, drop the second sentence's seat count: "This
@@ -356,7 +364,8 @@ cards side by side (`lg:grid-cols-2 gap-4`; Add one first). Seat list always one
 
 `/owner/spaces/[spaceId]/pricing`. h1 "Passes and prices". Muted intro: "Choose which slots you offer and set a price for each pass. Renters pay you directly, outside BSeat."
 Then muted: "Times are in {time zone}. Prices are in {currency name} ({code}). Change the currency under [Details](/owner/spaces/{id})." Data: `GET`/`PUT …/pricing`
-(`SpacePricing`, `UpdatePricingInput`). One `<form noValidate>` with one **Save prices** button at the end.
+(`SpacePricing`, `UpdatePricingInput`). The time zone comes from the layout's `OwnerSpace` (section 5, already loaded); the currency name is
+`new Intl.DisplayNames(['en'], { type: 'currency' }).of(code)`, as the API names currencies. One `<form noValidate>` with one **Save prices** button at the end.
 
 ### 8.1 Structure and keyboard order
 
@@ -370,9 +379,12 @@ Then muted: "Times are in {time zone}. Prices are in {currency name} ({code}). C
    - 24-hour spaces: `Checkbox` "Offer this slot". Fixed-hours: no checkbox, text "This is your only slot, so it is always offered." (AC 3.2).
    - Three price fields (8.2), tab order Day pass, Weekly pass, Monthly pass.
 3. The muted line "Leave a price empty if you don't offer that pass." comes once, before the first slot card; every price input points to it with `aria-describedby`.
-4. **Save prices** and the inline status.
+4. **Save prices** and the inline status. Save sends `shiftChangeAt` (24-hour spaces only) and one `slots` entry per slot card, in card order,
+   each with its `enabled` value and all three prices (`null` for empty). A successful save also invalidates `useOwnerSpacesGet` (shift time,
+   `hasOfferedPass`) and `useOwnerSpacesList`.
 
-An off slot is muted (`text-muted-foreground` heading plus the text "Off. Renters can't book this slot."), but its price inputs **stay enabled** and keep their values (so nothing is lost; OQ-E).
+An off slot is muted (`text-muted-foreground` heading plus the text "Off. Renters can't book this slot. Its prices are kept for when you turn it back on."), but its price inputs **stay enabled**
+and keep their values (OQ-E, decided: the API stores the prices of a disabled slot and offers none of them until it is on again).
 The accessible name of each price field is "{Pass name} price in {code}" plus its group: the `Label` text is the visible "Day pass" with an sr-only suffix " price in INR", and the `fieldset` legend supplies the slot.
 
 ### 8.2 Price field and money format
@@ -384,18 +396,24 @@ Control: `Input type="text" inputMode="decimal" autoComplete="off"`, placeholder
 - **Accepted**: `^(0|[1-9]\d{0,9})(\.\d{1,2})?$` and greater than zero (the API's money rule). So "1500", "1500.5", "1500.50" are valid; "1,500", "₹1500", ".5", "007", "-5" are not. Whitespace around is trimmed.
 - **Empty** means not offered (AC 3.3), sent as `null`.
 - **Check order and error text** (one error at a time, `text-destructive`, id `{f}-error`, `aria-invalid`, `aria-describedby="pricing-hint {f}-preview {f}-error"`):
-  1. contains anything but digits and one dot, or has a leading zero or a leading/trailing dot: "Enter an amount like 1500 or 1500.50"
+  1. contains anything but digits and one dot, starts with a zero followed by another digit ("007"), or starts or ends with the dot: "Enter an amount like 1500 or 1500.50" ("0.50" passes this check)
   2. more than two decimals: "Use at most two decimal places"
   3. equals zero: "Enter a price greater than zero"
   4. more than 10 whole digits: "That price is too large"
 - **Preview** under a valid, non-empty field: `<p id="{f}-preview" class="text-muted-foreground text-sm">Shows as ₹1,500.00</p>`, formatted with
-  `Intl.NumberFormat('en', { style: 'currency', currency, currencyDisplay: 'symbol' })` per 01 section 7 (never hand-built). It exists so a slipped zero is noticed. It is read on focus through `aria-describedby`, not announced live.
+  `formatMoney` (8.3, never hand-built). It exists so a slipped zero is noticed. It is read on focus through `aria-describedby`, not announced live.
 - Validated on submit, then on blur and change once an error has shown. After a successful save the field shows the API's two-decimal string ("1500.50").
 
 ### 8.3 Money across these screens
 
-Inputs: plain decimal, `.` separator, no symbol, the code as a prefix. Read-only prices (the Shows-as preview, and later renter views) use `Intl.NumberFormat('en', { style: 'currency', currency, currencyDisplay: 'symbol' })`: "₹1,500.00", "$1,500.00".
-Currencies with no minor unit (for example JPY) are an open question (OQ-F).
+Inputs: plain decimal, `.` separator, no symbol, the code as a prefix. Every currency accepts up to two decimals (FR-011, R-8), and the API returns two.
+Read-only prices (the Shows-as preview, and later renter views) use one helper, `formatMoney({ amount, currency })` in `lib/format.ts`, which **never rounds**
+(OQ-F, decided; amends 01 section 7):
+
+- `digits` = `new Intl.NumberFormat('en', { style: 'currency', currency }).resolvedOptions().maximumFractionDigits` (2 for INR, 0 for JPY, 3 for KWD).
+- Format `Intl.NumberFormat('en', { style: 'currency', currency, currencyDisplay: 'symbol', minimumFractionDigits: m, maximumFractionDigits: Math.max(digits, 2) })`
+  where `m` is `digits`, or 2 when the amount's cents are not zero and `digits` is below 2.
+- Pass the **string** amount to `format()` (exact decimal, no float). Results: "₹1,500.00", "$1,500.00", "¥1,500" (JPY "1500.00"), "¥1,500.50" (JPY "1500.50"), "KWD 1,500.000".
 
 ### 8.4 States (pricing page)
 
@@ -440,39 +458,13 @@ Fallback Alert titles: "We couldn't {action}" where the action is the screen's o
 | `listing:seat-has-future-bookings`  | remove seat                                     | page Alert          | Seat has upcoming bookings                   | "{label} can't be removed until its bookings end or are cancelled by the renter."                                                                   |
 | `listing:seat-has-future-bookings`  | remove cubicle                                  | page Alert          | A seat in this cubicle has upcoming bookings | "{name} can't be removed until those bookings end or are cancelled by the renter. Nothing was removed."                                             |
 
-Problems this spec's screens cannot receive (booking rules, occupancy, layout) have web copy in ui/03, ui/04 and ui/05. Their API title and detail are in 9.2.
+Problems this spec's screens cannot receive (booking rules, occupancy, layout) have web copy in ui/03, ui/04 and ui/05.
 
-### 9.2 Registry for contracts/README.md (API `title` and `detail`, final proposals)
+### 9.2 API `title` and `detail`
 
-Short noun-phrase titles in sentence case; `detail` is one or two plain sentences with the next step where one exists. The web does not display them (9.1) but logs and support use
-them. "Existing" = already in code (`problem-types.ts` or 001 `booking-conflicts.ts`). **Changes to existing text are listed in the last column**; backend-dev updates `problem-types.ts`
-and its tests when the architect accepts them.
-
-| Status | `type`                              | `title`                    | `detail`                                                                             | Vs existing                                                                                                                     |
-| ------ | ----------------------------------- | -------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
-| 400    | `validation`                        | Request validation failed  | (the `errors[]` carry the detail)                                                    | Existing, unchanged                                                                                                             |
-| 403    | `http-403`                          | Forbidden                  | You don't have access to this.                                                       | Existing mapping; detail proposed                                                                                               |
-| 404    | `http-404`                          | Not found                  | We couldn't find that.                                                               | Existing mapping; detail proposed                                                                                               |
-| 409    | `booking:seat-unavailable`          | Seat unavailable           | This seat is no longer available for that period.                                    | Detail: "time" becomes "period" (passes), as README                                                                             |
-| 409    | `booking:user-overlap`              | Overlapping booking        | You already have a booking at that time.                                             | Existing, unchanged                                                                                                             |
-| 409    | `booking:already-started`           | Booking already started    | This booking has already started and can no longer be cancelled.                     | Existing, unchanged                                                                                                             |
-| 422    | `booking-rule:space-not-published`  | Space not listed           | This space is no longer listed.                                                      | New, README suggestion                                                                                                          |
-| 422    | `booking-rule:own-space`            | Your own space             | You can't book a seat in your own space. Mark it occupied instead.                   | New, README suggestion                                                                                                          |
-| 422    | `booking-rule:pass-not-offered`     | Pass not offered           | This space doesn't offer that pass for that slot.                                    | New, README suggestion                                                                                                          |
-| 422    | `booking-rule:start-day-closed`     | Start date closed          | This seat isn't available on the start date you chose.                               | New, README suggestion                                                                                                          |
-| 422    | `booking-rule:slot-started`         | Slot already started       | That slot has already started. Choose a later start date.                            | New, README suggestion                                                                                                          |
-| 422    | `booking-rule:too-far-ahead`        | Too far ahead              | Bookings can start at most 30 days ahead.                                            | 001 title kept; detail updated for passes                                                                                       |
-| 422    | `listing:publish-incomplete`        | Listing incomplete         | Add at least one seat and price at least one pass before publishing.                 | **Adopt** existing                                                                                                              |
-| 422    | `listing:seat-limit`                | Seat limit reached         | A space can have at most 200 seats. No seats were added.                             | New                                                                                                                             |
-| 409    | `listing:label-taken`               | Seat label already used    | Another active seat in this space already uses that label. Choose a different label. | **Improve** existing "Seat label taken" / "...uses that label.": past-tense title matches the others, detail adds the next step |
-| 409    | `listing:cubicle-name-taken`        | Cubicle name already used  | Another active cubicle in this space already has that name.                          | New. README suggestion "You already have a cubicle with that name" dropped: it said "you" where it means "this space"           |
-| 409    | `listing:seat-has-future-bookings`  | Upcoming bookings          | Upcoming bookings prevent this removal. Wait until they end or are cancelled.        | New; neutral wording, because the same type covers a seat and a cubicle's seats                                                 |
-| 409    | `occupancy:conflicts-with-bookings` | Seats are booked           | Some of these seats are booked by renters on those dates.                            | **Adopt** existing                                                                                                              |
-| 409    | `occupancy:already-occupied`        | Seats are already occupied | You've already marked some of these seats occupied on those dates.                   | Title adopted. Detail **improved**: drops "active occupancy marks of yours" (internal term)                                     |
-| 409    | `layout:stale-version`              | Layout out of date         | This layout changed after you opened it. Reload it and try again.                    | New                                                                                                                             |
-| 422    | `layout:out-of-bounds`              | Outside the grid           | Keep every item inside the grid, and every seat inside its cubicle.                  | New                                                                                                                             |
-
-Extension members (`missing`, `labels`, `conflicts`) are unchanged; the web builds its own list text from them (9.1) and never prints server strings.
+Moved to the [problem copy registry](../contracts/README.md#problem-copy-registry-title-and-detail) in contracts/README.md (architect, T018),
+which is now the single source. The web never prints them (9.1); it builds its own list text from the extension members (`missing`, `labels`,
+`conflicts`).
 
 ## 10. Accessibility, contrast and review notes
 
@@ -485,15 +477,18 @@ Extension members (`missing`, `labels`, `conflicts`) are unchanged; the web buil
 - qa (T025, T032): axe on each screen in these states: dashboard (empty, list, error), `/owner/spaces/new` (empty with errors, "Open 24 hours" and "Fixed working hours" open), details (draft with publish refusal Alert, published, unpublish dialog open), seats (empty, list, bulk with `label-taken` Alert,
   remove dialog, row in edit mode), pricing (24-hour with an invalid price, fixed-hours, empty, after save). Screenshots at 375, 768 and 1280 px, light and dark. Keyboard-only run: create a space, add 20 seats, set prices, publish, without a pointer.
 
-## 11. Open questions
+## 11. Decisions (architect review, T018, 2026-10-28)
 
-| Id   | Question                                                                                                                                                                                                                                                  | Proposed default (used if accepted)                                                                                                        | Affects    |
-| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ---------- |
-| OQ-A | `CreateSpaceInput` requires `shiftChangeAt` for "Open 24 hours", but the spec has the owner set it under slots (AC 3.1). Is a prefilled 07:00 on the create form acceptable, and should the shift time be editable in both Details and Passes and prices? | Yes: prefilled 07:00 (the spec's example), editable in both places                                                                         | T022, T030 |
-| OQ-B | T020 validates the zone against an allow-list (suggested zones plus UTC), but T022's scope offers every `Intl` zone. Which wins?                                                                                                                          | Offer suggested zones for the country plus "All time zones"; the API refuses an unsupported zone with the 4.4 message. Architect to settle | T020, T022 |
-| OQ-C | Bulk seats: is the live preview plus a count-labelled button the "confirm", or does T024 intend a separate confirmation step?                                                                                                                             | Live preview and the "Add 20 seats" button; no extra dialog                                                                                | T024       |
-| OQ-D | Limits not in the contract: cubicle name length, seat `features` count and length.                                                                                                                                                                        | frontend-dev mirrors the generated schemas; copy uses `{max}`. Architect to state them in owner-spaces.md                                  | T021, T024 |
-| OQ-E | Are prices of a slot that is switched off kept? `SpacePricing` returns `prices` for disabled slots, which suggests yes.                                                                                                                                   | Kept and shown; inputs stay enabled (8.1)                                                                                                  | T027, T030 |
-| OQ-F | Currencies with no minor unit (for example JPY): the API accepts two decimals for every currency, and 01 section 7 prints "¥1,500". Should a price like 1500.50 be refused for JPY, or shown with decimals?                                               | Out of scope until decided; the preview follows 01 section 7                                                                               | T027, T030 |
-| OQ-G | Changing currency, or the opening mode, after prices or bookings exist. The spec has no rule. Day, night and 24-hour prices vanish from `GET …/pricing` when the mode becomes fixed hours.                                                                | Allowed; the Details form shows the 4.1 note and nothing else. Product to confirm                                                          | T020, T022 |
-| OQ-H | `contracts/README.md` says the web "falls back to `detail`", but 01 section 7 says the web never shows `detail`. This spec follows 01. Architect to fold 9.2 into the README and align that sentence.                                                     | Follow 01 section 7                                                                                                                        | architect  |
+The open questions OQ-A to OQ-H are closed. Decisions marked **assumption** are product behaviour that spec.md does not settle; they use the
+conservative option and a human may override them.
+
+| Id   | Decision                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | Recorded in                                        |
+| ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| OQ-A | `CreateSpaceInput` keeps `shiftChangeAt` required for "Open 24 hours" (the database check needs it). The create form shows it prefilled "07:00" (the spec's example), and both Details (`PATCH`, `openingHours`) and Passes and prices (`PUT …/pricing`, `shiftChangeAt`) edit the one stored value; each save invalidates the other page's query (4.1, 8.1).                                                                                                                                         | 4.1, 8.1; owner-spaces.md; T020, T027              |
+| OQ-B | The API allow-list wins. The offered zones are exactly the union of `countries[].timeZones` in `/api/reference` plus `UTC` (`OfferedTimeZone`); the web builds "All time zones" from that set, never from `Intl.supportedValuesOf('timeZone')` (4.2). No API change.                                                                                                                                                                                                                                  | 4.2, 4.4; accounts.md, owner-spaces.md; T020, T022 |
+| OQ-C | The live preview plus the count-labelled button ("Add 20 seats") is the confirm step; no dialog (7.2).                                                                                                                                                                                                                                                                                                                                                                                                | 7.2; T024                                          |
+| OQ-D | Cubicle name 1 to 100 characters after trim (matches the merged `cubicle_name_length` check). Seat features: at most 10, each 1 to 40 characters after trim, no repeats ignoring case; a new `seat_features_max` check bounds the count in the database (T021).                                                                                                                                                                                                                                       | 7.1, 7.3; owner-spaces.md, data-model.md; T021     |
+| OQ-E | Prices of a disabled slot are kept: `PUT` stores what it is sent, `GET` returns them, and none of them is offered (listing, search, publish check, booking) until the slot is on again.                                                                                                                                                                                                                                                                                                               | 8.1; owner-spaces.md, data-model.md; T027          |
+| OQ-F | The API is unchanged: every currency accepts up to two decimals (FR-011, R-8), so "1500.50" is valid for JPY (**assumption**; the alternative, refusing decimals beyond the currency's minor unit, needs a product call). Display never rounds: `formatMoney` uses the currency's own digits and two when the amount has cents (8.3), so JPY "1500.00" shows "¥1,500" and "1500.50" shows "¥1,500.50". This amends 01 section 7.                                                                      | 8.3; 01 section 7; T027, T030                      |
+| OQ-G | **Assumption:** changing the currency or the opening mode is allowed at any time, including on a published space with prices or bookings. Amounts are not converted, bookings keep their price, currency and slot snapshot (FR-013, edge case), and the other mode's slots and prices are kept for a switch back. The Details form warns under Currency and Opening hours (4.1). A switch can leave a published space with no offered pass; it stays published (FR-008 applies at publish time only). | 4.1; owner-spaces.md, data-model.md; T020, T027    |
+| OQ-H | The web never shows `title` or `detail` (01 section 7 wins). contracts/README.md now says so and holds the problem copy registry (9.2).                                                                                                                                                                                                                                                                                                                                                               | 9.2; contracts/README.md                           |
