@@ -5,3 +5,4 @@ export * from './preference.js';
 export * from './pricing.js';
 export * from './space.js';
 export * from './layout.js';
+export * from './photo.js';
