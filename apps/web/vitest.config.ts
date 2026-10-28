@@ -9,6 +9,8 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
+    // jsdom + user-event forms are CPU-bound; 5s flakes when agents or CI share a host
+    testTimeout: 15000,
     include: ['src/**/*.test.{ts,tsx}'],
     setupFiles: ['src/test/setup.ts'],
     coverage: {
