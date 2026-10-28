@@ -384,3 +384,19 @@ Run: `bin/pnpm check` pass; `@bseat/api test` 378 passed, 1 skipped; seed files 
 `GET /api/spaces` lists London HQ and Pune Hub. `docker compose --profile e2e run --rm e2e` 24 passed, and
 `... npx playwright test --retries=0` 24 passed (all 3 `/book` cases and axe included). E2E creates its own
 users, so it does not use the demo password.
+
+## T014 QA results (signed-in shell, role-aware nav, dashboards, proxy matcher)
+
+| Acceptance criterion                                            | Test                                                                                                                         | Level   | Result |
+| --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------- | ------ |
+| Role nav with `aria-current` (renter and owner)                 | `app-nav.test.tsx` (per role, `aria-current` page and true); `nav.test.ts` link lists; `app-shell.spec.ts` signed-in shell   | C, U, E | pass   |
+| Route manifest fails on an unlisted page                        | `nav.test.ts` `catches orphan pages...`, `finds the existing pages`                                                          | U       | pass   |
+| Renter dashboard: "Find a space" and empty card                 | `dashboard-view.test.tsx` renter and owner cases; `auth.spec.ts` lands on dashboard                                          | C, E    | pass   |
+| Loading and failed `/api/me` states (incl. 401)                 | `app-nav.test.tsx` busy, non-401 error with retry, 401 sign-in link, cached nav on failed refetch; `dashboard-view.test.tsx` | C       | pass   |
+| Signed-out `/find` and `/owner/spaces/new` redirect with `next` | `proxy.test.ts`; `app-shell.spec.ts` sweep over all six matcher routes                                                       | U, E    | pass   |
+| Keyboard: skip link then every nav link, visible focus          | `app-shell.spec.ts` keyboard walk (mobile opens the menu with Enter); Escape closes the menu and refocuses the toggle        | E       | pass   |
+| axe WCAG 2.1 AA, including the open mobile menu                 | `app-shell.spec.ts` (desktop page; mobile project runs axe with the menu open)                                               | A       | pass   |
+
+QA added `apps/web/e2e/app-shell.spec.ts` and made `signOut` in `e2e/helpers.ts` skip the toggle when the menu is already open.
+Run: `@bseat/web test` 158 passed; `bin/pnpm check` pass (`@bseat/api test` 489 passed, 1 skipped); `bin/pnpm lint` pass;
+`docker compose --profile e2e run --rm e2e` 38 passed (19 per project, chromium and mobile), 0 axe violations.

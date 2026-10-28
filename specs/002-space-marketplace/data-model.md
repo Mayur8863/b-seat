@@ -86,13 +86,13 @@ Indexes: `space_owner_id_idx (owner_id)`; `space_search_idx (country, city_key, 
 
 ### cubicle (new, `schema/space.ts`)
 
-| Column     | Type        | Null | Default | Notes                                                                             |
-| ---------- | ----------- | ---- | ------- | --------------------------------------------------------------------------------- |
-| id         | uuid        | no   | random  | PK                                                                                |
-| space_id   | uuid        | no   |         | FK → `space.id` `ON DELETE RESTRICT`                                              |
-| name       | text        | no   |         | CHECK `length(btrim(name)) between 1 and 100` (limit proposed; designer confirms) |
-| created_at | timestamptz | no   | `now()` |                                                                                   |
-| removed_at | timestamptz | yes  |         | soft removal (architect, T001; see below)                                         |
+| Column     | Type        | Null | Default | Notes                                                                   |
+| ---------- | ----------- | ---- | ------- | ----------------------------------------------------------------------- |
+| id         | uuid        | no   | random  | PK                                                                      |
+| space_id   | uuid        | no   |         | FK → `space.id` `ON DELETE RESTRICT`                                    |
+| name       | text        | no   |         | CHECK `length(btrim(name)) between 1 and 100` (confirmed in T018, OQ-D) |
+| created_at | timestamptz | no   | `now()` |                                                                         |
+| removed_at | timestamptz | yes  |         | soft removal (architect, T001; see below)                               |
 
 `cubicle_space_id_name_active_unique (space_id, name) WHERE removed_at IS NULL`; `cubicle_id_space_id_unique (id, space_id)`
 (target of composite FKs).
@@ -103,10 +103,11 @@ removed seats, and past bookings would lose their cubicle name.
 
 ### seat (changed)
 
-| Column     | Type        | Null | Default | Notes                                                                                                      |
-| ---------- | ----------- | ---- | ------- | ---------------------------------------------------------------------------------------------------------- |
-| cubicle_id | uuid        | yes  |         | composite FK `(cubicle_id, space_id)` → `cubicle (id, space_id)`, so a seat's cubicle is in the same space |
-| removed_at | timestamptz | yes  |         | soft removal (R-15)                                                                                        |
+| Column     | Type        | Null | Default | Notes                                                                                                            |
+| ---------- | ----------- | ---- | ------- | ---------------------------------------------------------------------------------------------------------------- |
+| cubicle_id | uuid        | yes  |         | composite FK `(cubicle_id, space_id)` → `cubicle (id, space_id)`, so a seat's cubicle is in the same space       |
+| removed_at | timestamptz | yes  |         | soft removal (R-15)                                                                                              |
+| features   | text[]      | no   | `'{}'`  | (001, unchanged type) new CHECK `seat_features_max`: `cardinality(features) <= 10` (T021, OQ-D); each 1–40 (Zod) |
 
 - `seat_space_id_label_unique` **replaced** by the partial unique index `seat_space_id_label_active_unique (space_id, label) WHERE removed_at IS NULL`.
 - New `seat_id_space_id_unique (id, space_id)` as the target of composite FKs from `booking`, `availability_calendar`, `occupancy_mark` and `layout_element`. (`seat_hold` has no `space_id`; its seat is pinned through `seat_hold_booking_fk` / `seat_hold_occupancy_mark_fk`.)
@@ -121,7 +122,8 @@ removed seats, and past bookings would lose their cubicle name.
 
 PK `(space_id, slot)`. Which kinds are **offered** depends on `space.opening_mode` (`always_open` → day, night,
 full_day; `fixed_hours` → working_hours). Rows for the other mode are kept but ignored, so switching mode never
-deletes prices (edge case).
+deletes prices (edge case). Space create inserts the rows of its mode with `enabled = true`, and a mode switch
+inserts the new mode's missing rows the same way (T020, decided in T018), so every offered kind always has a row.
 
 ### pass_price (new, `schema/pricing.ts`)
 
@@ -134,7 +136,8 @@ deletes prices (edge case).
 | updated_at | timestamptz   | no   | default `now()`                                                                     |
 
 PK `(space_id, slot, pass)`. No row = pass not offered (FR-011). A pass is **offered** when its slot is offered,
-`space_slot.enabled` is true, and a price row exists.
+`space_slot.enabled` is true, and a price row exists. A disabled slot keeps its price rows (OQ-E, decided in
+T018), and changing `space.currency` does not convert `amount` (OQ-G).
 
 ### availability_calendar (new, `schema/calendar.ts`)
 
@@ -174,6 +177,9 @@ Constraints:
 
 - `booking_hold_key_unique`: `UNIQUE (id, seat_id, user_id, holds_active)`, the target of `seat_hold_booking_fk`.
   With it, a cancelled booking can never keep an active hold, and an active booking can never lose one (AQ-7).
+- `booking_identity_immutable` (T036, custom migration; ADR-0009 section 3 amendment): a `BEFORE UPDATE OF id,
+seat_id, user_id, space_id` trigger that raises `23514` with that constraint name if any of them changes. The
+  hold FK's `ON UPDATE CASCADE` would otherwise move the holds with a changed seat or renter.
 - `booking_no_new_hourly`: `CHECK (kind <> 'hourly') NOT VALID` (custom migration, ADR-0009 section 6). Existing
   hourly rows stay as read-only history. Any new or updated hourly row is refused with `23514`, so no hourly row
   can exist outside the old exclusions' protection.
@@ -203,6 +209,11 @@ New index: `booking_space_id_starts_at_idx (space_id, starts_at)` (owner booking
 | ended_at   | timestamptz | yes  |         | audit only: when it was vacated or removed. The mark's hold is the source of truth for blocking and status |
 
 `occupancy_mark_id_seat_id_unique (id, seat_id)` is the target of `seat_hold_occupancy_mark_fk`.
+
+Developer-chosen constraint names (T005): `booking_seat_space_fk` (booking `(seat_id, space_id)` to `seat`),
+`occupancy_mark_seat_space_fk` (mark `(seat_id, space_id)` to `seat`), `seat_hold_occupancy_mark_id_unique`
+(one hold per mark), `occupancy_mark_dates` (end date not before start date) and `occupancy_mark_note_length`
+(note at most 200 characters).
 
 ### seat_hold (new, `schema/booking.ts`)
 
@@ -344,12 +355,14 @@ ADR-0009 section 3). Re-cancel returns 200 unchanged (ADR-0008 section 4); start
 | `country`           | ISO alpha-2 in the reference list                                    | Zod refine + CHECK format                                          |
 | `city`, `area`      | 1–100 after trim                                                     | Zod + CHECK                                                        |
 | `streetAddress`     | 1–200 after trim                                                     | Zod + CHECK                                                        |
-| `timeZone`          | `isValidTimeZone`                                                    | Zod refine                                                         |
+| `timeZone`          | `OfferedTimeZone`: reference zones plus `UTC`, max 64 (OQ-B)         | Zod refine                                                         |
 | `currency`          | in `Intl.supportedValuesOf('currency')`                              | Zod refine + CHECK format                                          |
 | `openingHours`      | discriminated union; fixed: `closesAt > opensAt`                     | Zod + CHECK                                                        |
 | `utilities`         | subset of the standard codes, no duplicates                          | Zod                                                                |
 | `customUtilities`   | at most 5, each 1–40 after trim, unique case-insensitively           | Zod + CHECK cardinality                                            |
 | seat `label`        | 1–20 after trim; unique among active seats                           | Zod + partial unique                                               |
+| seat `features`     | at most 10, each 1–40 after trim, no repeats ignoring case (OQ-D)    | Zod + CHECK `seat_features_max`                                    |
+| cubicle `name`      | 1–100 after trim; unique among a space's active cubicles             | Zod + CHECK + partial unique                                       |
 | seats per space     | at most 200 active                                                   | service with space row lock                                        |
 | price `amount`      | decimal string, > 0, at most 2 decimals                              | Zod + CHECK                                                        |
 | calendar            | `endDate >= startDate`; at least one weekday                         | Zod + CHECK                                                        |
@@ -362,16 +375,21 @@ Generated migrations first, `--custom` second, statements separated by `--> stat
 `0000`–`0002` are never edited (ADR-0008, AGENTS.md). Tasks that generate migrations in parallel rebase and
 **re-run** `db:generate` instead of hand-merging the journal or snapshots.
 
-| Task | Migration (name)           | Kind      | Content                                                                                                                                                                                                                                                                                                                                                        |
-| ---- | -------------------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| T002 | `user_account_type`        | generated | `user.account_type` + CHECK                                                                                                                                                                                                                                                                                                                                    |
-| T003 | `listings`                 | generated | enums `space_status`, `opening_mode`; space columns, generated keys, CHECKs (`space_owned_complete`, `space_published_has_owner`, ...), indexes; drop `space_name_unique`; `location` nullable; `cubicle` (with `removed_at`, partial name index); seat `cubicle_id`, `removed_at`, partial label index, `seat_id_space_id_unique`                             |
-| T004 | `pricing_calendar`         | generated | `slot_kind`, `pass_type`; `space_slot`, `pass_price`, `availability_calendar`                                                                                                                                                                                                                                                                                  |
-| T004 | `shared_calendar_backfill` | custom    | one shared calendar per existing space                                                                                                                                                                                                                                                                                                                         |
-| T005 | `pass_bookings`            | generated | `booking_kind`; booking pass columns, `holds_active` (stored generated) and CHECKs (re-created hourly CHECKs); `booking_hold_key_unique`; `occupancy_mark` + `occupancy_mark_id_seat_id_unique`; `seat_hold` + CHECKs + composite FKs `seat_hold_booking_fk` (`ON UPDATE CASCADE`), `seat_hold_occupancy_mark_fk` + unique `occupancy_mark_id` + btree indexes |
-| T005 | `seat_hold_exclusions`     | custom    | in this order: (1) the two exclusions; (2) backfill holds from active, not-ended hourly bookings; (3) `booking_no_new_hourly CHECK (kind <> 'hourly') NOT VALID`; (4) drop `booking_seat_no_overlap`, `booking_user_no_overlap`                                                                                                                                |
-| T013 | `renter_preferences`       | generated | `renter_preference`                                                                                                                                                                                                                                                                                                                                            |
-| T062 | `layouts`                  | generated | `layout_element_kind`; `space_layout`, `layout_element`                                                                                                                                                                                                                                                                                                        |
+Note (T005): `0009_pass_bookings.sql` was hand-reordered so `booking_hold_key_unique` comes before
+`seat_hold_booking_fk`, which needs it. Regenerating `0009` emits them in the wrong order and needs the same fix.
+
+| Task | Migration (name)             | Kind      | Content                                                                                                                                                                                                                                                                                                                                                        |
+| ---- | ---------------------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| T002 | `user_account_type`          | generated | `user.account_type` + CHECK                                                                                                                                                                                                                                                                                                                                    |
+| T003 | `listings`                   | generated | enums `space_status`, `opening_mode`; space columns, generated keys, CHECKs (`space_owned_complete`, `space_published_has_owner`, ...), indexes; drop `space_name_unique`; `location` nullable; `cubicle` (with `removed_at`, partial name index); seat `cubicle_id`, `removed_at`, partial label index, `seat_id_space_id_unique`                             |
+| T004 | `pricing_calendar`           | generated | `slot_kind`, `pass_type`; `space_slot`, `pass_price`, `availability_calendar`                                                                                                                                                                                                                                                                                  |
+| T004 | `shared_calendar_backfill`   | custom    | one shared calendar per existing space                                                                                                                                                                                                                                                                                                                         |
+| T005 | `pass_bookings`              | generated | `booking_kind`; booking pass columns, `holds_active` (stored generated) and CHECKs (re-created hourly CHECKs); `booking_hold_key_unique`; `occupancy_mark` + `occupancy_mark_id_seat_id_unique`; `seat_hold` + CHECKs + composite FKs `seat_hold_booking_fk` (`ON UPDATE CASCADE`), `seat_hold_occupancy_mark_fk` + unique `occupancy_mark_id` + btree indexes |
+| T005 | `seat_hold_exclusions`       | custom    | in this order: (1) the two exclusions; (2) backfill holds from active, not-ended hourly bookings; (3) `booking_no_new_hourly CHECK (kind <> 'hourly') NOT VALID`; (4) drop `booking_seat_no_overlap`, `booking_user_no_overlap`                                                                                                                                |
+| T013 | `renter_preferences`         | generated | `renter_preference`                                                                                                                                                                                                                                                                                                                                            |
+| T021 | `seat_features_max`          | generated | CHECK `seat_features_max` on `seat` (scans the small seat table once)                                                                                                                                                                                                                                                                                          |
+| T036 | `booking_identity_immutable` | custom    | trigger function and `BEFORE UPDATE OF id, seat_id, user_id, space_id` trigger on `booking`                                                                                                                                                                                                                                                                    |
+| T062 | `layouts`                    | generated | `layout_element_kind`; `space_layout`, `layout_element`                                                                                                                                                                                                                                                                                                        |
 
 The backfill in T005:
 

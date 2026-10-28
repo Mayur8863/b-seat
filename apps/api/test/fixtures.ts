@@ -1,11 +1,20 @@
 import { randomUUID } from 'node:crypto';
 
 import type { NestExpressApplication } from '@nestjs/platform-express';
+import { eq } from 'drizzle-orm';
 
 import { toInstant, toLocal } from '../src/common/time/zoned-time.js';
 import type { Database } from '../src/db/db.js';
 import { DB } from '../src/db/db.module.js';
-import { booking, cubicle, seat, space, user } from '../src/db/schema/index.js';
+import {
+  booking,
+  cubicle,
+  occupancyMark,
+  seat,
+  seatHold,
+  space,
+  user,
+} from '../src/db/schema/index.js';
 import { signedInAgent } from './helpers.js';
 
 /** Direct-insert fixtures for integration tests (the seed is not used; resetDb truncates). */
@@ -13,6 +22,8 @@ import { signedInAgent } from './helpers.js';
 export type SpaceRow = typeof space.$inferSelect;
 export type SeatRow = typeof seat.$inferSelect;
 export type BookingRow = typeof booking.$inferSelect;
+export type HoldRow = typeof seatHold.$inferSelect;
+export type OccupancyMarkRow = typeof occupancyMark.$inferSelect;
 export type CubicleRow = typeof cubicle.$inferSelect;
 export type UserRow = typeof user.$inferSelect;
 
@@ -119,21 +130,23 @@ export async function createSeats(
   return db.insert(seat).values(values).returning();
 }
 
+type PassBookingValues = Omit<typeof booking.$inferInsert, 'kind' | 'holdsActive'>;
+
 /**
- * Inserts a booking row as is, bypassing the API rules (e.g. one that already started).
- * A cancelled booking gets `cancelledAt` unless one is given.
+ * Inserts a pass header as is, bypassing the API rules (hourly rows are refused by
+ * `booking_no_new_hourly`). Defaults make a valid one-day pass; `spaceId` defaults to the seat's
+ * space, and a cancelled booking gets `cancelledAt` unless one is given. It inserts no holds:
+ * use `insertHold`.
  */
-export async function insertBooking(
+export async function insertPassBooking(
   db: Database,
-  values: {
-    seatId: string;
-    userId: string;
-    startsAt: Date;
-    endsAt: Date;
-    status?: 'active' | 'cancelled';
-    cancelledAt?: Date | null;
-  },
+  values: Pick<PassBookingValues, 'seatId' | 'userId' | 'startsAt' | 'endsAt'> &
+    Partial<PassBookingValues>,
 ): Promise<BookingRow> {
+  const spaceId =
+    values.spaceId ??
+    (await db.select({ id: seat.spaceId }).from(seat).where(eq(seat.id, values.seatId)))[0]?.id;
+  const startDate = values.startDate ?? values.startsAt.toISOString().slice(0, 10);
   const cancelledAt =
     values.cancelledAt !== undefined
       ? values.cancelledAt
@@ -142,9 +155,57 @@ export async function insertBooking(
         : null;
   const [row] = await db
     .insert(booking)
-    .values({ ...values, cancelledAt })
+    .values({
+      pass: 'day',
+      slot: 'day',
+      startDate,
+      endDate: startDate,
+      price: '10.00',
+      currency: 'GBP',
+      ...values,
+      spaceId,
+      kind: 'pass',
+      cancelledAt,
+    })
     .returning();
-  if (!row) throw new Error('insertBooking: insert returned no row');
+  if (!row) throw new Error('insertPassBooking: insert returned no row');
+  return row;
+}
+
+/**
+ * Inserts one `seat_hold` as is. It takes no seat lock (the constraint tests need the raw
+ * behaviour). `serviceDate` defaults to the start's UTC date when `bookingId` is given.
+ */
+export async function insertHold(
+  db: Database,
+  values: Pick<typeof seatHold.$inferInsert, 'seatId' | 'startsAt'> &
+    Partial<typeof seatHold.$inferInsert>,
+): Promise<HoldRow> {
+  const serviceDate =
+    values.serviceDate ?? (values.bookingId ? values.startsAt.toISOString().slice(0, 10) : null);
+  const [row] = await db
+    .insert(seatHold)
+    .values({ ...values, serviceDate })
+    .returning();
+  if (!row) throw new Error('insertHold: insert returned no row');
+  return row;
+}
+
+/** Inserts an occupancy mark as is (no hold); `spaceId` defaults to the seat's space. */
+export async function insertOccupancyMark(
+  db: Database,
+  values: Pick<typeof occupancyMark.$inferInsert, 'seatId' | 'createdBy' | 'startDate'> &
+    Partial<typeof occupancyMark.$inferInsert>,
+): Promise<OccupancyMarkRow> {
+  const spaceId =
+    values.spaceId ??
+    (await db.select({ id: seat.spaceId }).from(seat).where(eq(seat.id, values.seatId)))[0]?.id;
+  if (!spaceId) throw new Error('insertOccupancyMark: unknown seat');
+  const [row] = await db
+    .insert(occupancyMark)
+    .values({ ...values, spaceId })
+    .returning();
+  if (!row) throw new Error('insertOccupancyMark: insert returned no row');
   return row;
 }
 

@@ -83,5 +83,7 @@ const Reference = z
   .meta({ id: 'Reference' });
 ```
 
-`timeZones` are suggestions ("suggested from the country", AC 2.1). The first entry is the default; the
-owner may choose any valid zone.
+`timeZones` are suggestions ("suggested from the country", AC 2.1). The first entry is the default. The owner
+may choose any **offered** zone: the union of every country's `timeZones` plus `UTC`, which is exactly what
+`OfferedTimeZone` accepts on `POST`/`PATCH /api/owner/spaces` (OQ-B, decided in T018). The web builds its "All time
+zones" list from this payload, never from `Intl.supportedValuesOf('timeZone')`.

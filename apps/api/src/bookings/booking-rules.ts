@@ -1,8 +1,7 @@
-import { toInstant } from '../common/time/zoned-time.js';
-
 /**
- * The FR-007 booking rules as one pure function (research R-3, ADR-0008 section 1).
- * Overlap rules are not here: the database's exclusion constraints own them.
+ * Problem details of the legacy 001 booking-window rules, kept only for `resolveWindow` in the
+ * legacy availability read until T043 removes it. The evaluator itself went with the hourly create
+ * (T008); pass rules live in `marketplace/booking-rules.ts`.
  */
 
 /** Evaluation order; the first broken rule wins. */
@@ -33,13 +32,6 @@ export const BOOKING_RULE_PROBLEM_TYPE = {
 
 export const INVALID_BOOKING_WINDOW_TITLE = 'Invalid booking window';
 
-/** A booking window in the space's local wall-clock time (already format-validated). */
-export interface LocalWindow {
-  date: string;
-  startTime: string;
-  endTime: string;
-}
-
 export interface RuleViolation {
   rule: BookingRule;
   type: (typeof BOOKING_RULE_PROBLEM_TYPE)[BookingRule];
@@ -47,10 +39,6 @@ export interface RuleViolation {
   detail: string;
 }
 
-const MINUTE_MS = 60_000;
-const MIN_DURATION_MS = 15 * MINUTE_MS;
-const MAX_DURATION_MS = 10 * 60 * MINUTE_MS;
-const MAX_LEAD_MS = 30 * 24 * 60 * MINUTE_MS;
 const OPENS_AT = '07:00';
 const CLOSES_AT = '20:00';
 
@@ -83,40 +71,4 @@ export function ruleViolation(rule: BookingRule, timeZone: string): RuleViolatio
     title: INVALID_BOOKING_WINDOW_TITLE,
     detail: detailFor(rule, timeZone),
   };
-}
-
-const onQuarterHour = (time: string) => Number(time.slice(3, 5)) % 15 === 0;
-
-/**
- * Returns the first rule the window breaks, or null. Format rules run on the wall-clock,
- * duration on real instants (as the database CHECK does), working hours on the wall-clock,
- * and the "now" rules on instants. `HH:mm` strings compare correctly as text.
- */
-export function evaluateBookingRules(
-  window: LocalWindow,
-  timeZone: string,
-  now: Date,
-): RuleViolation | null {
-  const { date, startTime, endTime } = window;
-
-  if (endTime < startTime) return ruleViolation('end-before-start', timeZone);
-  if (!onQuarterHour(startTime) || !onQuarterHour(endTime)) {
-    return ruleViolation('not-on-quarter-hour', timeZone);
-  }
-
-  const start = toInstant(date, startTime, timeZone);
-  const end = toInstant(date, endTime, timeZone);
-  if (start.kind !== 'ok' || end.kind !== 'ok')
-    return ruleViolation('invalid-local-time', timeZone);
-  const startsAt = start.instant.getTime();
-  const duration = end.instant.getTime() - startsAt;
-
-  if (duration < MIN_DURATION_MS) return ruleViolation('too-short', timeZone);
-  if (duration > MAX_DURATION_MS) return ruleViolation('too-long', timeZone);
-  if (startTime < OPENS_AT || endTime > CLOSES_AT) {
-    return ruleViolation('outside-working-hours', timeZone);
-  }
-  if (startsAt <= now.getTime()) return ruleViolation('starts-in-past', timeZone);
-  if (startsAt > now.getTime() + MAX_LEAD_MS) return ruleViolation('too-far-ahead', timeZone);
-  return null;
 }

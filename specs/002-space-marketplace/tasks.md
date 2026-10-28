@@ -34,7 +34,7 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 | T002 | Account role: Better Auth field, migration, role guard       | backend-dev    | T001                   | M    | done   | `feat/002-account-role`               |
 | T003 | Listing schema: space columns, cubicle, seat changes         | backend-dev    | T001                   | M    | done   | `feat/002-listing-schema`             |
 | T004 | Pricing and calendar schema, shared calendar backfill        | backend-dev    | T003                   | M    | done   | `feat/002-pricing-calendar-schema`    |
-| T005 | Pass booking header, seat holds, occupancy marks, exclusions | backend-dev    | T003, T008             | M    | todo   | `feat/002-seat-hold-schema`           |
+| T005 | Pass booking header, seat holds, occupancy marks, exclusions | backend-dev    | T003, T008             | M    | done   | `feat/002-seat-hold-schema`           |
 | T006 | Slot, calendar and pass-period engine (pure, TDD)            | backend-dev    | T001                   | M    | done   | `feat/002-slot-engine`                |
 | T007 | Money, problem types and pass booking rules (pure, TDD)      | backend-dev    | T006                   | M    | done   | `feat/002-pass-rules`                 |
 | T008 | Retire hourly create; legacy space reads published-only      | backend-dev    | T003                   | S    | done   | `chore/002-retire-hourly-create`      |
@@ -43,11 +43,11 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 | T011 | Test plan and traceability skeleton                          | qa-engineer    | T001                   | S    | done   | `test/002-test-plan`                  |
 | T012 | Wire `SEED_DEMO_PASSWORD` into compose and CI                | devops         | T001                   | S    | done   | `chore/002-seed-env`                  |
 | T013 | Renter preferences API                                       | backend-dev    | T002                   | S    | done   | `feat/002-renter-preferences-api`     |
-| T014 | Signed-in shell, role-aware nav, role dashboards             | frontend-dev   | T002, T010             | M    | review | `feat/002-app-nav`                    |
+| T014 | Signed-in shell, role-aware nav, role dashboards             | frontend-dev   | T002, T010             | M    | done   | `feat/002-app-nav`                    |
 | T015 | Sign-up role choice and optional preferences                 | frontend-dev   | T002, T013, T014, T019 | M    | review | `feat/002-sign-up-role`               |
 | T016 | QA US1: accounts and navigation e2e, axe                     | qa-engineer    | T011, T014, T015       | M    | todo   | `test/002-us1-accounts-e2e`           |
 | T017 | Docs US1                                                     | docs-writer    | T016                   | S    | todo   | `docs/002-us1-accounts`               |
-| T018 | UI spec: owner listing, seats, slots and prices              | ui-ux-designer | T010                   | M    | todo   | `docs/002-ui-owner-listing`           |
+| T018 | UI spec: owner listing, seats, slots and prices              | ui-ux-designer | T010                   | M    | done   | `docs/002-ui-owner-listing`           |
 | T019 | Reference data API (countries, currencies, utilities)        | backend-dev    | T001                   | S    | done   | `feat/002-reference-api`              |
 | T020 | Owner spaces API: CRUD, publish, unpublish                   | backend-dev    | T002, T004, T019       | M    | todo   | `feat/002-owner-spaces-api`           |
 | T021 | Seats and cubicles API                                       | backend-dev    | T005, T020             | M    | todo   | `feat/002-seats-cubicles-api`         |
@@ -164,8 +164,9 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given a seat calendar whose `space_id` differs from the seat's space, When inserted, Then `23503`.
     - Given the migrations, When `db:generate` runs again, Then no new migration is produced.
 
-- [ ] T005 Turn `booking` into the pass header and add `seat_hold` and `occupancy_mark` in `apps/api/src/db/schema/booking.ts`; migrations `pass_bookings` (generated) then `seat_hold_exclusions` (custom); fixtures; tests `apps/api/test/seat-hold-constraints.int-spec.ts`; update `apps/api/test/booking-constraints.int-spec.ts`; switch the legacy availability read in `apps/api/src/spaces/spaces.service.ts` to `seat_hold` and update `apps/api/test/spaces.int-spec.ts`
-  - **Owner**: backend-dev · **Branch**: `feat/002-seat-hold-schema` · **Size**: M · **Depends on**: T003, T008 · **Status**: todo
+- [x] T005 Turn `booking` into the pass header and add `seat_hold` and `occupancy_mark` in `apps/api/src/db/schema/booking.ts`; migrations `pass_bookings` (generated) then `seat_hold_exclusions` (custom); fixtures; tests `apps/api/test/seat-hold-constraints.int-spec.ts`; update `apps/api/test/booking-constraints.int-spec.ts`; switch the legacy availability read in `apps/api/src/spaces/spaces.service.ts` to `seat_hold` and update `apps/api/test/spaces.int-spec.ts`
+  - **Owner**: backend-dev · **Branch**: `feat/002-seat-hold-schema` · **Size**: M · **Depends on**: T003, T008 · **Status**: done (QA: 489 api tests, check green, seat-lock spec stable 5x; review fixes incl. single bound uuid array param)
+  - **Migration note (T005 review)**: `0009_pass_bookings.sql` was hand-reordered so `booking_hold_key_unique` precedes `seat_hold_booking_fk` (the FK needs that unique key). Regenerating `0009` emits them in the wrong order and needs the same fix.
   - **Added (T008 review)**: `src/bookings/seat-lock.ts` `withSeatLock` is 001's lock (`hashtextextended(seatId, 0)`), kept only until this task. Generalise it into `withSeatLocks(db, seatIds, work, { classify, onRetry?, onLockTimeout? })` built on `lockSeats` (ADR-0009 section 9; sorted, deduplicated, ascending keys) and delete the `hashtextextended` call, so there is one transaction and retry wrapper and one lock SQL (two lock schemes would never exclude each other and bring back the 001 deadlock). `classify` maps the `seat_hold_*_no_overlap` constraints to 409s (`classifyInsertError` only knows the dropped `booking_*` ones). Rewrite the race test in `test/bookings-retired.int-spec.ts` (it inserts hourly rows, which `booking_no_new_hourly` refuses) and move it to `test/seat-lock.int-spec.ts`.
   - **Added (T008 review)**: remove `evaluateBookingRules` and its spec in `src/bookings/booking-rules.ts`; it has no production caller since T008 (keep `ruleViolation`, which `resolveWindow` uses until T043).
   - **Scope**: data-model.md "booking (changed)", "occupancy_mark", "seat_hold" and the backfill SQL, verbatim; ADR-0009 sections 2, 3 and 6. Constraints: `booking_pass_complete`, `booking_pass_length` (`end_date - start_date = CASE pass WHEN 'day' THEN 0 WHEN 'week' THEN 6 ELSE 29 END`), `booking_price_positive`; 001's `booking_duration_bounds` and `booking_quarter_hour` re-created as `kind <> 'hourly' OR (…)`; `seat_hold_one_source`, `seat_hold_user_iff_booking`, `seat_hold_booking_bounded`, `seat_hold_ends_after_starts`, `seat_hold_booking_max_length` (`<= interval '26 hours'`); occupancy `note` ≤ 200. **Consistency keys (generated migration, AQ-7):** `booking.holds_active boolean GENERATED ALWAYS AS (status = 'active') STORED` (check the SQL says `STORED`), `booking_hold_key_unique (id, seat_id, user_id, holds_active)`, `seat_hold_booking_fk (booking_id, seat_id, user_id, active) → booking (id, seat_id, user_id, holds_active) ON UPDATE CASCADE ON DELETE CASCADE`, `occupancy_mark_id_seat_id_unique (id, seat_id)`, `seat_hold_occupancy_mark_fk (occupancy_mark_id, seat_id) → occupancy_mark (id, seat_id) ON DELETE CASCADE`, unique `seat_hold.occupancy_mark_id`. Custom migration in this order: the two `seat_hold` exclusions (`WHERE ("active")` and `WHERE ("active" AND "user_id" IS NOT NULL)`), the backfill of active, not-ended hourly bookings, `booking_no_new_hourly CHECK (kind <> 'hourly') NOT VALID`, then `DROP CONSTRAINT booking_seat_no_overlap` and `booking_user_no_overlap`. T008 must be merged first (R-7). The legacy `GET /api/spaces/{id}/availability` reads `taken` from active `seat_hold` rows (joined from `seat`, predicate spelled as the constraint, ADR-0009 section 7) instead of `booking`; the hourly `insertBooking` fixture is replaced by `insertPassBooking` / `insertHold` (hourly inserts now fail `booking_no_new_hourly`). Tests first. Fixtures `insertPassBooking`, `insertHold`, `insertOccupancyMark`. **OQ-3** decides the backfill. Also add the `lockSeats(tx, seatIds)` helper from ADR-0009 section 9 (one place for the lock class constant and the SQL), with a unit or integration test of its ordering and de-duplication.
@@ -278,8 +279,8 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given an owner, When it calls the PUT, Then 403. Given `country: "XX"` or a 101-char city, Then 400.
     - Given `bin/pnpm gen:api`, Then `UpdatePreferencesInput`, `Preferences` and the new `Me` field are committed.
 
-- [ ] T014 [US1] Add the signed-in shell `apps/web/src/app/(app)/layout.tsx`, `apps/web/src/components/app-nav.tsx` (+ test), `apps/web/src/lib/nav.ts` (+ route-manifest test), role dashboards in `apps/web/src/app/(app)/dashboard/page.tsx`, and widen the matcher in `apps/web/src/proxy.ts`
-  - **Owner**: frontend-dev · **Branch**: `feat/002-app-nav` · **Size**: M · **Depends on**: T002, T010 · **Status**: review
+- [x] T014 [US1] Add the signed-in shell `apps/web/src/app/(app)/layout.tsx`, `apps/web/src/components/app-nav.tsx` (+ test), `apps/web/src/lib/nav.ts` (+ route-manifest test), role dashboards in `apps/web/src/app/(app)/dashboard/page.tsx`, and widen the matcher in `apps/web/src/proxy.ts`
+  - **Owner**: frontend-dev · **Branch**: `feat/002-app-nav` · **Size**: M · **Depends on**: T002, T010 · **Status**: done
   - **Scope**: research R-16; ui/01. This is the early navigation fix the requester asked for: it links only pages that exist (typedRoutes), so "Find a space" points at the existing `/book` until T039 switches it to `/find`. Renter dashboard: "Find a space" link and an empty state that points to search (the next-booking summary arrives in T057). Owner dashboard: heading and the slot for the spaces list (T023). Matcher covers `/dashboard`, `/book`, `/find`, `/spaces`, `/bookings`, `/owner`.
   - **Acceptance criteria**:
     - Given `useMeGet` returns a renter, When any `(app)` page renders, Then the main nav shows the renter links with `aria-current` on the active one; Given an owner, Then the owner links (FR-004, AC 1.5, OQ-9).
@@ -303,6 +304,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 
 - [ ] T016 [US1] QA: `apps/web/e2e/accounts-nav.spec.ts` (journeys + axe); set T002, T013, T014 and T015 to `done` when green
   - **Owner**: qa-engineer · **Branch**: `test/002-us1-accounts-e2e` · **Size**: M · **Depends on**: T011, T014, T015 · **Status**: todo
+  - **Follow-up**: Sign out has no pending state; disable it while signing out so a double click doesn't send two requests (T014 code-review follow-up)
   - **Scope**: test-plan.md sections 6 and 7.1 to 7.3. Until T057 lands, the renter dashboard is asserted by its neutral card and the "Find a space" link, never by "You have no upcoming bookings" (T059 asserts that text).
   - **Acceptance criteria**:
     - Given a new visitor, When they sign up as a renter and then as an owner (two accounts), Then each lands on its dashboard and every nav page opens by clicking and by keyboard only (AC 1.1–1.5, FR-004).
@@ -328,8 +330,8 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 **Goal**: an owner creates a complete listing with seats and cubicles, and publishes or unpublishes it.
 **Independent test**: create a space with all details and 10 seats, add a price (fixture or US3), publish, and confirm it is searchable (search itself is verified in T044).
 
-- [ ] T018 [P] [US2] Write `specs/002-space-marketplace/ui/02-owner-listing.md`
-  - **Owner**: ui-ux-designer · **Branch**: `docs/002-ui-owner-listing` · **Size**: M · **Depends on**: T010 · **Status**: todo
+- [x] T018 [P] [US2] Write `specs/002-space-marketplace/ui/02-owner-listing.md`
+  - **Owner**: ui-ux-designer · **Branch**: `docs/002-ui-owner-listing` · **Size**: M · **Depends on**: T010 · **Status**: done (architect review 2026-10-28; docs-only, so no QA step, approved by the requester; OQ-A to OQ-H decided in ui/02 section 11)
   - **Scope**: owner dashboard spaces list and empty state, space form (country → suggested time zone, currency, opening hours radio + times, utilities checkboxes + up to 5 custom), space overview with status and publish/unpublish (including the "what is missing" refusal), seats page (list, add one, bulk pattern with preview, rename, cubicle assign, remove with the future-bookings refusal, 200 limit), cubicles, and the pricing page (shift time, slot toggles with derived times, price grid with currency, empty = not offered). Exact copy for every problem type these screens can receive.
   - **Acceptance criteria**:
     - Given each screen, When read, Then all eight states are specified (FR-032).
@@ -353,6 +355,12 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
   - **Added (T019 review)**: validate the stored time zone with `isOfferedTimeZone` (`reference/reference-data.ts`, allow-list of suggested zones plus UTC) and `.max(64)`; reuse `CountryCode`, `CurrencyCode` from `common/schemas/field-formats.ts`.
   - **Boundary assumptions (T006 security review)**: dates `YYYY-MM-DD` within years 0100-9998; server-side max span for any iterated date range and max seats per request; `slot`/`pass` as `z.enum` matching the opening mode; calendar weekdays 1-127 and `endDate >= startDate`; services catch `RangeError` from the slot modules and map it to a typed problem or treat the date as closed.
   - **Added (T006 review)**: Zod enforces shift change time 00:00-11:59 with a clear message; time zone is validated (`isValidTimeZone`, max ~64 chars, stored canonical) and only ever taken from the stored space.
+  - **Added (T018 review, ui/02 section 11; contracts/owner-spaces.md "Decided in the T018 review")**:
+    - **OQ-A**: `shiftChangeAt` stays required for `always_open` on create (the web prefills 07:00); `PATCH` `openingHours` and T027's `PUT …/pricing` write the same column.
+    - **OQ-B**: `timeZone` is `OfferedTimeZone` (reference zones plus `UTC`); no other zone is accepted. This settles the conflict with T022's former "all `Intl` zones".
+    - **OQ-G (assumption)**: currency and opening mode can change in any status, with or without prices or bookings; amounts are not converted and bookings keep their snapshot.
+    - **Slot rows**: create inserts the `space_slot` rows of the chosen mode with `enabled = true`; a `PATCH` that switches mode inserts the new mode's missing rows (`ON CONFLICT DO NOTHING`) and never touches the other mode's rows or prices.
+    - `UpdateSpaceInput`: every field optional, no defaults (an absent `utilities` is not reset), at least one field; `openingHours` is replaced whole.
   - **Acceptance criteria**:
     - Given an owner, When `POST /api/owner/spaces` with every required field, Then 201 `OwnerSpace` with `status: "draft"`, and a shared calendar from today (local), no end, all days exists (AC 2.1, FR-006, AC 6.1).
     - Given a body missing any required field, a 101-char name, a 2,001-char description, an unknown country, an invalid time zone, an unknown currency, fixed hours with closing ≤ opening, or six custom utilities, When posted, Then 400 naming the field (FR-006, AC 2.1, AC 2.2).
@@ -360,12 +368,16 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given a draft with a seat and a price (fixtures), When published, Then 200 `published`; When unpublished, Then 200 `unpublished` and an existing booking row is unchanged (AC 2.5).
     - Given owner B, When B calls GET, PATCH, publish or unpublish on A's space, Then each returns a 404 identical to a random UUID (FR-009, AC 2.6). Given a renter, Then 403.
     - Given `GET /api/owner/spaces`, When called by A, Then only A's spaces return, ordered by name (AC 1.4).
+    - Given a time zone that is valid in `Intl` but not offered (`Asia/Calcutta`), When posted, Then 400 on `timeZone`; Given `UTC`, Then 201 (OQ-B).
+    - Given a published 24-hour space with prices, When `PATCH` switches it to fixed hours and back, Then it stays published, a `working_hours` slot row exists, and the day, night and 24-hour prices are unchanged after the switch back (OQ-G, edge "switching mode").
     - Given `gen:api`, Then the listing schemas are committed.
 
 - [ ] T021 [US2] Add seats and cubicles to `apps/api/src/owner-spaces/` with `apps/api/test/owner-seats.int-spec.ts`; regenerate `apps/api/openapi.json`
   - **Owner**: backend-dev · **Branch**: `feat/002-seats-cubicles-api` · **Size**: M · **Depends on**: T005, T020 · **Status**: todo
   - **Problem factories (T007 review)**: Create problems with extensions only through the factories in `common/errors/problem-types.ts`; don't call `new ProblemException` with extensions directly.
   - **Carry-over (T003 review)**: every seat read and booking path filters `removed_at IS NULL` (legacy availability, list and create already do).
+  - **Added (T018 review, OQ-D)**: cubicle `name` is `PlainText` 1–100 after trim (the merged `cubicle_name_length` check); seat `features` at most 10, each 1–40 after trim, no repeats ignoring case; the bulk pattern refines `to >= from`, at most 200 labels (path `pattern.to`) and every generated label at most 20 characters (path `pattern.prefix`). Generate migration `seat_features_max` (`CHECK cardinality(features) <= 10`).
+  - **Follow-up (T018 review, problem copy registry)**: update the `labelTaken` factory in `common/errors/problem-types.ts` to title "Seat label already used" and detail "Another active seat in this space already uses that label. Choose a different label.", and the `alreadyOccupied` factory detail to "You've already marked some of these seats occupied on those dates." (contracts/README.md "Problem copy registry"). Extend `problem-types.spec.ts` so it asserts the exact `title` and `detail` of all four factories. The problems this task throws directly (`seat-limit`, `cubicle-name-taken`, `seat-has-future-bookings`) use the registry text, asserted in the int tests.
   - **Scope**: contracts/owner-spaces.md "Seats and cubicles"; research R-15 (space row `FOR UPDATE` for the cap, seat `FOR UPDATE` for removal). Cubicle delete per **OQ-6** is a **soft** removal of the cubicle and its seats in one transaction (architect, T001). Label conflicts use `LabelTakenProblem`; duplicate cubicle names are 409 `listing:cubicle-name-taken`. `OwnerSeat.today` returns `vacant` with null note until T047; `calendar` returns `shared` until T051.
   - **Acceptance criteria**:
     - Given a space, When `POST …/seats` with pattern `{ prefix: "A-", from: 1, to: 20 }`, Then 201 with seats `A-1` … `A-20` (AC 2.3).
@@ -375,11 +387,12 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given a cubicle whose seat has a future booking, When deleted, Then 409 and nothing changes (edge, OQ-6); Given a cubicle whose seats have only past bookings, When deleted, Then 204, the cubicle and its seats have `removed_at` set, and a past booking still reports its `cubicleName`.
     - Given an active cubicle `Bay 1`, When another is created or one is renamed to `Bay 1`, Then 409 `listing:cubicle-name-taken`.
     - Given seat features and a cubicle, When created and renamed, Then the list shows them (AC 2.3).
+    - Given 11 features, a 41-character feature, a repeated feature, or a 101-character cubicle name, Then 400 on that field; Given a pattern whose last label exceeds 20 characters, Then 400 on `pattern.prefix` (OQ-D).
     - Given owner B, When B touches A's seats or cubicles, Then 404 parity (FR-009). Given `gen:api`, Then the seat and cubicle schemas are committed.
 
 - [ ] T022 [US2] Build `apps/web/src/components/space-form.tsx` (+ test) and `apps/web/src/app/(app)/owner/spaces/new/page.tsx`; add "List a space" to the owner nav
   - **Owner**: frontend-dev · **Branch**: `feat/002-space-form` · **Size**: M · **Depends on**: T014, T018, T019, T020 · **Status**: todo
-  - **Scope**: ui/02. RHF + Zod (mirrors `CreateSpaceInput`), `useReferenceGet`, `useOwnerSpacesCreate`. Time zone suggested from the country and changeable (all zones from `Intl.supportedValuesOf('timeZone')`). The form is reused for editing in T023.
+  - **Scope**: ui/02. RHF + Zod (mirrors `CreateSpaceInput`), `useReferenceGet`, `useOwnerSpacesCreate`. Time zone suggested from the country and changeable among the offered zones: the union of `countries[].timeZones` in `/api/reference` plus `UTC`, never `Intl.supportedValuesOf('timeZone')` (OQ-B, decided in T018; ui/02 4.2). The form is reused for editing in T023.
   - **Acceptance criteria**:
     - Given the form, When submitted empty, Then each required field shows its error tied by `aria-describedby`, and no request is sent (AC 2.1).
     - Given country IN is chosen, When the time zone field updates, Then it suggests `Asia/Kolkata` and can be changed (AC 2.1).
@@ -400,7 +413,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 - [ ] T024 [US2] Seats page `apps/web/src/app/(app)/owner/spaces/[spaceId]/seats/page.tsx` with `components/seat-manager.tsx` and `components/bulk-seat-form.tsx` (+ tests); add "Seats" to the sub-nav
   - **Owner**: frontend-dev · **Branch**: `feat/002-seats-page` · **Size**: M · **Depends on**: T021, T023 · **Status**: todo
   - **Acceptance criteria**:
-    - Given the bulk form with `A-` 1 to 20, When submitted, Then a preview names the first and last label and, after confirm, 20 seats are listed (AC 2.3).
+    - Given the bulk form with `A-` 1 to 20, When filled in, Then the preview names the first and last label, and When "Add 20 seats" (the confirm, OQ-C) is pressed, Then 20 seats are listed (AC 2.3).
     - Given a duplicate label or the 200 limit, When the API refuses, Then the ui/02 copy shows in an alert (FR-007).
     - Given a seat with future bookings, When Remove is confirmed, Then the refusal copy shows and the seat stays (edge).
     - Given rename and cubicle assignment, When saved, Then the list updates (AC 2.3). All states per ui/02 (FR-032).
@@ -432,12 +445,15 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
   - **Owner**: backend-dev · **Branch**: `feat/002-pricing-api` · **Size**: M · **Depends on**: T007, T020 · **Status**: todo
   - **Added (T004 review)**: the money input is a Zod string matching `^(0|[1-9]\d{0,9})(\.\d{1,2})?$`, value > 0, with an explicit upper bound. Never `z.coerce.number()`. Postgres rounds sub-cent values silently (`10.005` becomes `10.01`) and a value >= 10^10 raises 22003. The service must set `pass_price.updated_at` on update.
   - **Scope**: contracts/owner-spaces.md "Pricing". Slot times come from `slots.ts`. Changing `shiftChangeAt` or `openingHours` never touches bookings (edge).
+  - **Added (T018 review, ui/02 section 11)**: `PUT` replaces the current mode's pricing only, and `slots` must hold each of the mode's kinds exactly once (400 otherwise); `shiftChangeAt` only for `always_open` (400 on a fixed-hours space), omitted = unchanged, same column as `PATCH` `openingHours` (OQ-A). **OQ-E**: a slot sent with `enabled: false` keeps the prices sent with it and `GET` returns them, but none is offered until it is enabled. **OQ-F (assumption)**: two decimals are accepted for every currency, JPY included; output always has two decimals. **OQ-G**: prices are never converted when the currency changes.
   - **Boundary assumptions (T006 security review)**: see T007.
   - **Acceptance criteria**:
     - Given a 24-hour space, When `PUT` sets shift 07:00 and enables day, night and full_day, Then `GET` returns three slots with 07:00–19:00, 19:00–07:00 (`endsNextDay`) and 07:00–07:00 (`endsNextDay`) (AC 3.1, FR-010).
     - Given a fixed-hours space 09:00–18:00, When `GET`, Then exactly one `working_hours` slot 09:00–18:00; When a `PUT` tries to disable it or enable `day`, Then 400 (AC 3.2).
     - Given a day price and an empty weekly price, When saved, Then the weekly pass is not offered (null) (AC 3.3, FR-011).
     - Given `"0"`, `"12.345"` or a negative price, When saved, Then 400; prices are returned in the space's currency with two decimals (AC 3.4).
+    - Given the night slot is saved with `enabled: false` and a day price, When `GET`, Then the price is returned and the slot reads disabled, and the publish check and T028's offers ignore it (OQ-E).
+    - Given a JPY space, When `"1500.50"` is saved, Then 200 and `GET` returns `"1500.50"` (OQ-F).
     - Given an existing booking at 500.00, When the price changes to 600.00, Then the booking still reads 500.00 (AC 3.6, FR-013; booking fixture).
     - Given another owner, Then 404 parity. Given `gen:api`, Then `SpacePricing` and `UpdatePricingInput` are committed.
 
@@ -522,10 +538,13 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 
 - [ ] T036 [US4] Add `POST /api/listings/{spaceId}/bookings` to `apps/api/src/bookings/` (schemas, service, controller, `bookings.service.spec.ts`) with `apps/api/test/pass-bookings.int-spec.ts`; regenerate `apps/api/openapi.json`
   - **Owner**: backend-dev · **Branch**: `feat/002-create-pass-booking-api` · **Size**: M · **Depends on**: T008, T035 · **Status**: todo
+  - **Note (T005 review)**: decide how SQLSTATE `57014` (statement timeout under load) maps, probably a retryable 409 or 503 (with T044). Race tests may need `SET LOCAL statement_timeout`, as in da090b8. Also test that (a) a pass header with no holds blocks nothing and (b) the DB does not enforce that the header start/end match its holds (security residual risk).
   - **Follow-up (T007 review)**: the duplicate problem URNs in `apps/api/src/bookings/booking-conflicts.ts` and `bookings/booking-rules.ts` should import from `PROBLEM_TYPES` (`common/errors/problem-types.ts`); use the `labelTaken`, `publishIncomplete` and `occupancyConflict` factories, never raw extension objects.
   - **Added (T008 review)**: inside the lock's `work`, re-read the seat (`FOR SHARE`) joined to its space with `seat.removed_at IS NULL`: an unknown, removed or other-space seat, or a seat of a `draft` space, gets the same 404 as a random UUID; an `unpublished` space gets 422 `booking-rule:space-not-published` (contracts/bookings.md, FR-020), so an unpublish that commits between the rule check and the insert is still refused (int test). T008 removed `BookingsModule`, the `Caller` type and the `clockProvider` wiring: create a new module.
   - **Added (T008 security)**: decide every 404 (draft space, unknown, removed or other-space seat) before any `booking-rule:*` 422, including `own-space` and `pass-not-offered`, so a draft id gets the same 404 body (minus `instance`) as a random UUID even when the caller owns it or the slot is not offered (int test). The in-lock re-read locks both rows (`… FROM seat JOIN space … FOR SHARE OF seat, space`) so a concurrent unpublish waits and is refused, not raced.
   - **Added (T004 review)**: when the space has no shared calendar, every start day is closed (fail closed): `startDayOpen` and the pass-period dates never assume an open calendar.
+  - **Added (T005 review follow-up, architect 2026-10-28; ADR-0009 section 3 amendment)**: booking headers are immutable after insert apart from the cancel transition. Add the custom migration `booking_identity_immutable`: a PL/pgSQL function plus a `BEFORE UPDATE OF id, seat_id, user_id, space_id ON booking FOR EACH ROW` trigger that raises `check_violation` with `CONSTRAINT = 'booking_identity_immutable'` when any of the four changes (`IS DISTINCT FROM`). Int tests: updating each column fails `23514` with that constraint name and leaves the holds unchanged; cancel still cascades `active = false`; deleting the renter still cascades. Map it as "other → 500" (no new problem type).
+  - **Added (T018 review, problem copy registry)**: every problem this task throws uses the title and detail in contracts/README.md "Problem copy registry": `seat-unavailable` detail says "that period", `too-far-ahead` title is "Too far ahead" (not 001's "Invalid booking window"), and the five new `booking-rule:*` types use their registry text. Unit tests assert both strings.
   - **Scope**: contracts/bookings.md (processing steps 1–4 and 6; emails are T037). Transaction that starts with `SET LOCAL lock_timeout = '5s'` and `lockSeats` (ADR-0009 section 9), then seat `FOR SHARE`, header + holds in chronological order, error mapping from `DrizzleQueryError.cause` by constraint name, `40P01` retries the whole transaction (max 3, `warn` log per retry), injected `Clock`. Unit tests of the mapping and retry first.
   - **Acceptance criteria**:
     - Given a free seat, When a renter books `pass=week, slot=day, startDate=next Monday`, Then 201 `Booking` with 7 `days`, the price and currency snapshot, and availability shows the seat `taken` for that week (AC 4.5, FR-017, FR-013).
@@ -593,6 +612,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 
 - [ ] T043 [US4] Retire the legacy spaces API: remove `apps/api/src/spaces/` (move or delete `resolveWindow`), its tests and registration; regenerate `apps/api/openapi.json`
   - **Owner**: backend-dev · **Branch**: `chore/002-retire-legacy-spaces-api` · **Size**: S · **Depends on**: T042 · **Status**: todo
+  - **Note (T005 review)**: legacy hourly rows cannot be updated at all (not even cancelled) because of `booking_no_new_hourly`. Any legacy release must DELETE the row, or relax the check to allow a status-only change.
   - **Follow-up (T007 review)**: when the legacy files are removed or touched, make any remaining problem URNs import from `PROBLEM_TYPES` instead of duplicating the literals.
   - **Acceptance criteria**:
     - Given the API, When `GET /api/spaces` or `GET /api/spaces/{id}/availability` is called, Then 404 (R-7 step 6).
@@ -600,6 +620,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 
 - [ ] T044 [US4] QA: `apps/web/e2e/search-book.spec.ts` (journey + axe), `apps/api/test/booking-races.int-spec.ts` (mixed slots), `apps/api/test/marketplace.perf-spec.ts`; set T034–T043 to `done` when green
   - **Owner**: qa-engineer · **Branch**: `test/002-us4-search-book-e2e` · **Size**: M · **Depends on**: T009, T037, T038, T042 · **Status**: todo
+  - **Note (T005 review)**: decide how SQLSTATE `57014` (statement timeout under load) maps (see T036). The race tests may need `SET LOCAL statement_timeout`, as in da090b8.
   - **Scope**: e2e picks dates 2–28 days ahead and the first free seat (avoid collisions with persisted dev data, 001 T014 lesson). Use a sturdy sign-up helper (API sign-up, wait for hydration), no retries-only fixes.
   - **Perf spec**: `marketplace.perf-spec.ts` (suffix `.perf-spec.ts`, so it does not match the `test/**/*.int-spec.ts` include in `apps/api/vitest.config.ts`) runs only through its own vitest config or project and a dedicated `@bseat/api` script that QA runs; it is excluded from the default `bin/pnpm test` so it neither slows the suite nor disturbs the shared test DB (test-plan.md sections 5 and 8). Whether CI runs it is a devops follow-up (Notes).
   - **Acceptance criteria**:
@@ -635,6 +656,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
 
 - [ ] T047 [US5] Add occupancy to `apps/api/src/owner-operations/` (`GET`/`POST …/occupancy`, `POST …/occupancy/{markId}/end`) and fill `OwnerSeat.today` in `apps/api/src/owner-spaces/`, with `apps/api/test/occupancy.int-spec.ts`; regenerate `apps/api/openapi.json`
   - **Owner**: backend-dev · **Branch**: `feat/002-occupancy-api` · **Size**: M · **Depends on**: T006, T021 · **Status**: todo
+  - **Note (T005 security review)**: validate the occupancy seat list with `z.uuid()` and `.max(200)` at the boundary (the lock cap is 200, ADR-0009 section 9.2).
   - **Problem factories (T007 review)**: Create problems with extensions only through the factories in `common/errors/problem-types.ts`; don't call `new ProblemException` with extensions directly.
   - **Added (T008 review)**: inside the lock's `work`, re-read each seat with `seat.removed_at IS NULL`, `seat.space_id = :spaceId` and `space.owner_id = caller`; any miss gets 404 (int test). Occupancy is allowed on draft and unpublished spaces the caller owns, as contracts/owner-operations.md states (unpublishing leaves bookings and marks untouched).
   - **Added (T008 security)**: a miss returns one generic 404 that never lists which `seatIds` were not found (they may belong to another owner): compare rows found with the count of distinct ids. The `{spaceId}` path itself is also checked against `space.owner_id = caller`.
@@ -1017,7 +1039,8 @@ Level 12: T071
 
 ## Open questions (human decision needed)
 
-- Label-taken detail and all problem titles aren't in contracts/README.md; architect to add them so copy has one source.
+- ~~Architect (T005 review): should the header `seat_id` and `user_id` be immutable?~~: resolved in the T018 review. ADR-0009 section 3 makes the booking header identity immutable; the `booking_identity_immutable` trigger migration is a T036 note.
+- ~~Label-taken detail and all problem titles aren't in contracts/README.md~~: resolved in the T018 review. contracts/README.md "Problem copy registry" is the single source; the factory updates are a T021 follow-up and the booking types a T036 note.
 - Open follow-up (T007 security review): `X-Request-Id` in `apps/api/src/app.module.ts:32` is trusted without a length or format check, and an empty header yields `''`. Needs a decision (owner: devops/backend-dev) on a format limit and a fallback to a generated id.
 
 See [plan.md → Open questions](./plan.md#open-questions) (OQ-1 to OQ-12) and the architect questions (AQ-1 to AQ-8).
