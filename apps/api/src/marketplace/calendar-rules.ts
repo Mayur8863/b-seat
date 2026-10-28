@@ -24,3 +24,11 @@ export function isOpen(calendar: Calendar, date: string): boolean {
 export function resolveCalendar(own: Calendar | null, shared: Calendar): Calendar {
   return own ?? shared;
 }
+
+export type WeekdayName = keyof typeof WEEKDAY_BITS;
+export const WEEKDAY_NAMES = Object.keys(WEEKDAY_BITS) as [WeekdayName, ...WeekdayName[]];
+
+/** Inverse of `weekdayMask`, in Monday-first order. */
+export function weekdaysOf(mask: number): WeekdayName[] {
+  return WEEKDAY_NAMES.filter((day) => (mask & WEEKDAY_BITS[day]) !== 0);
+}

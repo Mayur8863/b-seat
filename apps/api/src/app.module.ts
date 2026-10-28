@@ -14,6 +14,7 @@ import { validationPipe } from './common/errors/validation.js';
 import { type Env, loadEnv } from './config/env.js';
 import { DbModule } from './db/db.module.js';
 import { HealthController } from './health/health.controller.js';
+import { CalendarsModule } from './owner-operations/calendars.module.js';
 import { LayoutModule } from './owner-operations/layout.module.js';
 import { OccupancyModule } from './owner-operations/occupancy.module.js';
 import { ListingsModule } from './listings/listings.module.js';
@@ -62,6 +63,7 @@ import { SpacesModule } from './spaces/spaces.module.js';
     MeModule,
     OwnerSpacesModule,
     ListingsModule,
+    CalendarsModule,
     LayoutModule,
     OccupancyModule,
   ],
