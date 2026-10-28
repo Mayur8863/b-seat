@@ -115,7 +115,7 @@ describe('ListingSearchForm', () => {
     await user.selectOptions(screen.getByLabelText('Country'), 'IN');
     await user.type(screen.getByLabelText('Start date (optional)'), '2020-01-01');
     await user.click(screen.getByRole('button', { name: 'Search' }));
-    expect(await screen.findByText(/^Choose a date from /)).toBeInTheDocument();
+    expect(await screen.findByText('Choose a date within the next 30 days.')).toBeInTheDocument();
     expect(push).not.toHaveBeenCalled();
   });
 
