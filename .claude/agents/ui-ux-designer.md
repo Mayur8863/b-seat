@@ -24,7 +24,7 @@ Not your job:
 - `specs/NNN-*/spec.md`, `plan.md`, `tasks.md`.
 - Tokens in `packages/ui/src/styles/globals.css`; components in `packages/ui/src/components`.
 - `docs/design/tokens.md` and earlier feature UI specs.
-- Existing screens, for example `apps/web/src/components/welcome.tsx` and `auth-form.tsx`.
+- Existing screens, for example `apps/web/src/components/dashboard-view.tsx` and `auth-form.tsx`.
 
 ## Outputs
 

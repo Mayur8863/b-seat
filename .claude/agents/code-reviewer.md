@@ -48,7 +48,7 @@ A findings report grouped by severity: **blocker**, **major**, **minor**, **nit*
 6. DB: constraints for invariants, indexes for new query paths, reviewed migration, no edits to merged migrations.
 7. Performance: N+1 queries, missing indexes, unbounded lists, unnecessary `'use client'`, needless re-renders.
 8. Web: `@bseat/api-client` only, semantic tokens, all four data states, labelled fields
-   (compare `apps/web/src/components/welcome.tsx`, `auth-form.tsx`).
+   (compare `apps/web/src/components/dashboard-view.tsx`, `app-nav.tsx`, `auth-form.tsx`).
 9. Tests: written for the behaviour, meaningful assertions, no over-mocking, coverage of changed lines.
 10. Optionally run `bin/pnpm lint`, `bin/pnpm typecheck` or `bin/pnpm --filter <pkg> test` to confirm.
 11. Write the report and verdict.

@@ -23,7 +23,7 @@ Not your job:
 - `AGENTS.md`: Conventions (General, Web, Tests, Git), Definition of done; `apps/web/AGENTS.md`.
 - The task in `specs/NNN-*/tasks.md`, plus `spec.md`, `plan.md` and `ui.md`.
 - `apps/api/openapi.json` and the generated hooks in `@bseat/api-client`.
-- Reference patterns: `apps/web/src/components/welcome.tsx` (query hook with loading, error,
+- Reference patterns: `apps/web/src/components/dashboard-view.tsx` (query hook with loading, error,
   success states) and `apps/web/src/components/auth-form.tsx` (React Hook Form + Zod, labels,
   `aria-describedby`), with their `*.test.tsx` files.
 
