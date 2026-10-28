@@ -29,20 +29,3 @@ export function derivedTimes(shift: string) {
     full_day: { start: shift, end: shift, nextDay: true },
   };
 }
-
-/** Exact-decimal display: the string goes straight to Intl, never through a float (ui/02 8.3). */
-export function formatMoney(amount: string, currency: string): string {
-  const digits =
-    new Intl.NumberFormat('en', { style: 'currency', currency }).resolvedOptions()
-      .maximumFractionDigits ?? 2;
-  const cents = amount.split('.')[1] ?? '';
-  const hasCents = /[1-9]/.test(cents);
-  const min = digits < 2 && !hasCents ? digits : Math.max(digits, 2);
-  return new Intl.NumberFormat('en', {
-    style: 'currency',
-    currency,
-    currencyDisplay: 'symbol',
-    minimumFractionDigits: min,
-    maximumFractionDigits: Math.max(digits, 2),
-  }).format(amount as unknown as number);
-}

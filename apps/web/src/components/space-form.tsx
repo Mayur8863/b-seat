@@ -24,7 +24,6 @@ import { Textarea } from '@bseat/ui/components/textarea';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQueryClient } from '@tanstack/react-query';
 import { CircleCheckIcon, Loader2Icon } from 'lucide-react';
-import type { Route } from 'next';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useId, useRef, useState } from 'react';
@@ -239,11 +238,7 @@ export function SpaceForm(props: Props) {
               typeof part === 'string' ? (
                 part
               ) : (
-                <Link
-                  key={part.href}
-                  href={part.href as Route}
-                  className="underline underline-offset-4"
-                >
+                <Link key={part.href} href={part.href} className="underline underline-offset-4">
                   {part.text}
                 </Link>
               ),

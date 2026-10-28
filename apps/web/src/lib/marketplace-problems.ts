@@ -1,4 +1,5 @@
 import { ApiError } from '@bseat/api-client';
+import type { Route } from 'next';
 
 import { safeNext } from './safe-next';
 import type { ProblemCopy } from './problem-copy';
@@ -58,7 +59,10 @@ export function describeOwnerProblem(
       return {
         title: 'Your session has ended',
         description: [
-          { text: 'Sign in', href: `/sign-in${next ? `?next=${encodeURIComponent(next)}` : ''}` },
+          {
+            text: 'Sign in',
+            href: `/sign-in${next ? `?next=${encodeURIComponent(next)}` : ''}` as Route,
+          },
           ' again to continue.',
         ],
       };
@@ -142,7 +146,7 @@ export function describeBookProblem(
   if (is('booking-rule:own-space')) {
     return out('This is your space', [
       "You can't book a seat in your own space. Mark it occupied instead. ",
-      { text: 'Manage seats', href: `/owner/spaces/${ctx.spaceId}/seats` },
+      { text: 'Manage seats', href: `/owner/spaces/${ctx.spaceId}/seats` as Route },
     ]);
   }
   if (is('booking-rule:pass-not-offered')) {

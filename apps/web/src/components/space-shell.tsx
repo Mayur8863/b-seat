@@ -5,7 +5,6 @@ import { Alert, AlertDescription, AlertTitle } from '@bseat/ui/components/alert'
 import { Badge } from '@bseat/ui/components/badge';
 import { Button } from '@bseat/ui/components/button';
 import { Skeleton } from '@bseat/ui/components/skeleton';
-import type { Route } from 'next';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
@@ -62,11 +61,7 @@ export function SpaceShell({ spaceId, children }: { spaceId: string; children: R
               typeof part === 'string' ? (
                 part
               ) : (
-                <Link
-                  key={part.href}
-                  href={part.href as Route}
-                  className="underline underline-offset-4"
-                >
+                <Link key={part.href} href={part.href} className="underline underline-offset-4">
                   {part.text}
                 </Link>
               ),

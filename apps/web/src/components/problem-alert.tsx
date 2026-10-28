@@ -2,7 +2,6 @@
 
 import { Alert, AlertDescription, AlertTitle } from '@bseat/ui/components/alert';
 import { Button } from '@bseat/ui/components/button';
-import type { Route } from 'next';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { Ref } from 'react';
@@ -29,11 +28,7 @@ export function ProblemAlert({ error, action, context, onRetry, ref }: Props) {
           typeof part === 'string' ? (
             part
           ) : (
-            <Link
-              key={part.href}
-              href={part.href as Route}
-              className="underline underline-offset-4"
-            >
+            <Link key={part.href} href={part.href} className="underline underline-offset-4">
               {part.text}
             </Link>
           ),

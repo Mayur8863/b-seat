@@ -22,19 +22,14 @@ import { useQueryClient } from '@tanstack/react-query';
 import { CircleCheckIcon } from 'lucide-react';
 import type { Route } from 'next';
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 
 import { FormField } from '@/components/space-form/form-field';
+import { formatMoney } from '@/lib/format';
 import { describeOwnerProblem } from '@/lib/marketplace-problems';
-import {
-  derivedTimes,
-  formatMoney,
-  moneyError,
-  type PassKind,
-  type SlotKind,
-} from '@/lib/pricing-values';
+import { derivedTimes, moneyError, type PassKind, type SlotKind } from '@/lib/pricing-values';
 
 const PASSES: readonly { key: PassKind; label: string; sub: string }[] = [
   { key: 'day', label: 'Day pass', sub: '1 day' },
@@ -121,6 +116,10 @@ const currencyName = (code: string) => {
 const timeText = (start: string, end: string, nextDay: boolean) =>
   `${start} to ${end}${nextDay ? ' next day' : ''}`;
 
+/** A new hours mode or currency means different slots and prices, so the form starts again from the server. */
+const formKey = (p: SpacePricing) =>
+  `${p.openingHours.mode}|${p.currency}|${p.slots.map((s) => s.slot).join(',')}`;
+
 interface FormProps {
   spaceId: string;
   pricing: SpacePricing;
@@ -134,8 +133,9 @@ function Form({ spaceId, pricing, timeZone }: FormProps) {
   const [serverSlots, setServerSlots] = useState(pricing.slots);
   const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
   const [failure, setFailure] = useState<unknown>(null);
+  const [slotsError, setSlotsError] = useState<string>();
   const alertRef = useRef<HTMLDivElement>(null);
-  const [schema] = useState(() => makeSchema(alwaysOpen));
+  const schema = useMemo(() => makeSchema(alwaysOpen), [alwaysOpen]);
   const currency = pricing.currency;
   const detailsHref = `/owner/spaces/${spaceId}` as Route;
 
@@ -159,6 +159,7 @@ function Form({ spaceId, pricing, timeZone }: FormProps) {
 
   const onSubmit = (v: Values) => {
     setFailure(null);
+    setSlotsError(undefined);
     update.mutate(
       { spaceId, data: toInput(v, alwaysOpen) },
       {
@@ -183,10 +184,9 @@ function Form({ spaceId, pricing, timeZone }: FormProps) {
                 message: 'Enter an amount like 1500 or 1500.50',
               });
             } else if (item.path === 'shiftChangeAt') {
-              setError('shiftChangeAt', {
-                type: 'server',
-                message: 'Use a time from 00:00 to 11:59',
-              });
+              setError('shiftChangeAt', { type: 'server', message: item.message });
+            } else if (item.path === 'slots') {
+              setSlotsError(item.message);
             } else {
               unmapped = true;
             }
@@ -199,9 +199,6 @@ function Form({ spaceId, pricing, timeZone }: FormProps) {
 
   const busy = update.isPending;
   const copy = failure ? describeOwnerProblem(failure, 'save your space') : undefined;
-  // A bad slots set is a plain-message 400 that the client prevents; show its message if it ever happens.
-  const plain =
-    failure instanceof ApiError && failure.status === 400 ? failure.problem?.detail : undefined;
   const slotErrors = errors.slots;
 
   return (
@@ -247,6 +244,12 @@ function Form({ spaceId, pricing, timeZone }: FormProps) {
       <p id="pricing-hint" className="text-muted-foreground text-sm">
         Leave a price empty if you don&apos;t offer that pass.
       </p>
+
+      {slotsError && (
+        <p id="slots-error" role="alert" className="text-destructive text-sm">
+          {slotsError}
+        </p>
+      )}
 
       {values.slots.map((s, i) => {
         const server = serverSlots[i];
@@ -299,6 +302,7 @@ function Form({ spaceId, pricing, timeZone }: FormProps) {
                 const preview = raw !== '' && !moneyError(raw);
                 const describedBy = [
                   'pricing-hint',
+                  slotsError ? 'slots-error' : undefined,
                   preview ? `${f}-preview` : undefined,
                   error ? `${f}-error` : undefined,
                 ]
@@ -333,7 +337,7 @@ function Form({ spaceId, pricing, timeZone }: FormProps) {
                     </div>
                     {preview && (
                       <p id={`${f}-preview`} className="text-muted-foreground text-sm">
-                        Shows as {formatMoney(raw, currency)}
+                        Shows as {formatMoney({ amount: raw, currency })}
                       </p>
                     )}
                     {error && (
@@ -353,7 +357,7 @@ function Form({ spaceId, pricing, timeZone }: FormProps) {
         <Alert variant="destructive" role="alert" ref={alertRef} tabIndex={-1}>
           <AlertTitle>We couldn&apos;t save your prices</AlertTitle>
           <AlertDescription>
-            {plain ?? copy.description.map((p) => (typeof p === 'string' ? p : p.text))}
+            {copy.description.map((p) => (typeof p === 'string' ? p : p.text))}
           </AlertDescription>
         </Alert>
       )}
@@ -390,7 +394,7 @@ export function PricingForm({ spaceId }: { spaceId: string }) {
     ) ?? false;
 
   return (
-    <div className="grid max-w-3xl gap-4">
+    <div className="grid gap-4">
       <h1 className="text-2xl font-semibold tracking-tight">Passes and prices</h1>
       <p className="text-muted-foreground">
         Choose which slots you offer and set a price for each pass. Renters pay you directly,
@@ -419,7 +423,7 @@ export function PricingForm({ spaceId }: { spaceId: string }) {
               You haven&apos;t set any prices yet. Set at least one to publish this space.
             </p>
           )}
-          <Form spaceId={spaceId} pricing={pricing} timeZone={timeZone} />
+          <Form key={formKey(pricing)} spaceId={spaceId} pricing={pricing} timeZone={timeZone} />
         </>
       ) : (
         <div aria-busy="true">

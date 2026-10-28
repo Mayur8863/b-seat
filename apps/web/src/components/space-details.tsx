@@ -23,7 +23,6 @@ import { Alert, AlertDescription, AlertTitle } from '@bseat/ui/components/alert'
 import { Button, buttonVariants } from '@bseat/ui/components/button';
 import { Card, CardContent } from '@bseat/ui/components/card';
 import { useQueryClient } from '@tanstack/react-query';
-import type { Route } from 'next';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
@@ -185,7 +184,7 @@ function PublishingCard({ space }: { space: OwnerSpace }) {
                     ) : (
                       <Link
                         key={part.href}
-                        href={part.href as Route}
+                        href={part.href}
                         className="underline underline-offset-4"
                       >
                         {part.text}
