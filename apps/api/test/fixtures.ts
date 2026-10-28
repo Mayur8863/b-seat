@@ -234,8 +234,8 @@ export async function signedInUser(
   return { agent, userId };
 }
 
-// Mailpit's HTTP API sits next to its SMTP port (compose: mailpit, CI: localhost).
-const MAILPIT_URL = `http://${process.env.SMTP_HOST ?? 'localhost'}:8025`;
+// Mailpit's HTTP API; override with MAILPIT_URL (compose: http://mailpit:8025).
+const MAILPIT_URL = process.env.MAILPIT_URL ?? 'http://localhost:8025';
 
 export interface CaughtMail {
   subject: string;

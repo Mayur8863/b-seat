@@ -75,6 +75,11 @@ describe('MailBookingCreatedHook', () => {
       await vi.advanceTimersByTimeAsync(2000);
       await done;
       expect(logger.error).toHaveBeenCalledTimes(2);
+      const names = logger.error.mock.calls.map((c: unknown[]) => String(c[1])).sort();
+      expect(names).toEqual([
+        'booking.confirmation_not_queued',
+        'booking.owner_notification_not_queued',
+      ]);
       for (const call of logger.error.mock.calls) {
         expect(call[0]).toEqual({ bookingId: 'b-1', recipient: expect.any(String) });
         expect(JSON.stringify(call)).not.toContain('x.test');

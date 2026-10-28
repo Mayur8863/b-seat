@@ -69,7 +69,12 @@ export class MailBookingCreatedHook extends BookingCreatedHook {
     try {
       await Promise.race([this.mail.send(job, { jobId }), timeout]);
     } catch {
-      this.logger.error({ bookingId, recipient }, 'booking.email_enqueue_failed');
+      this.logger.error(
+        { bookingId, recipient },
+        recipient === 'renter'
+          ? 'booking.confirmation_not_queued'
+          : 'booking.owner_notification_not_queued',
+      );
     } finally {
       clearTimeout(timer);
     }

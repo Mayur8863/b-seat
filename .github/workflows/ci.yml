@@ -46,6 +46,7 @@ jobs:
       DATABASE_URL_TEST: postgres://bseat:bseat@localhost:5433/bseat_test
       REDIS_URL: redis://localhost:6380
       SMTP_HOST: localhost
+      MAILPIT_URL: http://localhost:8025
       SMTP_PORT: '1025'
       BETTER_AUTH_SECRET: ci-only-insecure-secret-0000000000000000
       BETTER_AUTH_URL: http://localhost:3000
