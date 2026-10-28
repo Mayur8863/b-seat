@@ -28,79 +28,79 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 
 ## Summary table
 
-| ID   | Title                                                        | Owner          | Depends on             | Size | Status      | Branch                                |
-| ---- | ------------------------------------------------------------ | -------------- | ---------------------- | ---- | ----------- | ------------------------------------- |
-| T001 | ADR-0009, ADR-0010 and plan approval                         | architect      | none                   | M    | done        | `docs/002-marketplace-adrs`           |
-| T002 | Account role: Better Auth field, migration, role guard       | backend-dev    | T001                   | M    | done        | `feat/002-account-role`               |
-| T003 | Listing schema: space columns, cubicle, seat changes         | backend-dev    | T001                   | M    | done        | `feat/002-listing-schema`             |
-| T004 | Pricing and calendar schema, shared calendar backfill        | backend-dev    | T003                   | M    | done        | `feat/002-pricing-calendar-schema`    |
-| T005 | Pass booking header, seat holds, occupancy marks, exclusions | backend-dev    | T003, T008             | M    | in-progress | `feat/002-seat-hold-schema`           |
-| T006 | Slot, calendar and pass-period engine (pure, TDD)            | backend-dev    | T001                   | M    | done        | `feat/002-slot-engine`                |
-| T007 | Money, problem types and pass booking rules (pure, TDD)      | backend-dev    | T006                   | M    | done        | `feat/002-pass-rules`                 |
-| T008 | Retire hourly create; legacy space reads published-only      | backend-dev    | T003                   | S    | done        | `chore/002-retire-hourly-create`      |
-| T009 | Seed: demo owner and renter, priced listings, calendars      | backend-dev    | T002, T004, T012       | M    | done        | `feat/002-seed-marketplace`           |
-| T010 | UI spec: index, shell, nav, sign-up, dashboards              | ui-ux-designer | T001                   | M    | done        | `docs/002-ui-shell-accounts`          |
-| T011 | Test plan and traceability skeleton                          | qa-engineer    | T001                   | S    | done        | `test/002-test-plan`                  |
-| T012 | Wire `SEED_DEMO_PASSWORD` into compose and CI                | devops         | T001                   | S    | done        | `chore/002-seed-env`                  |
-| T013 | Renter preferences API                                       | backend-dev    | T002                   | S    | done        | `feat/002-renter-preferences-api`     |
-| T014 | Signed-in shell, role-aware nav, role dashboards             | frontend-dev   | T002, T010             | M    | todo        | `feat/002-app-nav`                    |
-| T015 | Sign-up role choice and optional preferences                 | frontend-dev   | T002, T013, T014, T019 | M    | todo        | `feat/002-sign-up-role`               |
-| T016 | QA US1: accounts and navigation e2e, axe                     | qa-engineer    | T011, T014, T015       | M    | todo        | `test/002-us1-accounts-e2e`           |
-| T017 | Docs US1                                                     | docs-writer    | T016                   | S    | todo        | `docs/002-us1-accounts`               |
-| T018 | UI spec: owner listing, seats, slots and prices              | ui-ux-designer | T010                   | M    | todo        | `docs/002-ui-owner-listing`           |
-| T019 | Reference data API (countries, currencies, utilities)        | backend-dev    | T001                   | S    | done        | `feat/002-reference-api`              |
-| T020 | Owner spaces API: CRUD, publish, unpublish                   | backend-dev    | T002, T004, T019       | M    | todo        | `feat/002-owner-spaces-api`           |
-| T021 | Seats and cubicles API                                       | backend-dev    | T005, T020             | M    | todo        | `feat/002-seats-cubicles-api`         |
-| T022 | Space details form and create page                           | frontend-dev   | T014, T018, T019, T020 | M    | todo        | `feat/002-space-form`                 |
-| T023 | Owner dashboard spaces, space overview, publish              | frontend-dev   | T022                   | M    | todo        | `feat/002-owner-dashboard`            |
-| T024 | Seats management page                                        | frontend-dev   | T021, T023             | M    | todo        | `feat/002-seats-page`                 |
-| T025 | QA US2: listing e2e, axe, owner scoping                      | qa-engineer    | T009, T011, T023, T024 | M    | todo        | `test/002-us2-listing-e2e`            |
-| T026 | Docs US2                                                     | docs-writer    | T025                   | S    | todo        | `docs/002-us2-listing`                |
-| T027 | Slots and pricing API                                        | backend-dev    | T007, T020             | M    | todo        | `feat/002-pricing-api`                |
-| T028 | Listing detail API with offers and 24-hour saving            | backend-dev    | T027                   | S    | todo        | `feat/002-listing-detail-api`         |
-| T029 | UI spec: search, listing page, booking, my bookings          | ui-ux-designer | T010                   | M    | todo        | `docs/002-ui-renter-booking`          |
-| T030 | Owner pricing page                                           | frontend-dev   | T023, T027             | M    | todo        | `feat/002-pricing-page`               |
-| T031 | Listing page v1: details and pass options                    | frontend-dev   | T014, T028, T029       | M    | todo        | `feat/002-listing-page`               |
-| T032 | QA US3: pricing e2e, axe                                     | qa-engineer    | T030, T031             | S    | todo        | `test/002-us3-pricing-e2e`            |
-| T033 | Docs US3                                                     | docs-writer    | T032                   | S    | todo        | `docs/002-us3-pricing`                |
-| T034 | Listing search and location suggestions API                  | backend-dev    | T027                   | M    | todo        | `feat/002-listing-search-api`         |
-| T035 | Seat availability for a pass API                             | backend-dev    | T005, T028             | M    | todo        | `feat/002-seat-availability-api`      |
-| T036 | Create pass booking API (rules, holds, races)                | backend-dev    | T008, T035             | M    | todo        | `feat/002-create-pass-booking-api`    |
-| T037 | Renter and owner booking emails                              | backend-dev    | T036                   | S    | todo        | `feat/002-booking-emails`             |
-| T038 | Search availability filter (date, pass, slot)                | backend-dev    | T034, T035             | M    | todo        | `feat/002-search-availability-filter` |
-| T039 | Find a space page                                            | frontend-dev   | T013, T014, T029, T034 | M    | todo        | `feat/002-find-page`                  |
-| T040 | Listing page: seat availability for a pass                   | frontend-dev   | T031, T035             | M    | todo        | `feat/002-listing-seats`              |
-| T041 | Book a pass, confirmation, problem copy                      | frontend-dev   | T036, T040             | M    | todo        | `feat/002-book-pass-ui`               |
-| T042 | Retire `/book`: redirect to `/find`, remove 001 components   | frontend-dev   | T039, T041             | S    | todo        | `chore/002-retire-book-page`          |
-| T043 | Retire legacy `GET /api/spaces` routes                       | backend-dev    | T042                   | S    | todo        | `chore/002-retire-legacy-spaces-api`  |
-| T044 | QA US4: search and book e2e, races, performance, axe         | qa-engineer    | T009, T037, T038, T042 | M    | todo        | `test/002-us4-search-book-e2e`        |
-| T045 | Docs US4                                                     | docs-writer    | T043, T044             | S    | todo        | `docs/002-us4-search-book`            |
-| T046 | UI spec: occupancy, calendars, owner bookings                | ui-ux-designer | T018                   | M    | todo        | `docs/002-ui-owner-operations`        |
-| T047 | Occupancy API and seat state today                           | backend-dev    | T006, T021             | M    | todo        | `feat/002-occupancy-api`              |
-| T048 | Occupancy UI on the seats page                               | frontend-dev   | T024, T046, T047       | M    | todo        | `feat/002-occupancy-ui`               |
-| T049 | QA US5: occupancy e2e, booking-vs-mark race, axe             | qa-engineer    | T036, T048             | M    | todo        | `test/002-us5-occupancy`              |
-| T050 | Docs US5                                                     | docs-writer    | T049                   | S    | todo        | `docs/002-us5-occupancy`              |
-| T051 | Availability calendars API                                   | backend-dev    | T006, T021             | M    | todo        | `feat/002-calendar-api`               |
-| T052 | Availability calendar page                                   | frontend-dev   | T023, T046, T051       | M    | todo        | `feat/002-availability-page`          |
-| T053 | QA US6: calendar e2e, axe                                    | qa-engineer    | T036, T052             | S    | todo        | `test/002-us6-calendar`               |
-| T054 | Docs US6                                                     | docs-writer    | T053                   | S    | todo        | `docs/002-us6-calendar`               |
-| T055 | My bookings and cancel API                                   | backend-dev    | T036                   | M    | todo        | `feat/002-my-bookings-api`            |
-| T056 | Owner bookings list API                                      | backend-dev    | T036                   | S    | todo        | `feat/002-owner-bookings-api`         |
-| T057 | My bookings page, cancel, dashboard next booking             | frontend-dev   | T014, T029, T055       | M    | todo        | `feat/002-my-bookings-page`           |
-| T058 | Owner bookings page with date filter                         | frontend-dev   | T023, T046, T056       | M    | todo        | `feat/002-owner-bookings-page`        |
-| T059 | QA US7: bookings lists e2e, axe                              | qa-engineer    | T057, T058             | S    | todo        | `test/002-us7-bookings`               |
-| T060 | Docs US7                                                     | docs-writer    | T059                   | S    | todo        | `docs/002-us7-bookings`               |
-| T061 | UI spec: layout editor and renter plan                       | ui-ux-designer | T018, T029             | M    | todo        | `docs/002-ui-layout`                  |
-| T062 | Layout schema and API (owner and renter)                     | backend-dev    | T021                   | M    | todo        | `feat/002-layout-api`                 |
-| T063 | Seed a sample layout                                         | backend-dev    | T009, T062             | S    | todo        | `feat/002-seed-layout`                |
-| T064 | Layout editor model (pure reducer, TDD)                      | frontend-dev   | T061, T062             | M    | todo        | `feat/002-layout-editor-model`        |
-| T065 | Layout editor page (grid, pointer, keyboard, form)           | frontend-dev   | T023, T064             | M    | todo        | `feat/002-layout-editor`              |
-| T066 | Renter plan view on the listing page                         | frontend-dev   | T040, T061, T062       | M    | todo        | `feat/002-renter-plan`                |
-| T067 | QA US8: layout e2e (keyboard only), axe                      | qa-engineer    | T063, T065, T066       | M    | todo        | `test/002-us8-layout`                 |
-| T068 | Docs US8                                                     | docs-writer    | T067                   | S    | todo        | `docs/002-us8-layout`                 |
-| T069 | Booking hardening carried over from 001 reviews              | backend-dev    | T037                   | S    | todo        | `chore/002-booking-hardening`         |
-| T070 | QA final regression, SC-001/SC-002 timing, traceability      | qa-engineer    | see task               | S    | todo        | `test/002-final-regression`           |
-| T071 | Docs release: README overview, ADR index, changesets         | docs-writer    | T070                   | S    | todo        | `docs/002-release`                    |
+| ID   | Title                                                        | Owner          | Depends on             | Size | Status | Branch                                |
+| ---- | ------------------------------------------------------------ | -------------- | ---------------------- | ---- | ------ | ------------------------------------- |
+| T001 | ADR-0009, ADR-0010 and plan approval                         | architect      | none                   | M    | done   | `docs/002-marketplace-adrs`           |
+| T002 | Account role: Better Auth field, migration, role guard       | backend-dev    | T001                   | M    | done   | `feat/002-account-role`               |
+| T003 | Listing schema: space columns, cubicle, seat changes         | backend-dev    | T001                   | M    | done   | `feat/002-listing-schema`             |
+| T004 | Pricing and calendar schema, shared calendar backfill        | backend-dev    | T003                   | M    | done   | `feat/002-pricing-calendar-schema`    |
+| T005 | Pass booking header, seat holds, occupancy marks, exclusions | backend-dev    | T003, T008             | M    | review | `feat/002-seat-hold-schema`           |
+| T006 | Slot, calendar and pass-period engine (pure, TDD)            | backend-dev    | T001                   | M    | done   | `feat/002-slot-engine`                |
+| T007 | Money, problem types and pass booking rules (pure, TDD)      | backend-dev    | T006                   | M    | done   | `feat/002-pass-rules`                 |
+| T008 | Retire hourly create; legacy space reads published-only      | backend-dev    | T003                   | S    | done   | `chore/002-retire-hourly-create`      |
+| T009 | Seed: demo owner and renter, priced listings, calendars      | backend-dev    | T002, T004, T012       | M    | done   | `feat/002-seed-marketplace`           |
+| T010 | UI spec: index, shell, nav, sign-up, dashboards              | ui-ux-designer | T001                   | M    | done   | `docs/002-ui-shell-accounts`          |
+| T011 | Test plan and traceability skeleton                          | qa-engineer    | T001                   | S    | done   | `test/002-test-plan`                  |
+| T012 | Wire `SEED_DEMO_PASSWORD` into compose and CI                | devops         | T001                   | S    | done   | `chore/002-seed-env`                  |
+| T013 | Renter preferences API                                       | backend-dev    | T002                   | S    | done   | `feat/002-renter-preferences-api`     |
+| T014 | Signed-in shell, role-aware nav, role dashboards             | frontend-dev   | T002, T010             | M    | todo   | `feat/002-app-nav`                    |
+| T015 | Sign-up role choice and optional preferences                 | frontend-dev   | T002, T013, T014, T019 | M    | todo   | `feat/002-sign-up-role`               |
+| T016 | QA US1: accounts and navigation e2e, axe                     | qa-engineer    | T011, T014, T015       | M    | todo   | `test/002-us1-accounts-e2e`           |
+| T017 | Docs US1                                                     | docs-writer    | T016                   | S    | todo   | `docs/002-us1-accounts`               |
+| T018 | UI spec: owner listing, seats, slots and prices              | ui-ux-designer | T010                   | M    | todo   | `docs/002-ui-owner-listing`           |
+| T019 | Reference data API (countries, currencies, utilities)        | backend-dev    | T001                   | S    | done   | `feat/002-reference-api`              |
+| T020 | Owner spaces API: CRUD, publish, unpublish                   | backend-dev    | T002, T004, T019       | M    | todo   | `feat/002-owner-spaces-api`           |
+| T021 | Seats and cubicles API                                       | backend-dev    | T005, T020             | M    | todo   | `feat/002-seats-cubicles-api`         |
+| T022 | Space details form and create page                           | frontend-dev   | T014, T018, T019, T020 | M    | todo   | `feat/002-space-form`                 |
+| T023 | Owner dashboard spaces, space overview, publish              | frontend-dev   | T022                   | M    | todo   | `feat/002-owner-dashboard`            |
+| T024 | Seats management page                                        | frontend-dev   | T021, T023             | M    | todo   | `feat/002-seats-page`                 |
+| T025 | QA US2: listing e2e, axe, owner scoping                      | qa-engineer    | T009, T011, T023, T024 | M    | todo   | `test/002-us2-listing-e2e`            |
+| T026 | Docs US2                                                     | docs-writer    | T025                   | S    | todo   | `docs/002-us2-listing`                |
+| T027 | Slots and pricing API                                        | backend-dev    | T007, T020             | M    | todo   | `feat/002-pricing-api`                |
+| T028 | Listing detail API with offers and 24-hour saving            | backend-dev    | T027                   | S    | todo   | `feat/002-listing-detail-api`         |
+| T029 | UI spec: search, listing page, booking, my bookings          | ui-ux-designer | T010                   | M    | todo   | `docs/002-ui-renter-booking`          |
+| T030 | Owner pricing page                                           | frontend-dev   | T023, T027             | M    | todo   | `feat/002-pricing-page`               |
+| T031 | Listing page v1: details and pass options                    | frontend-dev   | T014, T028, T029       | M    | todo   | `feat/002-listing-page`               |
+| T032 | QA US3: pricing e2e, axe                                     | qa-engineer    | T030, T031             | S    | todo   | `test/002-us3-pricing-e2e`            |
+| T033 | Docs US3                                                     | docs-writer    | T032                   | S    | todo   | `docs/002-us3-pricing`                |
+| T034 | Listing search and location suggestions API                  | backend-dev    | T027                   | M    | todo   | `feat/002-listing-search-api`         |
+| T035 | Seat availability for a pass API                             | backend-dev    | T005, T028             | M    | todo   | `feat/002-seat-availability-api`      |
+| T036 | Create pass booking API (rules, holds, races)                | backend-dev    | T008, T035             | M    | todo   | `feat/002-create-pass-booking-api`    |
+| T037 | Renter and owner booking emails                              | backend-dev    | T036                   | S    | todo   | `feat/002-booking-emails`             |
+| T038 | Search availability filter (date, pass, slot)                | backend-dev    | T034, T035             | M    | todo   | `feat/002-search-availability-filter` |
+| T039 | Find a space page                                            | frontend-dev   | T013, T014, T029, T034 | M    | todo   | `feat/002-find-page`                  |
+| T040 | Listing page: seat availability for a pass                   | frontend-dev   | T031, T035             | M    | todo   | `feat/002-listing-seats`              |
+| T041 | Book a pass, confirmation, problem copy                      | frontend-dev   | T036, T040             | M    | todo   | `feat/002-book-pass-ui`               |
+| T042 | Retire `/book`: redirect to `/find`, remove 001 components   | frontend-dev   | T039, T041             | S    | todo   | `chore/002-retire-book-page`          |
+| T043 | Retire legacy `GET /api/spaces` routes                       | backend-dev    | T042                   | S    | todo   | `chore/002-retire-legacy-spaces-api`  |
+| T044 | QA US4: search and book e2e, races, performance, axe         | qa-engineer    | T009, T037, T038, T042 | M    | todo   | `test/002-us4-search-book-e2e`        |
+| T045 | Docs US4                                                     | docs-writer    | T043, T044             | S    | todo   | `docs/002-us4-search-book`            |
+| T046 | UI spec: occupancy, calendars, owner bookings                | ui-ux-designer | T018                   | M    | todo   | `docs/002-ui-owner-operations`        |
+| T047 | Occupancy API and seat state today                           | backend-dev    | T006, T021             | M    | todo   | `feat/002-occupancy-api`              |
+| T048 | Occupancy UI on the seats page                               | frontend-dev   | T024, T046, T047       | M    | todo   | `feat/002-occupancy-ui`               |
+| T049 | QA US5: occupancy e2e, booking-vs-mark race, axe             | qa-engineer    | T036, T048             | M    | todo   | `test/002-us5-occupancy`              |
+| T050 | Docs US5                                                     | docs-writer    | T049                   | S    | todo   | `docs/002-us5-occupancy`              |
+| T051 | Availability calendars API                                   | backend-dev    | T006, T021             | M    | todo   | `feat/002-calendar-api`               |
+| T052 | Availability calendar page                                   | frontend-dev   | T023, T046, T051       | M    | todo   | `feat/002-availability-page`          |
+| T053 | QA US6: calendar e2e, axe                                    | qa-engineer    | T036, T052             | S    | todo   | `test/002-us6-calendar`               |
+| T054 | Docs US6                                                     | docs-writer    | T053                   | S    | todo   | `docs/002-us6-calendar`               |
+| T055 | My bookings and cancel API                                   | backend-dev    | T036                   | M    | todo   | `feat/002-my-bookings-api`            |
+| T056 | Owner bookings list API                                      | backend-dev    | T036                   | S    | todo   | `feat/002-owner-bookings-api`         |
+| T057 | My bookings page, cancel, dashboard next booking             | frontend-dev   | T014, T029, T055       | M    | todo   | `feat/002-my-bookings-page`           |
+| T058 | Owner bookings page with date filter                         | frontend-dev   | T023, T046, T056       | M    | todo   | `feat/002-owner-bookings-page`        |
+| T059 | QA US7: bookings lists e2e, axe                              | qa-engineer    | T057, T058             | S    | todo   | `test/002-us7-bookings`               |
+| T060 | Docs US7                                                     | docs-writer    | T059                   | S    | todo   | `docs/002-us7-bookings`               |
+| T061 | UI spec: layout editor and renter plan                       | ui-ux-designer | T018, T029             | M    | todo   | `docs/002-ui-layout`                  |
+| T062 | Layout schema and API (owner and renter)                     | backend-dev    | T021                   | M    | todo   | `feat/002-layout-api`                 |
+| T063 | Seed a sample layout                                         | backend-dev    | T009, T062             | S    | todo   | `feat/002-seed-layout`                |
+| T064 | Layout editor model (pure reducer, TDD)                      | frontend-dev   | T061, T062             | M    | todo   | `feat/002-layout-editor-model`        |
+| T065 | Layout editor page (grid, pointer, keyboard, form)           | frontend-dev   | T023, T064             | M    | todo   | `feat/002-layout-editor`              |
+| T066 | Renter plan view on the listing page                         | frontend-dev   | T040, T061, T062       | M    | todo   | `feat/002-renter-plan`                |
+| T067 | QA US8: layout e2e (keyboard only), axe                      | qa-engineer    | T063, T065, T066       | M    | todo   | `test/002-us8-layout`                 |
+| T068 | Docs US8                                                     | docs-writer    | T067                   | S    | todo   | `docs/002-us8-layout`                 |
+| T069 | Booking hardening carried over from 001 reviews              | backend-dev    | T037                   | S    | todo   | `chore/002-booking-hardening`         |
+| T070 | QA final regression, SC-001/SC-002 timing, traceability      | qa-engineer    | see task               | S    | todo   | `test/002-final-regression`           |
+| T071 | Docs release: README overview, ADR index, changesets         | docs-writer    | T070                   | S    | todo   | `docs/002-release`                    |
 
 ---
 
@@ -165,7 +165,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given the migrations, When `db:generate` runs again, Then no new migration is produced.
 
 - [ ] T005 Turn `booking` into the pass header and add `seat_hold` and `occupancy_mark` in `apps/api/src/db/schema/booking.ts`; migrations `pass_bookings` (generated) then `seat_hold_exclusions` (custom); fixtures; tests `apps/api/test/seat-hold-constraints.int-spec.ts`; update `apps/api/test/booking-constraints.int-spec.ts`; switch the legacy availability read in `apps/api/src/spaces/spaces.service.ts` to `seat_hold` and update `apps/api/test/spaces.int-spec.ts`
-  - **Owner**: backend-dev · **Branch**: `feat/002-seat-hold-schema` · **Size**: M · **Depends on**: T003, T008 · **Status**: in-progress — done: schema, migrations 0009/0010, fixtures, withSeatLocks, spaces read, tests, integration green, gen:api unchanged; next: bin/pnpm check, set review
+  - **Owner**: backend-dev · **Branch**: `feat/002-seat-hold-schema` · **Size**: M · **Depends on**: T003, T008 · **Status**: review
   - **Added (T008 review)**: `src/bookings/seat-lock.ts` `withSeatLock` is 001's lock (`hashtextextended(seatId, 0)`), kept only until this task. Generalise it into `withSeatLocks(db, seatIds, work, { classify, onRetry?, onLockTimeout? })` built on `lockSeats` (ADR-0009 section 9; sorted, deduplicated, ascending keys) and delete the `hashtextextended` call, so there is one transaction and retry wrapper and one lock SQL (two lock schemes would never exclude each other and bring back the 001 deadlock). `classify` maps the `seat_hold_*_no_overlap` constraints to 409s (`classifyInsertError` only knows the dropped `booking_*` ones). Rewrite the race test in `test/bookings-retired.int-spec.ts` (it inserts hourly rows, which `booking_no_new_hourly` refuses) and move it to `test/seat-lock.int-spec.ts`.
   - **Added (T008 review)**: remove `evaluateBookingRules` and its spec in `src/bookings/booking-rules.ts`; it has no production caller since T008 (keep `ruleViolation`, which `resolveWindow` uses until T043).
   - **Scope**: data-model.md "booking (changed)", "occupancy_mark", "seat_hold" and the backfill SQL, verbatim; ADR-0009 sections 2, 3 and 6. Constraints: `booking_pass_complete`, `booking_pass_length` (`end_date - start_date = CASE pass WHEN 'day' THEN 0 WHEN 'week' THEN 6 ELSE 29 END`), `booking_price_positive`; 001's `booking_duration_bounds` and `booking_quarter_hour` re-created as `kind <> 'hourly' OR (…)`; `seat_hold_one_source`, `seat_hold_user_iff_booking`, `seat_hold_booking_bounded`, `seat_hold_ends_after_starts`, `seat_hold_booking_max_length` (`<= interval '26 hours'`); occupancy `note` ≤ 200. **Consistency keys (generated migration, AQ-7):** `booking.holds_active boolean GENERATED ALWAYS AS (status = 'active') STORED` (check the SQL says `STORED`), `booking_hold_key_unique (id, seat_id, user_id, holds_active)`, `seat_hold_booking_fk (booking_id, seat_id, user_id, active) → booking (id, seat_id, user_id, holds_active) ON UPDATE CASCADE ON DELETE CASCADE`, `occupancy_mark_id_seat_id_unique (id, seat_id)`, `seat_hold_occupancy_mark_fk (occupancy_mark_id, seat_id) → occupancy_mark (id, seat_id) ON DELETE CASCADE`, unique `seat_hold.occupancy_mark_id`. Custom migration in this order: the two `seat_hold` exclusions (`WHERE ("active")` and `WHERE ("active" AND "user_id" IS NOT NULL)`), the backfill of active, not-ended hourly bookings, `booking_no_new_hourly CHECK (kind <> 'hourly') NOT VALID`, then `DROP CONSTRAINT booking_seat_no_overlap` and `booking_user_no_overlap`. T008 must be merged first (R-7). The legacy `GET /api/spaces/{id}/availability` reads `taken` from active `seat_hold` rows (joined from `seat`, predicate spelled as the constraint, ADR-0009 section 7) instead of `booking`; the hourly `insertBooking` fixture is replaced by `insertPassBooking` / `insertHold` (hourly inserts now fail `booking_no_new_hourly`). Tests first. Fixtures `insertPassBooking`, `insertHold`, `insertOccupancyMark`. **OQ-3** decides the backfill. Also add the `lockSeats(tx, seatIds)` helper from ADR-0009 section 9 (one place for the lock class constant and the SQL), with a unit or integration test of its ordering and de-duplication.
