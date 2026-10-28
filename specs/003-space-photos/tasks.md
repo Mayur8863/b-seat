@@ -40,7 +40,7 @@ only a human merges.
 | T003 | Local S3 storage service, bucket init, e2e forwarder and S3 env  | devops            | T001                         | M    | todo   | `chore/003-local-storage`              |
 | T004 | Storage module, S3 env and windowed URL signing (TDD)            | backend-dev       | T003                         | M    | todo   | `feat/003-object-storage`              |
 | T005 | Photo schema and migration, constraint tests first               | backend-dev       | T001                         | S    | todo   | `feat/003-photo-schema`                |
-| T006 | Image processing module with sharp (TDD)                         | backend-dev       | T001                         | M    | todo   | `feat/003-photo-processing`            |
+| T006 | Image processing module with sharp (TDD)                         | backend-dev       | T001                         | M    | review | `feat/003-photo-processing`            |
 | T007 | Production image loads sharp; AWS storage runbook                | devops            | T006                         | S    | todo   | `chore/003-photo-runtime`              |
 | T008 | Upload API: validate, process, store, insert                     | backend-dev       | T002, T004, T005, T006       | M    | todo   | `feat/003-photo-upload-api`            |
 | T009 | Owner photo list and describe API                                | backend-dev       | T008                         | S    | todo   | `feat/003-photo-list-api`              |
@@ -139,7 +139,7 @@ first (T002, T003). After T001: T002, T003, T005, T006, T011 and T012 can start 
     - Given `bin/pnpm --filter @bseat/api db:generate` on the merged schema, Then no new migration is produced (schema and SQL agree).
 
 - [ ] T006 [P] Add `apps/api/src/photos/photo-processing.ts` (+ `photo-processing.spec.ts` written first) with `sharp` as a direct `@bseat/api` dependency. **(T001)** Do **not** add sharp to `allowBuilds`: 0.35.5 has no install script.
-  - **Owner**: backend-dev · **Branch**: `feat/003-photo-processing` · **Size**: M · **Depends on**: T001 · **Status**: todo
+  - **Owner**: backend-dev · **Branch**: `feat/003-photo-processing` · **Size**: M · **Depends on**: T001 · **Status**: review
   - **Scope**: ADR-0011 section 4; research R-3; contracts/README.md problem types. Pure module: bytes in, either `{ card, display, width, height, format }` or a typed rejection out. No Nest, no I/O. Test images are generated in the test with sharp (`withExif` for GPS, orientation 6 and a body serial number), so nothing downloads.
     - **(T001)** Use `failOn: 'error'`, `limitInputPixels: 50_000_000` and `timeout({ seconds: 15 })`.
     - Detect APNG by walking the PNG chunks for `acTL` before `IDAT`.
