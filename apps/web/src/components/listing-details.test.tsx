@@ -161,3 +161,18 @@ describe('ListingDetails', () => {
     expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
   });
 });
+
+describe('ListingDetails seat selection', () => {
+  it('asks for pass and date, then fills Your selection', async () => {
+    server.use(getListingsGetMockHandler(listing()));
+    renderWithQuery(<ListingDetails spaceId="s1" />);
+    expect(
+      await screen.findByText('Choose a pass and a start date to see which seats are free.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText('Start date')).not.toBeInTheDocument();
+    await userEvent.click(screen.getAllByRole('radio')[0]!);
+    expect(screen.getByLabelText('Start date')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Review booking' }));
+    expect(screen.getByText('Choose a start date.')).toBeInTheDocument();
+  });
+});
