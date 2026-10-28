@@ -53,6 +53,7 @@ export const PAGE_ROLES: Record<string, PageAudience> = {
   '/dashboard': 'both',
   '/book': 'both',
   '/owner/spaces/new': 'owner',
+  '/owner/spaces/[spaceId]': 'owner',
 };
 
 /**
@@ -60,7 +61,9 @@ export const PAGE_ROLES: Record<string, PageAudience> = {
  * Dynamic routes keep their `[param]` segment. The route-manifest test fails for a page
  * that is neither in a role's nav nor here with a target in that role's nav.
  */
-export const REACHED_FROM: Record<string, NavLink['href']> = {};
+export const REACHED_FROM: Record<string, NavLink['href']> = {
+  '/owner/spaces/[spaceId]': '/dashboard',
+};
 
 export function navActive(link: NavLink, pathname: string): 'page' | 'true' | undefined {
   if (link.exact.includes(pathname)) return 'page';

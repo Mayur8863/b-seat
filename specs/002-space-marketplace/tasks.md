@@ -401,7 +401,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given a successful create, Then the user lands on the space overview route (T023) or, until T023 merges, on `/dashboard` with a success message.
 
 - [ ] T023 [US2] Owner dashboard spaces list (`apps/web/src/components/owner-spaces.tsx` + test), space overview `apps/web/src/app/(app)/owner/spaces/[spaceId]/page.tsx` with edit, publish and unpublish, and the management sub-nav `apps/web/src/components/space-manage-nav.tsx`
-  - **Owner**: frontend-dev · **Branch**: `feat/002-owner-dashboard` · **Size**: M · **Depends on**: T022 · **Status**: in-progress — done: merge main, missing-list in fetcher, owner-spaces.tsx + dashboard wiring, space-manage-nav; next: [spaceId] layout (404/error/loading), overview page with Publish/Unpublish card + SpaceForm edit, space-form post-create push to overview, PAGE_ROLES/REACHED_FROM, changeset, full web check
+  - **Owner**: frontend-dev · **Branch**: `feat/002-owner-dashboard` · **Size**: M · **Depends on**: T022 · **Status**: in-progress — done: merge main, missing-list in fetcher, owner-spaces + dashboard, space-manage-nav, [spaceId] layout, overview page (publish card + SpaceForm edit), PAGE_ROLES/REACHED_FROM, changeset; next: after T022 lands, space-form post-create push to /owner/spaces/[id], then full web check
   - **Scope**: ui/02. `useOwnerSpacesList`, `useOwnerSpacesGet`, `useOwnerSpacesUpdate`, publish/unpublish mutations. The sub-nav starts with "Details" only; each later page task adds its link.
   - **Acceptance criteria**:
     - Given an owner with no spaces, When `/dashboard` renders, Then the empty state invites them to list their first space (AC 1.4).

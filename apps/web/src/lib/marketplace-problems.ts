@@ -5,7 +5,11 @@ import type { ProblemCopy } from './booking-problems';
 
 /** Screens that use this copy; the Alert title reads "We couldn't {action}" (ui/02 9.1). */
 export type OwnerAction =
-  'save your space' | 'publish this space' | 'unpublish this space' | 'load your spaces';
+  | 'save your space'
+  | 'publish this space'
+  | 'unpublish this space'
+  | 'load your spaces'
+  | 'load this space';
 
 export type MissingItem = 'seat' | 'pricedPass';
 
