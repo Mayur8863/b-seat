@@ -87,7 +87,7 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 | T055 | My bookings and cancel API                                   | backend-dev    | T036                   | M    | review                                                         | `feat/002-my-bookings-api`            |
 | T056 | Owner bookings list API                                      | backend-dev    | T036                   | S    | review                                                         | `feat/002-owner-bookings-api`         |
 | T057 | My bookings page, cancel, dashboard next booking             | frontend-dev   | T014, T029, T055       | M    | todo                                                           | `feat/002-my-bookings-page`           |
-| T058 | Owner bookings page with date filter                         | frontend-dev   | T023, T046, T056       | M    | todo                                                           | `feat/002-owner-bookings-page`        |
+| T058 | Owner bookings page with date filter                         | frontend-dev   | T023, T046, T056       | M    | review — dev done; next: QA (queued)                           | `feat/002-owner-bookings-page`        |
 | T059 | QA US7: bookings lists e2e, axe                              | qa-engineer    | T057, T058             | S    | todo                                                           | `test/002-us7-bookings`               |
 | T060 | Docs US7                                                     | docs-writer    | T059                   | S    | todo                                                           | `docs/002-us7-bookings`               |
 | T061 | UI spec: layout editor and renter plan                       | ui-ux-designer | T018, T029             | M    | review — spec done; next: frontend tasks can start             | `docs/002-ui-layout`                  |
@@ -767,7 +767,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given empty, loading and error, Then ui/03 states show (FR-032).
 
 - [ ] T058 [US7] Owner bookings page `apps/web/src/app/(app)/owner/spaces/[spaceId]/bookings/page.tsx` with `components/owner-bookings.tsx` (+ test); add "Bookings" to the sub-nav
-  - **Owner**: frontend-dev · **Branch**: `feat/002-owner-bookings-page` · **Size**: M · **Depends on**: T023, T046, T056 · **Status**: todo
+  - **Owner**: frontend-dev · **Branch**: `feat/002-owner-bookings-page` · **Size**: M · **Depends on**: T023, T046, T056 · **Status**: review — dev done; next: QA (queued)
   - **Acceptance criteria**:
     - Given bookings, When the page renders, Then each shows renter name and email, seat, pass, period with the zone and price (AC 7.3).
     - Given a date range, When applied, Then the list refetches with `from` and `to`, and an invalid range shows a field error (AC 7.3).

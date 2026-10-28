@@ -58,6 +58,7 @@ export const PAGE_ROLES: Record<string, PageAudience> = {
   '/owner/spaces/[spaceId]/pricing': 'owner',
   '/owner/spaces/[spaceId]/layout': 'owner',
   '/owner/spaces/[spaceId]/availability': 'owner',
+  '/owner/spaces/[spaceId]/bookings': 'owner',
 };
 
 /**
@@ -71,6 +72,7 @@ export const REACHED_FROM: Record<string, NavLink['href']> = {
   '/owner/spaces/[spaceId]/pricing': '/dashboard',
   '/owner/spaces/[spaceId]/layout': '/dashboard',
   '/owner/spaces/[spaceId]/availability': '/dashboard',
+  '/owner/spaces/[spaceId]/bookings': '/dashboard',
   '/spaces/[spaceId]': '/find',
 };
 

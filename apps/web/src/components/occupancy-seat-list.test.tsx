@@ -97,7 +97,7 @@ beforeEach(() => {
 });
 
 describe('today state', () => {
-  it('shows icon-and-text state, the private note and no bookings link without a route', async () => {
+  it('shows icon-and-text state, the private note and a bookings link for a renter-booked seat', async () => {
     setup({
       seats: [
         seat('A-1', vacant),
@@ -110,7 +110,10 @@ describe('today state', () => {
     expect(screen.getByText('Occupied by you')).toBeInTheDocument();
     expect(screen.getByText('Booked by a renter')).toBeInTheDocument();
     expect(screen.getAllByText('Note: Reserved for Sam').length).toBeGreaterThan(0);
-    expect(screen.queryByRole('link', { name: /See bookings/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /See bookings/ })).toHaveAttribute(
+      'href',
+      '/owner/spaces/s1/bookings',
+    );
     expect(screen.getByText(/Only you can see occupancy notes/)).toBeInTheDocument();
   });
 

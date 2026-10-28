@@ -47,7 +47,7 @@ export const PASS_LABELS: Record<PassType, { name: string; length: string }> = {
   month: { name: 'Monthly pass', length: '30 days' },
 };
 
-const SLOT_NAMES: Record<SlotKind, string> = {
+export const SLOT_NAMES: Record<SlotKind, string> = {
   day: 'Day slot',
   night: 'Night slot',
   full_day: '24-hour slot',
