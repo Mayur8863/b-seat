@@ -6,7 +6,7 @@ import { ProblemException } from '../common/errors/problem.exception.js';
 
 /**
  * Booking conflicts with existing state (409) and how database errors from the booking
- * INSERT map to them (ADR-0008 section 2). Registry: specs/001-seat-booking/contracts/README.md.
+ * INSERT map to them (ADR-0009 section 2, which moved the exclusions from `booking` to `seat_hold`). Registry: specs/001-seat-booking/contracts/README.md.
  */
 
 export const BOOKING_PROBLEM_TYPE = {
@@ -43,8 +43,8 @@ const DEADLOCK_DETECTED = '40P01';
 const LOCK_NOT_AVAILABLE = '55P03';
 
 const CONFLICT_BY_CONSTRAINT: Record<string, BookingConflict | undefined> = {
-  booking_seat_no_overlap: 'seat-unavailable',
-  booking_user_no_overlap: 'user-overlap',
+  seat_hold_seat_no_overlap: 'seat-unavailable',
+  seat_hold_user_no_overlap: 'user-overlap',
 };
 
 /**

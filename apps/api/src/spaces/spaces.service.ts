@@ -6,7 +6,7 @@ import { ProblemException } from '../common/errors/problem.exception.js';
 import { toInstant } from '../common/time/zoned-time.js';
 import type { Database } from '../db/db.js';
 import { DB } from '../db/db.module.js';
-import { booking, seat, space } from '../db/schema/index.js';
+import { seat, seatHold, space } from '../db/schema/index.js';
 import { legacyLocation } from './legacy-location.js';
 import type { AvailabilityQueryInput, SpaceAvailability, SpaceList } from './spaces.schemas.js';
 
@@ -71,17 +71,18 @@ export class SpacesService {
 
     const { startsAt, endsAt } = resolveWindow(query, found.timeZone);
 
-    // The predicate repeats booking_seat_no_overlap's expression, with 'active' and '[)' as SQL
-    // literals (not bound parameters), so the planner can use its partial GiST index (research R-9).
-    // Built with the query builder so every column is table-qualified inside the subquery.
+    // The predicate repeats seat_hold_seat_no_overlap's expression (`active`, `[)` as SQL
+    // literals, not bound parameters) and correlates on seat.id, so the planner probes its partial
+    // GiST index once per seat (ADR-0009 section 7). Built with the query builder so every column
+    // is table-qualified inside the subquery.
     const overlapping = this.db
       .select({ one: sql`1` })
-      .from(booking)
+      .from(seatHold)
       .where(
         and(
-          eq(booking.seatId, seat.id),
-          sql`${booking.status} = 'active'`,
-          sql`tstzrange(${booking.startsAt}, ${booking.endsAt}, '[)') && tstzrange(${startsAt.toISOString()}::timestamptz, ${endsAt.toISOString()}::timestamptz, '[)')`,
+          eq(seatHold.seatId, seat.id),
+          sql`${seatHold.active}`,
+          sql`tstzrange(${seatHold.startsAt}, ${seatHold.endsAt}, '[)') && tstzrange(${startsAt.toISOString()}::timestamptz, ${endsAt.toISOString()}::timestamptz, '[)')`,
         ),
       );
     const seats = await this.db

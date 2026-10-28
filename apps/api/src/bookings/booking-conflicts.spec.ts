@@ -15,8 +15,8 @@ function driverError(code: string, constraint?: string): DrizzleQueryError {
 }
 
 describe('classifyInsertError (ADR-0008 section 2)', () => {
-  it('maps 23P01 on booking_seat_no_overlap to 409 seat-unavailable', () => {
-    const outcome = classifyInsertError(driverError('23P01', 'booking_seat_no_overlap'));
+  it('maps 23P01 on seat_hold_seat_no_overlap to 409 seat-unavailable', () => {
+    const outcome = classifyInsertError(driverError('23P01', 'seat_hold_seat_no_overlap'));
     expect(outcome).toBeInstanceOf(ProblemException);
     const problem = outcome as ProblemException;
     expect(problem.getStatus()).toBe(409);
@@ -25,8 +25,8 @@ describe('classifyInsertError (ADR-0008 section 2)', () => {
     expect(problem.detail).toBe('This seat is no longer available for that time.');
   });
 
-  it('maps 23P01 on booking_user_no_overlap to 409 user-overlap', () => {
-    const problem = classifyInsertError(driverError('23P01', 'booking_user_no_overlap'));
+  it('maps 23P01 on seat_hold_user_no_overlap to 409 user-overlap', () => {
+    const problem = classifyInsertError(driverError('23P01', 'seat_hold_user_no_overlap'));
     expect(problem).toMatchObject({
       type: 'urn:bseat:problem:booking:user-overlap',
       title: 'Overlapping booking',

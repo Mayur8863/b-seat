@@ -7,6 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { SpacesService } from '../src/spaces/spaces.service.js';
 import { space } from '../src/db/schema/index.js';
+import { pgFailure } from './helpers.js';
 import { createScratchDatabase, type ScratchDatabase } from './migration-harness.js';
 
 // Expand migrations must keep existing rows valid (research R-7). Rows are inserted with raw SQL
@@ -154,5 +155,71 @@ describe('migration 0007_shared_calendar_backfill on top of existing spaces', ()
       'SELECT count(*) FROM availability_calendar',
     );
     expect(rows).toEqual([{ count: '3' }]);
+  });
+});
+
+describe('migration 0010_seat_hold_exclusions on top of hourly bookings (OQ-3, ADR-0009 section 6)', () => {
+  let scratch: ScratchDatabase;
+  const spaceId = '33333333-3333-4333-8333-333333333333';
+  const liveSeat = '44444444-4444-4444-8444-444444444441';
+  const endedSeat = '44444444-4444-4444-8444-444444444442';
+  const live = '55555555-5555-4555-8555-555555555551';
+  const ended = '55555555-5555-4555-8555-555555555552';
+
+  beforeAll(async () => {
+    scratch = await createScratchDatabase();
+    await scratch.migrateTo('0008_pass_price_not_nan');
+    const { pool } = scratch;
+    await pool.query(`INSERT INTO "user" (id, name, email) VALUES ('u1', 'U', 'u1@example.com')`);
+    await pool.query(
+      `INSERT INTO space (id, name, location, time_zone) VALUES ($1, 'Hub', 'Pune', 'Asia/Kolkata')`,
+      [spaceId],
+    );
+    await pool.query(
+      `INSERT INTO seat (id, space_id, label) VALUES ($1, $3, 'A-1'), ($2, $3, 'A-2')`,
+      [liveSeat, endedSeat, spaceId],
+    );
+    // One active booking that ends tomorrow, one that ended yesterday (quarter-hour aligned).
+    await pool.query(
+      `INSERT INTO booking (id, seat_id, user_id, starts_at, ends_at) VALUES
+         ($1, $3, 'u1', date_trunc('hour', now()) + interval '22 hours', date_trunc('hour', now()) + interval '24 hours'),
+         ($2, $4, 'u1', date_trunc('hour', now()) - interval '26 hours', date_trunc('hour', now()) - interval '24 hours')`,
+      [live, ended, liveSeat, endedSeat],
+    );
+    await scratch.migrateToLatest();
+  }, 60_000);
+
+  afterAll(async () => {
+    await scratch.drop();
+  });
+
+  it('backfills exactly one active hold, for the booking that has not ended', async () => {
+    const { rows } = await scratch.pool.query(
+      `SELECT booking_id, seat_id, user_id, active, starts_at = b.starts_at AS same_start,
+              service_date = (b.starts_at AT TIME ZONE 'Asia/Kolkata')::date AS local_date
+       FROM seat_hold h JOIN booking b ON b.id = h.booking_id`,
+    );
+
+    expect(rows).toEqual([
+      {
+        booking_id: live,
+        seat_id: liveSeat,
+        user_id: 'u1',
+        active: true,
+        same_start: true,
+        local_date: true,
+      },
+    ]);
+  });
+
+  it('keeps legacy hourly rows as read-only history: updates fail, deletes succeed', async () => {
+    const update = await pgFailure(
+      scratch.pool.query(`UPDATE booking SET status = 'active' WHERE id = $1`, [ended]),
+    );
+    expect(update).toEqual({ code: '23514', constraint: 'booking_no_new_hourly' });
+
+    await scratch.pool.query(`DELETE FROM booking WHERE id = $1`, [ended]);
+    const { rows } = await scratch.pool.query('SELECT count(*) FROM booking');
+    expect(rows).toEqual([{ count: '1' }]);
   });
 });

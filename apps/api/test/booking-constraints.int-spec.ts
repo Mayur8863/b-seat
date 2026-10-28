@@ -7,7 +7,7 @@ import { booking, seat, space, user } from '../src/db/schema/index.js';
 import {
   createSeats,
   createSpace,
-  insertBooking,
+  insertPassBooking,
   type SeatRow,
   type SpaceRow,
   testDb,
@@ -15,6 +15,7 @@ import {
 import { createTestApp, pgFailure, resetDb, signedInAgent } from './helpers.js';
 
 // The invariants in data-model.md, tested against the migrated database (no API code involved).
+// Pass-header and hold constraints are in seat-hold-constraints.int-spec.ts.
 
 const DAY = '2030-01-15';
 const at = (time: string) => new Date(`${DAY}T${time}Z`);
@@ -32,7 +33,6 @@ describe('booking constraints (database)', () => {
   let db: Database;
   let london: SpaceRow;
   let s1: SeatRow;
-  let s2: SeatRow;
   let u: string;
 
   beforeAll(async () => {
@@ -42,139 +42,23 @@ describe('booking constraints (database)', () => {
   beforeEach(async () => {
     await resetDb(app);
     london = await createSpace(db);
-    [s1, s2] = (await createSeats(db, london.id, 2)) as [SeatRow, SeatRow];
+    [s1] = (await createSeats(db, london.id, 2)) as [SeatRow, SeatRow];
     u = await signUpUserId(app, 'u@example.com');
   });
   afterAll(() => app.close());
 
-  describe('exclusion constraints', () => {
-    it('refuses an overlapping active booking of the same seat (booking_seat_no_overlap)', async () => {
-      const v = await signUpUserId(app, 'v@example.com');
-      await insertBooking(db, {
-        seatId: s1.id,
-        userId: u,
-        startsAt: at('09:00'),
-        endsAt: at('12:00'),
-      });
+  describe('the 001 exclusions are gone (ADR-0009 section 6)', () => {
+    it('leaves no exclusion constraint on booking', async () => {
+      const { rows } = await db.execute<{ conname: string }>(sql`
+        select conname from pg_constraint where conrelid = 'booking'::regclass and contype = 'x'`);
 
-      const failure = await pgFailure(
-        insertBooking(db, { seatId: s1.id, userId: v, startsAt: at('10:00'), endsAt: at('11:00') }),
-      );
-
-      expect(failure).toEqual({ code: '23P01', constraint: 'booking_seat_no_overlap' });
-      expect(await db.$count(booking)).toBe(1);
-    });
-
-    it('refuses an overlapping active booking of the same user on another seat (booking_user_no_overlap)', async () => {
-      await insertBooking(db, {
-        seatId: s1.id,
-        userId: u,
-        startsAt: at('09:00'),
-        endsAt: at('12:00'),
-      });
-
-      const failure = await pgFailure(
-        insertBooking(db, { seatId: s2.id, userId: u, startsAt: at('11:00'), endsAt: at('13:00') }),
-      );
-
-      expect(failure).toEqual({ code: '23P01', constraint: 'booking_user_no_overlap' });
-    });
-
-    it('allows touching windows for the same seat and user (half-open ranges)', async () => {
-      await insertBooking(db, {
-        seatId: s1.id,
-        userId: u,
-        startsAt: at('09:00'),
-        endsAt: at('12:00'),
-      });
-      await insertBooking(db, {
-        seatId: s1.id,
-        userId: u,
-        startsAt: at('12:00'),
-        endsAt: at('13:00'),
-      });
-
-      expect(await db.$count(booking)).toBe(2);
-    });
-
-    it('lets an active booking overlap a cancelled one (seat and user)', async () => {
-      await insertBooking(db, {
-        seatId: s1.id,
-        userId: u,
-        startsAt: at('09:00'),
-        endsAt: at('12:00'),
-        status: 'cancelled',
-      });
-      await insertBooking(db, {
-        seatId: s1.id,
-        userId: u,
-        startsAt: at('10:00'),
-        endsAt: at('11:00'),
-      });
-
-      expect(await db.$count(booking, eq(booking.status, 'active'))).toBe(1);
-    });
-
-    it('allows different seats and different users in the same window', async () => {
-      const v = await signUpUserId(app, 'v@example.com');
-      await insertBooking(db, {
-        seatId: s1.id,
-        userId: u,
-        startsAt: at('09:00'),
-        endsAt: at('12:00'),
-      });
-      await insertBooking(db, {
-        seatId: s2.id,
-        userId: v,
-        startsAt: at('09:00'),
-        endsAt: at('12:00'),
-      });
-
-      expect(await db.$count(booking)).toBe(2);
-    });
-
-    it('exist in pg_constraint as partial exclusion constraints (custom migration ran)', async () => {
-      const { rows } = await db.execute<{ conname: string; contype: string; def: string }>(sql`
-        select conname, contype, pg_get_constraintdef(oid) as def
-        from pg_constraint
-        where conrelid = 'booking'::regclass and contype = 'x'
-        order by conname`);
-
-      expect(rows.map((r) => r.conname)).toEqual([
-        'booking_seat_no_overlap',
-        'booking_user_no_overlap',
-      ]);
-      for (const row of rows) {
-        expect(row.def).toContain("tstzrange(starts_at, ends_at, '[)'::text) WITH &&");
-        expect(row.def).toContain("WHERE ((status = 'active'::booking_status))");
-      }
+      expect(rows).toEqual([]);
     });
   });
 
   describe('booking CHECK constraints', () => {
-    it.each([
-      { name: 'end equal to start', start: '12:00', end: '12:00' },
-      { name: 'end before start', start: '12:00', end: '11:00' },
-      { name: '5 minutes', start: '09:00', end: '09:05', constraint: 'booking_duration_bounds' },
-      { name: '10 h 15 min', start: '08:00', end: '18:15', constraint: 'booking_duration_bounds' },
-      { name: 'start at :10', start: '09:10', end: '10:10', constraint: 'booking_quarter_hour' },
-      {
-        name: 'start at 09:00:00.400',
-        start: '09:00:00.400',
-        end: '10:00:00.400',
-        constraint: 'booking_quarter_hour',
-      },
-    ])('refuses $name with 23514', async ({ start, end, constraint }) => {
-      const failure = await pgFailure(
-        insertBooking(db, { seatId: s1.id, userId: u, startsAt: at(start), endsAt: at(end) }),
-      );
-
-      expect(failure.code).toBe('23514');
-      if (constraint) expect(failure.constraint).toBe(constraint);
-    });
-
-    // Every inverted window also breaks booking_duration_bounds, which PostgreSQL checks first
-    // (CHECKs run in name order), so this one is asserted by definition.
+    // Every inverted window also breaks booking_pass_length or similar earlier-named checks, so the
+    // definition is asserted instead (CHECKs run in name order).
     it('defines booking_ends_after_starts as ends_at > starts_at', async () => {
       const { rows } = await db.execute<{ def: string }>(sql`
         select pg_get_constraintdef(oid) as def from pg_constraint
@@ -183,12 +67,25 @@ describe('booking constraints (database)', () => {
       expect(rows[0]?.def).toBe('CHECK ((ends_at > starts_at))');
     });
 
+    it('refuses an envelope that ends before it starts', async () => {
+      const failure = await pgFailure(
+        insertPassBooking(db, {
+          seatId: s1.id,
+          userId: u,
+          startsAt: at('12:00'),
+          endsAt: at('11:00'),
+        }),
+      );
+
+      expect(failure.code).toBe('23514');
+    });
+
     it.each([
       { name: 'cancelled without cancelled_at', status: 'cancelled' as const, cancelledAt: null },
       { name: 'active with cancelled_at', status: 'active' as const, cancelledAt: at('08:00') },
     ])('refuses $name (booking_cancel_consistency)', async ({ status, cancelledAt }) => {
       const failure = await pgFailure(
-        insertBooking(db, {
+        insertPassBooking(db, {
           seatId: s1.id,
           userId: u,
           startsAt: at('09:00'),
@@ -201,24 +98,38 @@ describe('booking constraints (database)', () => {
       expect(failure).toEqual({ code: '23514', constraint: 'booking_cancel_consistency' });
     });
 
-    it('accepts the duration bounds exactly (15 min and 10 h) with defaults filled in', async () => {
-      const short = await insertBooking(db, {
+    it('fills defaults and the generated holds_active on a pass header', async () => {
+      const row = await insertPassBooking(db, {
         seatId: s1.id,
         userId: u,
         startsAt: at('07:00'),
-        endsAt: at('07:15'),
-      });
-      const long = await insertBooking(db, {
-        seatId: s2.id,
-        userId: await signUpUserId(app, 'v@example.com'),
-        startsAt: at('07:00'),
-        endsAt: at('17:00'),
+        endsAt: at('19:00'),
       });
 
-      expect(short).toMatchObject({ status: 'active', cancelledAt: null });
-      expect(short.id).toMatch(/^[0-9a-f-]{36}$/);
-      expect(short.createdAt).toBeInstanceOf(Date);
-      expect(long.status).toBe('active');
+      expect(row).toMatchObject({
+        kind: 'pass',
+        status: 'active',
+        holdsActive: true,
+        spaceId: london.id,
+        cancelledAt: null,
+      });
+      expect(row.createdAt).toBeInstanceOf(Date);
+    });
+
+    it('refuses a header whose space differs from its seat’s (booking_seat_space_fk)', async () => {
+      const other = await createSpace(db);
+
+      const failure = await pgFailure(
+        insertPassBooking(db, {
+          seatId: s1.id,
+          userId: u,
+          spaceId: other.id,
+          startsAt: at('07:00'),
+          endsAt: at('19:00'),
+        }),
+      );
+
+      expect(failure).toEqual({ code: '23503', constraint: 'booking_seat_space_fk' });
     });
   });
 
@@ -258,7 +169,7 @@ describe('booking constraints (database)', () => {
   describe('foreign keys', () => {
     // ON DELETE RESTRICT reports restrict_violation (23001), not foreign_key_violation (23503).
     it('refuses deleting a seat that has bookings, and a space that has seats (RESTRICT)', async () => {
-      await insertBooking(db, {
+      await insertPassBooking(db, {
         seatId: s1.id,
         userId: u,
         startsAt: at('09:00'),
@@ -276,7 +187,7 @@ describe('booking constraints (database)', () => {
     });
 
     it('deletes a user’s bookings with the user (CASCADE)', async () => {
-      await insertBooking(db, {
+      await insertPassBooking(db, {
         seatId: s1.id,
         userId: u,
         startsAt: at('09:00'),
@@ -290,7 +201,7 @@ describe('booking constraints (database)', () => {
 
     it('refuses a booking for an unknown seat (booking_seat_id_seat_id_fk)', async () => {
       const failure = await pgFailure(
-        insertBooking(db, {
+        insertPassBooking(db, {
           seatId: '00000000-0000-4000-8000-000000000000',
           userId: u,
           startsAt: at('09:00'),
