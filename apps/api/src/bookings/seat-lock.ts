@@ -35,14 +35,15 @@ export async function lockSeats(tx: SeatLockTx, seatIds: readonly string[]): Pro
   await tx.execute(lockSeatsStatement(distinct));
 }
 
-/** Drizzle spreads a JS array into one parameter per item, so the array travels as one text literal. */
-const uuidArrayLiteral = (ids: readonly string[]) => `{${ids.join(',')}}`;
-
-/** One bound uuid array; the subquery's ORDER BY is not flattened, so locks are taken in key order. */
+/**
+ * One bound uuid array; the subquery's ORDER BY is not flattened, so locks are taken in key order.
+ * `sql.param` keeps the JS array as one parameter (a bare array would be spread into a list), and
+ * node-postgres quotes each element, so an id can never split into extra elements.
+ */
 export function lockSeatsStatement(distinct: readonly string[]) {
   return sql`
     select pg_advisory_xact_lock(${SEAT_HOLD_LOCK_CLASS}::int, k)
-    from (select distinct hashtext(id::text) as k from unnest(${uuidArrayLiteral(distinct)}::uuid[]) as t(id) order by k) as keys`;
+    from (select distinct hashtext(id::text) as k from unnest(${sql.param(distinct)}::uuid[]) as t(id) order by k) as keys`;
 }
 
 /** What `classify` decides about a database error from the writer's statements. */

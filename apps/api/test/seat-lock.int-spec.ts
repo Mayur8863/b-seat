@@ -93,6 +93,18 @@ describe('seat locks against Postgres (ADR-0009 section 9)', () => {
       expect(held.rows.map((r) => Number(r.objid)).sort()).toEqual([...held.expected].sort());
     });
 
+    it('binds each id as one array element, so a comma-joined id fails the cast and locks nothing', async () => {
+      const space = await createSpace(db);
+      const [a, b] = await createSeats(db, space.id, 2);
+      if (!a || !b) throw new Error('expected seats');
+
+      await expect(
+        db.transaction(async (tx) => {
+          await lockSeats(tx, [`${a.id},${b.id}`]);
+        }),
+      ).rejects.toMatchObject({ cause: { code: '22P02' } });
+    });
+
     it('is a no-op for an empty list', async () => {
       await db.transaction(async (tx) => {
         await lockSeats(tx, []);

@@ -237,7 +237,7 @@ describe('lockSeats', () => {
     expect(text).toMatch(/pg_advisory_xact_lock\(\$1::int, k\)/);
     expect(text).toMatch(/select distinct hashtext\(id::text\) as k from unnest\(\$2::uuid\[\]\)/);
     expect(text).toMatch(/order by k\) as keys/);
-    expect(params).toEqual([SEAT_HOLD_LOCK_CLASS, `{${ids.join(',')}}`]);
+    expect(params).toEqual([SEAT_HOLD_LOCK_CLASS, ids]);
   });
 
   it('does nothing for an empty list', async () => {
