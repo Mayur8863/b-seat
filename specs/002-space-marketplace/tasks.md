@@ -95,7 +95,7 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 | T063 | Seed a sample layout                                         | backend-dev    | T009, T062             | S    | todo                                                           | `feat/002-seed-layout`                |
 | T064 | Layout editor model (pure reducer, TDD)                      | frontend-dev   | T061, T062             | M    | review — dev done; next: QA (queued)                           | `feat/002-layout-editor-model`        |
 | T065 | Layout editor page (grid, pointer, keyboard, form)           | frontend-dev   | T023, T064             | M    | todo                                                           | `feat/002-layout-editor`              |
-| T066 | Renter plan view on the listing page                         | frontend-dev   | T040, T061, T062       | M    | todo                                                           | `feat/002-renter-plan`                |
+| T066 | Renter plan view on the listing page                         | frontend-dev   | T040, T061, T062       | M    | review                                                         | `feat/002-renter-plan`                |
 | T067 | QA US8: layout e2e (keyboard only), axe                      | qa-engineer    | T063, T065, T066       | M    | todo                                                           | `test/002-us8-layout`                 |
 | T068 | Docs US8                                                     | docs-writer    | T067                   | S    | todo                                                           | `docs/002-us8-layout`                 |
 | T069 | Booking hardening carried over from 001 reviews              | backend-dev    | T037                   | S    | todo                                                           | `chore/002-booking-hardening`         |
@@ -835,7 +835,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given a stale save, When 409 returns, Then the ui/05 conflict state offers to reload.
 
 - [ ] T066 [US8] Renter plan view `apps/web/src/components/listing-plan.tsx` (+ test) on the listing page with a plan/list toggle
-  - **Owner**: frontend-dev · **Branch**: `feat/002-renter-plan` · **Size**: M · **Depends on**: T040, T061, T062 · **Status**: todo
+  - **Owner**: frontend-dev · **Branch**: `feat/002-renter-plan` · **Size**: M · **Depends on**: T040, T061, T062 · **Status**: review — dev done; next: QA (queued)
   - **Acceptance criteria**:
     - Given a listing with a layout and a chosen pass, slot and date, When the plan renders, Then each seat shows its label and free/taken with text or icon, and choosing a free seat starts the T041 booking flow (AC 8.4, FR-031).
     - Given the toggle, When switched, Then the list view shows the same seats (FR-031). Given no layout, Then only the list shows (AC 8.5).

@@ -4,6 +4,7 @@ import {
   ApiError,
   type ListingSeatAvailability,
   type ListingSeatAvailabilitySeatsItem as Seat,
+  useListingLayoutGet,
   useListingsSeats,
 } from '@bseat/api-client';
 import { Alert, AlertDescription, AlertTitle } from '@bseat/ui/components/alert';
@@ -13,9 +14,10 @@ import { Checkbox } from '@bseat/ui/components/checkbox';
 import { Label } from '@bseat/ui/components/label';
 import { RadioGroup, RadioGroupItem } from '@bseat/ui/components/radio-group';
 import { Skeleton } from '@bseat/ui/components/skeleton';
-import { BanIcon, CalendarXIcon, CircleCheckIcon } from 'lucide-react';
+import { BanIcon, CalendarXIcon, CircleCheckIcon, LayoutGridIcon, ListIcon } from 'lucide-react';
 import { useEffect, useId, useState } from 'react';
 
+import { ListingPlan, placeSeats } from '@/components/listing-plan';
 import type { PassChoice } from '@/components/pass-options';
 import { formatLocalDate } from '@/lib/booking-format';
 import { filterSeats, formatInstant } from '@/lib/seat-picker';
@@ -27,6 +29,8 @@ export interface SeatSelection {
 
 interface Props {
   spaceId: string;
+  /** From the listing; the layout is only fetched when true. */
+  hasLayout?: boolean;
   choice: PassChoice;
   startDate: string;
   timeZone: string;
@@ -121,6 +125,7 @@ function SeatTile({
 /** Seats for the chosen pass, slot and start date (ui/03 4.4). Selecting only reports the choice; booking is T041. */
 export function ListingSeatList({
   spaceId,
+  hasLayout = false,
   choice,
   startDate,
   timeZone,
@@ -133,6 +138,21 @@ export function ListingSeatList({
     { pass: choice.pass, slot: choice.slot, startDate },
     { query: { retry: false } },
   );
+  const layoutQuery = useListingLayoutGet(spaceId, {
+    query: { enabled: hasLayout, retry: false },
+  });
+  const layout = layoutQuery.data?.data;
+  const hasPlan = hasLayout && layout !== undefined && layout.elements.length > 0;
+  // Plan from md, list below (ui/05 8.1); the switch overrides it. matchMedia is absent in some test envs.
+  const [view, setView] = useState<'plan' | 'list'>(() =>
+    typeof window.matchMedia === 'function' && window.matchMedia('(min-width: 768px)').matches
+      ? 'plan'
+      : 'list',
+  );
+  const layoutFailed =
+    hasLayout &&
+    layoutQuery.isError &&
+    !(layoutQuery.error instanceof ApiError && layoutQuery.error.status === 404);
   const [hide, setHide] = useState(false);
   const [notice, setNotice] = useState('');
   const [announce, setAnnounce] = useState('');
@@ -187,6 +207,33 @@ export function ListingSeatList({
     const seats = availability.seats;
     const free = seats.filter((s) => s.status === 'free').length;
     const shown = filterSeats(seats, hide);
+    const onPlan = new Set(hasPlan ? placeSeats(layout, seats).map((p) => p.id) : []);
+    const offPlan = seats.filter((s) => !onPlan.has(s.id));
+    const choose = (id: string) => {
+      const seat = seats.find((s) => s.id === id);
+      if (!seat) return;
+      setNotice('');
+      setAnnounce(`Seat ${seat.label} selected.`);
+      onSelect({ seat, availability });
+    };
+    const seatGroup = (list: Seat[]) => (
+      <RadioGroup
+        aria-labelledby={headingId}
+        value={selectedSeatId ?? ''}
+        onValueChange={choose}
+        className={`grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-3 ${isFetching ? 'opacity-50' : ''}`}
+      >
+        {list.map((seat) => (
+          <SeatTile
+            key={seat.id}
+            seat={seat}
+            startDate={startDate}
+            timeZone={timeZone}
+            closedDays={seat.closedDates.length}
+          />
+        ))}
+      </RadioGroup>
+    );
     body = (
       <>
         <p role="status" className="text-muted-foreground">
@@ -215,31 +262,83 @@ export function ListingSeatList({
           />
           <Label htmlFor={hideId}>Hide seats that aren&apos;t free</Label>
         </div>
-        {shown.length === 0 ? (
+        {hasPlan && (
+          <div role="group" aria-label="Seat view" className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              aria-pressed={view === 'plan'}
+              className={
+                view === 'plan' ? 'bg-secondary text-secondary-foreground font-medium' : ''
+              }
+              onClick={() => {
+                setView('plan');
+              }}
+            >
+              <LayoutGridIcon aria-hidden="true" />
+              Plan
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              aria-pressed={view === 'list'}
+              className={
+                view === 'list' ? 'bg-secondary text-secondary-foreground font-medium' : ''
+              }
+              onClick={() => {
+                setView('list');
+              }}
+            >
+              <ListIcon aria-hidden="true" />
+              List
+            </Button>
+          </div>
+        )}
+        {layoutFailed && (
+          <p role="status" className="text-muted-foreground text-sm">
+            The floor plan isn&apos;t available right now. Choose a seat from the list.{' '}
+            <Button
+              type="button"
+              variant="link"
+              size="sm"
+              className="h-auto p-0"
+              onClick={() => void layoutQuery.refetch()}
+            >
+              Try again
+            </Button>
+          </p>
+        )}
+        {hasLayout && layoutQuery.isPending && (
+          <div aria-busy="true">
+            <span role="status" aria-live="polite" className="sr-only">
+              Loading the floor plan…
+            </span>
+            <Skeleton aria-hidden="true" className="h-72 rounded-xl" />
+          </div>
+        )}
+        {hasPlan && view === 'plan' ? (
+          <>
+            <ListingPlan
+              layout={layout}
+              seats={seats}
+              startDate={startDate}
+              selectedSeatId={selectedSeatId}
+              labelledBy={headingId}
+              onSelect={choose}
+            />
+            {offPlan.length > 0 && (
+              <div className="grid gap-2">
+                <h3 className="font-medium">Seats not on the plan</h3>
+                {seatGroup(offPlan)}
+              </div>
+            )}
+          </>
+        ) : shown.length === 0 ? (
           <p className="text-muted-foreground">No free seats to show.</p>
         ) : (
-          <RadioGroup
-            aria-labelledby={headingId}
-            value={selectedSeatId ?? ''}
-            onValueChange={(id) => {
-              const seat = seats.find((s) => s.id === id);
-              if (!seat) return;
-              setNotice('');
-              setAnnounce(`Seat ${seat.label} selected.`);
-              onSelect({ seat, availability });
-            }}
-            className={`grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-3 ${isFetching ? 'opacity-50' : ''}`}
-          >
-            {shown.map((seat) => (
-              <SeatTile
-                key={seat.id}
-                seat={seat}
-                startDate={startDate}
-                timeZone={timeZone}
-                closedDays={seat.closedDates.length}
-              />
-            ))}
-          </RadioGroup>
+          seatGroup(shown)
         )}
         <span role="status" className="sr-only">
           {announce}
