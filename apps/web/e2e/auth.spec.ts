@@ -67,9 +67,7 @@ test('renter saves country and city at sign-up and sees them on the dashboard', 
   await expect(card.getByText('India')).toBeVisible();
   await expect(card.getByText('Pune')).toBeVisible();
   await expect(card.getByRole('button', { name: 'Edit preferences' })).toBeVisible();
-  // Known product defect (reported in the T015 QA handoff): the success toast text is 4.25:1 on its
-  // green background. The toast is excluded here so the rest of the page is still checked.
-  const results = await new AxeBuilder({ page }).exclude('.cn-toast').withTags(WCAG_AA).analyze();
+  const results = await new AxeBuilder({ page }).withTags(WCAG_AA).analyze();
   expect(results.violations).toEqual([]);
 });
 

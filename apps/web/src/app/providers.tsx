@@ -17,7 +17,8 @@ export function Providers({ children }: { children: ReactNode }) {
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
       <QueryClientProvider client={queryClient}>
         {children}
-        <Toaster richColors closeButton />
+        {/* No richColors: its success palette is 4.25:1; the popover tokens meet AA and the icon carries the type. */}
+        <Toaster closeButton />
       </QueryClientProvider>
     </ThemeProvider>
   );
