@@ -1,60 +1,108 @@
+import { type HttpException } from '@nestjs/common';
 import { sql } from 'drizzle-orm';
 
 import type { Database } from '../db/db.js';
-import { classifyInsertError } from './booking-conflicts.js';
 
-/** Cross-seat user-overlap deadlocks are retried (same-seat ones are queued by the seat lock); see ADR-0008 section 2. */
+/** Cross-seat user-overlap deadlocks are retried (same-seat ones are queued by the seat locks); see ADR-0009 section 9. */
 export const MAX_INSERT_ATTEMPTS = 3;
 
-/** Longest a write may wait on the seat lock or a row lock before it fails (ADR-0009 section 9). */
+/** Longest a write may wait on a seat lock or a row lock before it fails (ADR-0009 section 9). */
 export const LOCK_TIMEOUT = '5s';
+
+/**
+ * Advisory lock class 0x42530001, "seat-hold write". The two-int key form never collides with
+ * bigint-keyed locks. A new class takes the next value and is added to ADR-0009 section 9.
+ */
+export const SEAT_HOLD_LOCK_CLASS = 1112735745;
+
+/** Most seats one transaction may lock (ADR-0009 section 9.2). */
+export const MAX_LOCKED_SEATS = 200;
 
 export type SeatLockTx = Parameters<Parameters<Database['transaction']>[0]>[0];
 
 /**
- * LEGACY, kept only until T005: this is 001's seat lock (`hashtextextended(seatId, 0)`), not the
- * `lockSeats` of ADR-0009 section 9 (advisory class 1112735745, sorted keys, many seats). The
- * two never exclude each other, so never use this next to `lockSeats` and do not build new
- * callers on it. T005 replaces the lock statement with `lockSeats` and generalises this into
- * `withSeatLocks` (see T005 in tasks.md).
- *
- * Runs `work` in one short transaction that first sets `lock_timeout` and takes a
- * transaction-scoped advisory lock on the seat, so concurrent writers for the same seat queue
- * here instead of colliding inside an exclusion-constraint check (where Postgres resolves the
- * collision as a deadlock only after `deadlock_timeout` and 20+ racers exhaust the retries).
- *
- * A deadlock is retried up to `MAX_INSERT_ATTEMPTS` times, one fresh transaction each, so `work`
- * must be safe to re-run: it only runs database statements on `tx` (no mail, cache or success
- * logging), it does not catch database errors, and it returns only values derived from `tx`.
- * A lock timeout is not retried: waiting again would pile on. A database error that maps to a
- * 409 is thrown as that problem (`classifyInsertError`, which knows only the `booking_*`
- * constraints that T005 drops). A throw from `onLockTimeout` is swallowed so it cannot replace
- * the original 55P03 error.
+ * Takes one transaction-scoped advisory lock per seat, de-duplicated and in ascending **key**
+ * order (not seat id order: two seats can share a 32-bit hash, and only key order is free of
+ * lock-order cycles), in one statement. This is the only place that calls `pg_advisory_*`.
+ * Call it first in the transaction, after `SET LOCAL lock_timeout`, before any row lock.
  */
-export async function withSeatLock<T>(
+export async function lockSeats(tx: SeatLockTx, seatIds: readonly string[]): Promise<void> {
+  const distinct = [...new Set(seatIds)];
+  if (distinct.length === 0) return;
+  if (distinct.length > MAX_LOCKED_SEATS) {
+    throw new RangeError(`Cannot lock more than ${MAX_LOCKED_SEATS} seats in one transaction`);
+  }
+  await tx.execute(lockSeatsStatement(distinct));
+}
+
+/**
+ * One bound uuid array; the subquery's ORDER BY is not flattened, so locks are taken in key order.
+ * `sql.param` keeps the JS array as one parameter (a bare array would be spread into a list), and
+ * node-postgres quotes each element, so an id can never split into extra elements.
+ */
+export function lockSeatsStatement(distinct: readonly string[]) {
+  return sql`
+    select pg_advisory_xact_lock(${SEAT_HOLD_LOCK_CLASS}::int, k)
+    from (select distinct hashtext(id::text) as k from unnest(${sql.param(distinct)}::uuid[]) as t(id) order by k) as keys`;
+}
+
+/** What `classify` decides about a database error from the writer's statements. */
+export type ErrorOutcome = HttpException | 'retry' | 'lock-timeout' | 'rethrow';
+
+export interface SeatLockOptions {
+  /** Maps a database error to a 409 (returned), a retry, a lock timeout or a rethrow. */
+  classify: (err: unknown) => ErrorOutcome;
+  /** Called before each deadlock retry (log `warn`, ids only). A throw is swallowed. */
+  onRetry?: (attempt: number) => void;
+  /** Called on a lock timeout (log `warn`, ids only). A throw is swallowed. */
+  onLockTimeout?: () => void;
+}
+
+function swallow(hook: () => void): void {
+  try {
+    hook();
+  } catch {
+    // A failing hook must not replace the original error.
+  }
+}
+
+/**
+ * Runs `work` in one short transaction that first sets `lock_timeout`, then `lockSeats`, so
+ * concurrent writers for the same seats queue here instead of colliding inside an
+ * exclusion-constraint check (where Postgres resolves the collision as a deadlock only after
+ * `deadlock_timeout` and 20+ racers exhaust the retries).
+ *
+ * A deadlock is retried up to `MAX_INSERT_ATTEMPTS` times, one fresh transaction (and fresh
+ * locks) each, so `work` must be safe to re-run: it only runs database statements on `tx` (no
+ * mail, cache or success logging), it does not catch database errors, and it returns only
+ * values derived from `tx`. A lock timeout is not retried: waiting again would pile on.
+ */
+export async function withSeatLocks<T>(
   db: Database,
-  seatId: string,
+  seatIds: readonly string[],
   work: (tx: SeatLockTx) => Promise<T>,
-  onLockTimeout?: () => void,
+  { classify, onRetry, onLockTimeout }: SeatLockOptions,
 ): Promise<T> {
   for (let attempt = 1; ; attempt += 1) {
     try {
       return await db.transaction(async (tx) => {
-        await tx.execute(sql`set local lock_timeout = ${sql.raw(`'${LOCK_TIMEOUT}'`)}`);
-        await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${seatId}::text, 0))`);
+        await tx.execute(sql`select set_config('lock_timeout', ${LOCK_TIMEOUT}, true)`);
+        await lockSeats(tx, seatIds);
         return work(tx);
       });
     } catch (err) {
-      const outcome = classifyInsertError(err);
+      const outcome = classify(err);
       if (outcome === 'lock-timeout') {
-        try {
-          onLockTimeout?.();
-        } catch {
-          // A failing hook must not hide the lock timeout.
-        }
+        if (onLockTimeout) swallow(onLockTimeout);
         throw err;
       }
-      if (outcome === 'retry' && attempt < MAX_INSERT_ATTEMPTS) continue;
+      if (outcome === 'retry' && attempt < MAX_INSERT_ATTEMPTS) {
+        if (onRetry)
+          swallow(() => {
+            onRetry(attempt);
+          });
+        continue;
+      }
       if (outcome === 'retry' || outcome === 'rethrow') throw err;
       throw outcome;
     }

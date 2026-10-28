@@ -64,6 +64,20 @@
       "when": 1793096379073,
       "tag": "0008_pass_price_not_nan",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793163039769,
+      "tag": "0009_pass_bookings",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793163049759,
+      "tag": "0010_seat_hold_exclusions",
+      "breakpoints": true
     }
   ]
 }

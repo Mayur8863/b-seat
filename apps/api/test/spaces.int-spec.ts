@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
+import type { Database } from '../src/db/db.js';
 import { seat } from '../src/db/schema/index.js';
 import { toInstant, toLocal } from '../src/common/time/zoned-time.js';
 import { SpaceAvailabilitySchema } from '../src/spaces/spaces.schemas.js';
@@ -11,10 +12,34 @@ import {
   createOwner,
   createPublishedSpace,
   createSeats,
-  insertBooking,
+  insertHold,
+  insertOccupancyMark,
+  insertPassBooking,
   testDb,
 } from './fixtures.js';
 import { createTestApp, resetDb, signedInAgent } from './helpers.js';
+
+/** A pass header with its one hold: what the availability read looks at (ADR-0009 section 7). */
+async function holdSeat(
+  db: Database,
+  values: {
+    seatId: string;
+    userId: string;
+    startsAt: Date;
+    endsAt: Date;
+    status?: 'active' | 'cancelled';
+  },
+): Promise<void> {
+  const header = await insertPassBooking(db, values);
+  await insertHold(db, {
+    seatId: values.seatId,
+    userId: values.userId,
+    bookingId: header.id,
+    startsAt: values.startsAt,
+    endsAt: values.endsAt,
+    active: values.status !== 'cancelled',
+  });
+}
 
 type Agent = Awaited<ReturnType<typeof signedInAgent>>;
 
@@ -175,7 +200,7 @@ describe('spaces API', () => {
       const date = tomorrow(TZ);
       const booked = seats[2];
       if (!booked) throw new Error('expected 6 seats');
-      await insertBooking(db, {
+      await holdSeat(db, {
         seatId: booked.id,
         userId,
         startsAt: at(date, '09:00', TZ),
@@ -220,6 +245,33 @@ describe('spaces API', () => {
       expect(Object.values(statusByLabel(res.body)).filter((s) => s === 'free')).toHaveLength(5);
     });
 
+    it('marks a seat with an occupancy hold as taken (T005, FR-018)', async () => {
+      const db = testDb(app);
+      const owner = await createOwner(db);
+      const space = await createPublishedSpace(db, { timeZone: TZ });
+      const [taken, free] = await createSeats(db, space.id, 2);
+      if (!taken || !free) throw new Error('expected seats');
+      const date = tomorrow(TZ);
+      const mark = await insertOccupancyMark(db, {
+        seatId: taken.id,
+        createdBy: owner.id,
+        startDate: date,
+      });
+      await insertHold(db, {
+        seatId: taken.id,
+        occupancyMarkId: mark.id,
+        startsAt: at(date, '00:00', TZ),
+        endsAt: null,
+      });
+
+      const res = await agent
+        .get(`/api/spaces/${space.id}/availability`)
+        .query({ date, startTime: '10:00', endTime: '11:00' })
+        .expect(200);
+
+      expect(statusByLabel(res.body)).toEqual({ 'S-01': 'taken', 'S-02': 'free' });
+    });
+
     it('treats a window touching the booking end as free (AC 1.3)', async () => {
       const { space, date } = await londonWithBooking();
 
@@ -250,7 +302,7 @@ describe('spaces API', () => {
       const [seat] = await createSeats(db, space.id, 2);
       if (!seat) throw new Error('expected seats');
       const date = tomorrow(kolkata);
-      await insertBooking(db, {
+      await holdSeat(db, {
         seatId: seat.id,
         userId,
         startsAt: at(date, '09:00', kolkata),

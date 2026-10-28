@@ -1,11 +1,22 @@
 import { DrizzleQueryError } from 'drizzle-orm';
+import { PgDialect } from 'drizzle-orm/pg-core';
 import pg from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { Database } from '../db/db.js';
-import { MAX_INSERT_ATTEMPTS, withSeatLock } from './seat-lock.js';
+import { classifyInsertError } from './booking-conflicts.js';
+import {
+  lockSeats,
+  lockSeatsStatement,
+  MAX_INSERT_ATTEMPTS,
+  MAX_LOCKED_SEATS,
+  SEAT_HOLD_LOCK_CLASS,
+  type SeatLockTx,
+  withSeatLocks,
+} from './seat-lock.js';
 
-const SEAT_ID = '0b6c7d1e-0000-4000-8000-000000000001';
+const SEAT_IDS = ['0b6c7d1e-0000-4000-8000-000000000001'];
+const options = { classify: classifyInsertError };
 
 function driverError(code: string, constraint?: string): DrizzleQueryError {
   const cause = new pg.DatabaseError('simulated', 0, 'error');
@@ -50,26 +61,34 @@ async function rejection(promise: Promise<unknown>): Promise<unknown> {
   throw new Error('expected a rejection');
 }
 
-describe('withSeatLock', () => {
+describe('withSeatLocks', () => {
   it('sets the lock timeout, takes the seat lock, then runs the work, in one transaction', async () => {
     const { db, transaction, log } = fakeDb();
 
-    const result = await withSeatLock(db, SEAT_ID, () => {
-      log.push('work');
-      return Promise.resolve('done');
-    });
+    const result = await withSeatLocks(
+      db,
+      SEAT_IDS,
+      () => {
+        log.push('work');
+        return Promise.resolve('done');
+      },
+      options,
+    );
 
     expect(result).toBe('done');
     expect(transaction).toHaveBeenCalledTimes(1);
     expect(log).toEqual(['begin', 'lock_timeout', 'lock', 'work', 'commit']);
   });
 
-  it('maps an exclusion violation to the 409 problem (ADR-0008 section 2)', async () => {
+  it('maps an exclusion violation to the 409 problem (ADR-0009 section 2)', async () => {
     const { db } = fakeDb();
 
     const err = await rejection(
-      withSeatLock(db, SEAT_ID, () =>
-        Promise.reject(driverError('23P01', 'booking_seat_no_overlap')),
+      withSeatLocks(
+        db,
+        SEAT_IDS,
+        () => Promise.reject(driverError('23P01', 'seat_hold_seat_no_overlap')),
+        options,
       ),
     );
 
@@ -81,11 +100,11 @@ describe('withSeatLock', () => {
     const { db, transaction } = fakeDb();
     const attempts = [
       () => Promise.reject(driverError('40P01')),
-      () => Promise.reject(driverError('23P01', 'booking_seat_no_overlap')),
+      () => Promise.reject(driverError('23P01', 'seat_hold_seat_no_overlap')),
     ];
 
     const err = await rejection(
-      withSeatLock(db, SEAT_ID, () => (attempts.shift() ?? (() => Promise.resolve()))()),
+      withSeatLocks(db, SEAT_IDS, () => (attempts.shift() ?? (() => Promise.resolve()))(), options),
     );
 
     expect(transaction).toHaveBeenCalledTimes(2);
@@ -96,10 +115,15 @@ describe('withSeatLock', () => {
     const { db, transaction } = fakeDb();
     const attempts = [() => Promise.reject(driverError('40P01')), () => Promise.resolve('ok')];
 
-    const result = await withSeatLock(db, SEAT_ID, () => {
-      const next = attempts.shift();
-      return next ? next() : Promise.reject(new Error('extra attempt'));
-    });
+    const result = await withSeatLocks(
+      db,
+      SEAT_IDS,
+      () => {
+        const next = attempts.shift();
+        return next ? next() : Promise.reject(new Error('extra attempt'));
+      },
+      options,
+    );
 
     expect(transaction).toHaveBeenCalledTimes(2);
     expect(result).toBe('ok');
@@ -115,7 +139,7 @@ describe('withSeatLock', () => {
     ];
 
     const err = await rejection(
-      withSeatLock(db, SEAT_ID, () => (attempts.shift() ?? (() => Promise.resolve()))()),
+      withSeatLocks(db, SEAT_IDS, () => (attempts.shift() ?? (() => Promise.resolve()))(), options),
     );
 
     expect(MAX_INSERT_ATTEMPTS).toBe(3);
@@ -127,10 +151,45 @@ describe('withSeatLock', () => {
     const { db, transaction } = fakeDb();
     const check = driverError('23514', 'booking_quarter_hour');
 
-    const err = await rejection(withSeatLock(db, SEAT_ID, () => Promise.reject(check)));
+    const err = await rejection(withSeatLocks(db, SEAT_IDS, () => Promise.reject(check), options));
 
     expect(transaction).toHaveBeenCalledTimes(1);
     expect(err).toBe(check);
+  });
+
+  it('calls onRetry before each deadlock retry and still retries when the hook throws', async () => {
+    const { db, transaction } = fakeDb();
+    const attempts = [() => Promise.reject(driverError('40P01')), () => Promise.resolve('ok')];
+    const onRetry = vi.fn(() => {
+      throw new Error('logger down');
+    });
+
+    const result = await withSeatLocks(
+      db,
+      SEAT_IDS,
+      () => (attempts.shift() ?? (() => Promise.resolve('ok')))(),
+      {
+        ...options,
+        onRetry,
+      },
+    );
+
+    expect(result).toBe('ok');
+    expect(onRetry).toHaveBeenCalledExactlyOnceWith(1);
+    expect(transaction).toHaveBeenCalledTimes(2);
+  });
+
+  it('lets a custom classify decide (occupancy create maps its own constraints)', async () => {
+    const { db } = fakeDb();
+    const mapped = new Error('mapped');
+    const classify = vi.fn(() => 'rethrow' as const);
+
+    const err = await rejection(
+      withSeatLocks(db, SEAT_IDS, () => Promise.reject(mapped), { classify }),
+    );
+
+    expect(classify).toHaveBeenCalledWith(mapped);
+    expect(err).toBe(mapped);
   });
 
   it('reports a lock timeout and rethrows it without retrying', async () => {
@@ -139,7 +198,7 @@ describe('withSeatLock', () => {
     const onLockTimeout = vi.fn();
 
     const err = await rejection(
-      withSeatLock(db, SEAT_ID, () => Promise.reject(timeout), onLockTimeout),
+      withSeatLocks(db, SEAT_IDS, () => Promise.reject(timeout), { ...options, onLockTimeout }),
     );
 
     expect(err).toBe(timeout);
@@ -155,11 +214,46 @@ describe('withSeatLock', () => {
     });
 
     const err = await rejection(
-      withSeatLock(db, SEAT_ID, () => Promise.reject(timeout), onLockTimeout),
+      withSeatLocks(db, SEAT_IDS, () => Promise.reject(timeout), { ...options, onLockTimeout }),
     );
 
     expect(err).toBe(timeout);
     expect(onLockTimeout).toHaveBeenCalledTimes(1);
     expect(transaction).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('lockSeats', () => {
+  const uuid = (n: number) => `0b6c7d1e-0000-4000-8000-${String(n).padStart(12, '0')}`;
+  const txStub = () => {
+    const execute = vi.fn(() => Promise.resolve());
+    return { tx: { execute } as unknown as SeatLockTx, execute };
+  };
+
+  it('renders one distinct, key-ordered statement of the seat-hold class with one bound array', () => {
+    const ids = [uuid(2), uuid(1)];
+    const { sql: text, params } = new PgDialect().sqlToQuery(lockSeatsStatement(ids));
+
+    expect(text).toMatch(/pg_advisory_xact_lock\(\$1::int, k\)/);
+    expect(text).toMatch(/select distinct hashtext\(id::text\) as k from unnest\(\$2::uuid\[\]\)/);
+    expect(text).toMatch(/order by k\) as keys/);
+    expect(params).toEqual([SEAT_HOLD_LOCK_CLASS, ids]);
+  });
+
+  it('does nothing for an empty list', async () => {
+    const { tx, execute } = txStub();
+    await lockSeats(tx, []);
+    expect(execute).not.toHaveBeenCalled();
+  });
+
+  it('throws RangeError over the cap of distinct seats, and counts duplicates once', async () => {
+    const { tx, execute } = txStub();
+    const many = Array.from({ length: MAX_LOCKED_SEATS + 1 }, (_, i) => uuid(i));
+
+    await expect(lockSeats(tx, many)).rejects.toBeInstanceOf(RangeError);
+    expect(execute).not.toHaveBeenCalled();
+
+    await lockSeats(tx, [...many.slice(0, MAX_LOCKED_SEATS), ...many.slice(0, 5)]);
+    expect(execute).toHaveBeenCalledTimes(1);
   });
 });

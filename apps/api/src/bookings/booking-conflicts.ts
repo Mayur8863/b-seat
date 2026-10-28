@@ -6,7 +6,8 @@ import { ProblemException } from '../common/errors/problem.exception.js';
 
 /**
  * Booking conflicts with existing state (409) and how database errors from the booking
- * INSERT map to them (ADR-0008 section 2). Registry: specs/001-seat-booking/contracts/README.md.
+ * INSERT map to them (ADR-0009 section 2 moved the exclusions from `booking` to `seat_hold`).
+ * Registry: specs/001-seat-booking/contracts/README.md.
  */
 
 export const BOOKING_PROBLEM_TYPE = {
@@ -43,9 +44,12 @@ const DEADLOCK_DETECTED = '40P01';
 const LOCK_NOT_AVAILABLE = '55P03';
 
 const CONFLICT_BY_CONSTRAINT: Record<string, BookingConflict | undefined> = {
-  booking_seat_no_overlap: 'seat-unavailable',
-  booking_user_no_overlap: 'user-overlap',
+  seat_hold_seat_no_overlap: 'seat-unavailable',
+  seat_hold_user_no_overlap: 'user-overlap',
 };
+
+// An unknown seat breaks both; which one Postgres names is not guaranteed.
+const SEAT_FOREIGN_KEYS = new Set(['booking_seat_id_seat_id_fk', 'booking_seat_space_fk']);
 
 /**
  * What to do with an error from the booking INSERT: throw the returned HTTP exception,
@@ -67,7 +71,7 @@ export function classifyInsertError(
     const conflict = CONFLICT_BY_CONSTRAINT[constraint];
     return conflict ? bookingProblem(conflict) : 'rethrow';
   }
-  if (code === FOREIGN_KEY_VIOLATION && constraint === 'booking_seat_id_seat_id_fk') {
+  if (code === FOREIGN_KEY_VIOLATION && SEAT_FOREIGN_KEYS.has(constraint)) {
     return new NotFoundException('Seat not found');
   }
   return 'rethrow';

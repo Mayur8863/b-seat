@@ -85,8 +85,13 @@ Request schemas for query strings are named too: `SearchListingsInput`, `Locatio
 ## Problem types introduced by this feature
 
 All use `ProblemException` and are exported as constants from `apps/api/src/common/errors/problem-types.ts`
-(T007). 001 types that are reused keep their meaning. `detail` names the rule (FR-020). The web maps `type` to
-ui spec copy and falls back to `detail`.
+(T007). 001 types that are reused keep their meaning. `detail` names the rule (FR-020). Each type's exact `title`
+and `detail` are in the [problem copy registry](#problem-copy-registry-title-and-detail) below.
+
+**The web never displays `title` or `detail` (OQ-H, decided in T018).** It maps `type` plus the screen's action to
+ui spec copy (`lib/marketplace-problems.ts`, ui/01 section 7 and ui/02 section 9) and, for an unmapped type, falls
+back by HTTP status. `title` and `detail` serve API clients, logs and support. They are plain English and never
+carry personal data or interpolated values; the extension members carry the data.
 
 | Status | `type`                                                | When                                                                                                   | Spec                           |
 | ------ | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------ |
@@ -138,17 +143,38 @@ An unknown space, a `draft` space, an unknown seat, a removed seat or a seat in 
 `booking-rule:invalid-local-time` (001) is **not** part of the 002 contract. Renters send dates only, and
 owner-set slot boundaries in a DST gap or overlap resolve by the "compatible" rule (ADR-0009 section 4).
 
-Suggested `detail` strings (backend; ui specs may differ):
+## Problem copy registry (`title` and `detail`)
 
-- space-not-published: "This space is no longer listed."
-- own-space: "You can't book a seat in your own space. Mark it occupied instead."
-- pass-not-offered: "This space doesn't offer that pass for that slot."
-- start-day-closed: "This seat isn't available on the start date you chose."
-- slot-started: "That slot has already started. Choose a later start date."
-- too-far-ahead: "Bookings can start at most 30 days ahead."
-- seat-unavailable: "This seat is no longer available for that period."
-- user-overlap: "You already have a booking at that time."
-- publish-incomplete: "Add at least one seat and price at least one pass before publishing."
-- seat-has-future-bookings: "This seat has upcoming bookings, so it can't be removed yet."
-- cubicle-name-taken: "You already have a cubicle with that name in this space."
-- conflicts-with-bookings: "Some of these seats are booked by renters on those dates."
+The single source for every problem's `title` and `detail` (folded in from ui/02 section 9.2 by the architect,
+T018). Titles of the typed problems are short noun phrases in sentence case; `detail` is one or two plain sentences
+with the next step where one exists. The `ProblemFilter` rows (`validation`, `http-*`, `internal`) are 001 behaviour
+and keep their lowercase status-text titles. Code must match this table exactly, and the unit tests of each factory or thrower assert both
+strings. "Changes" names what differs from the code at the time of writing and the task that changes it.
+
+| Status | `type` (after `urn:bseat:problem:`) | `title`                    | `detail`                                                                             | Thrown by (task)                                 | Changes                                                                                                 |
+| ------ | ----------------------------------- | -------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
+| 400    | `validation`                        | Request validation failed  | none (`errors[]` carries `path` and `message` per field)                             | `ProblemFilter` (001)                            | none                                                                                                    |
+| 401    | `http-401`                          | unauthorized               | the exception message                                                                | `ProblemFilter` from `AuthGuard` (001)           | none                                                                                                    |
+| 403    | `http-403`                          | forbidden                  | This action is not available for your account type                                   | `ProblemFilter` from `RolesGuard` (T002)         | none: the filter's status-text titles stay as in 001 (ui/02's proposed 403 and 404 details are dropped) |
+| 404    | `http-404`                          | not found                  | `Not Found` (bare `new NotFoundException()`, never a custom message)                 | `ProblemFilter` from every service               | none. A custom message would break 404 parity between a foreign and a random id (ADR-0010)              |
+| 500    | `internal`                          | internal server error      | none (never leaks internals)                                                         | `ProblemFilter` (001)                            | none                                                                                                    |
+| 409    | `booking:seat-unavailable`          | Seat unavailable           | This seat is no longer available for that period.                                    | booking create (T036)                            | detail: 001 "that time" becomes "that period" (T036)                                                    |
+| 409    | `booking:user-overlap`              | Overlapping booking        | You already have a booking at that time.                                             | booking create (T036)                            | none                                                                                                    |
+| 409    | `booking:already-started`           | Booking already started    | This booking has already started and can no longer be cancelled.                     | cancel (T055)                                    | none                                                                                                    |
+| 422    | `booking-rule:space-not-published`  | Space not listed           | This space is no longer listed.                                                      | booking rules (T036)                             | new                                                                                                     |
+| 422    | `booking-rule:own-space`            | Your own space             | You can't book a seat in your own space. Mark it occupied instead.                   | booking rules (T036)                             | new                                                                                                     |
+| 422    | `booking-rule:pass-not-offered`     | Pass not offered           | This space doesn't offer that pass for that slot.                                    | booking rules (T036)                             | new                                                                                                     |
+| 422    | `booking-rule:start-day-closed`     | Start date closed          | This seat isn't available on the start date you chose.                               | booking rules (T036)                             | new                                                                                                     |
+| 422    | `booking-rule:slot-started`         | Slot already started       | That slot has already started. Choose a later start date.                            | booking rules (T036)                             | new                                                                                                     |
+| 422    | `booking-rule:too-far-ahead`        | Too far ahead              | Bookings can start at most 30 days ahead.                                            | booking rules (T036)                             | title: 001 "Invalid booking window" becomes "Too far ahead" (002 has no booking window; T036)           |
+| 422    | `listing:publish-incomplete`        | Listing incomplete         | Add at least one seat and price at least one pass before publishing.                 | `publishIncomplete` factory (T007), used by T020 | none                                                                                                    |
+| 422    | `listing:seat-limit`                | Seat limit reached         | A space can have at most 200 seats. No seats were added.                             | seat create (T021)                               | new                                                                                                     |
+| 409    | `listing:label-taken`               | Seat label already used    | Another active seat in this space already uses that label. Choose a different label. | `labelTaken` factory (T007), used by T021        | title was "Seat label taken"; detail adds the next step (T021)                                          |
+| 409    | `listing:cubicle-name-taken`        | Cubicle name already used  | Another active cubicle in this space already has that name. Choose a different name. | cubicle create and rename (T021)                 | new                                                                                                     |
+| 409    | `listing:seat-has-future-bookings`  | Upcoming bookings          | Upcoming bookings prevent this removal. Wait until they end or are cancelled.        | seat and cubicle removal (T021)                  | new; neutral, because one type covers a seat and a cubicle's seats                                      |
+| 409    | `occupancy:conflicts-with-bookings` | Seats are booked           | Some of these seats are booked by renters on those dates.                            | `occupancyConflict` factory (T007), used by T047 | none                                                                                                    |
+| 409    | `occupancy:already-occupied`        | Seats are already occupied | You've already marked some of these seats occupied on those dates.                   | `alreadyOccupied` factory (T007), used by T047   | detail was "…active occupancy marks of yours…" (internal term); changed in T021 with the other factory  |
+| 409    | `layout:stale-version`              | Layout out of date         | This layout changed after you opened it. Reload it and try again.                    | layout save (T062)                               | new                                                                                                     |
+| 422    | `layout:out-of-bounds`              | Outside the grid           | Keep every item inside the grid, and every seat inside its cubicle.                  | layout save (T062)                               | new                                                                                                     |
+
+Extension members (`missing`, `labels`, `conflicts`) are unchanged.
