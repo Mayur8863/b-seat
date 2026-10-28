@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatMoney, savingText, slotTitle, utilityLabel } from './format';
+import { formatInstant, formatMoney, savingText, slotTitle, utilityLabel } from './format';
 
 describe('utilityLabel', () => {
   it('uses the standard label for a known code', () => {
@@ -35,6 +35,14 @@ describe('listing formats', () => {
   it('describes a saving with amount and percent', () => {
     expect(savingText({ amount: '300.00', percent: 17 }, 'INR')).toBe(
       'Save ₹300.00 (17%) compared with day and night passes',
+    );
+  });
+});
+
+describe('formatInstant', () => {
+  it('shows date and time in the zone with its name', () => {
+    expect(formatInstant('2026-10-29T13:30:00Z', 'Asia/Kolkata')).toBe(
+      'Thu 29 Oct 2026, 19:00 (Asia/Kolkata)',
     );
   });
 });

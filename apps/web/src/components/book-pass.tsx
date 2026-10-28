@@ -21,9 +21,8 @@ import { useEffect, useRef } from 'react';
 
 import type { BookingSelection } from '@/components/your-selection';
 import { formatLocalDate } from '@/lib/booking-format';
-import { formatMoney, PASS_LABELS, slotTitle } from '@/lib/format';
+import { formatInstant, formatMoney, PASS_LABELS, slotTitle } from '@/lib/format';
 import type { ProblemCopy } from '@/lib/problem-copy';
-import { formatInstant } from '@/lib/seat-picker';
 
 function Row({
   label,

@@ -28,7 +28,7 @@ import {
   rangeError,
   rangeToQuery,
 } from '@/lib/bookings-filter';
-import { formatMoney, PASS_LABELS, SLOT_NAMES } from '@/lib/format';
+import { formatInstant, formatMoney, PASS_LABELS, SLOT_NAMES } from '@/lib/format';
 
 const schema = z.object({ from: z.string(), to: z.string() }).superRefine((v, ctx) => {
   const message = rangeError(v.from, v.to);
@@ -36,21 +36,6 @@ const schema = z.object({ from: z.string(), to: z.string() }).superRefine((v, ct
 });
 
 const headingId = (id: string) => `owner-booking-${id}`;
-
-/** "Tue 3 Nov, 09:00 (Asia/Kolkata)": the instant in the space's zone, never the browser's. */
-function formatInstant(iso: string, timeZone: string): string {
-  const parts = new Intl.DateTimeFormat('en-GB', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-    timeZone,
-  }).formatToParts(new Date(iso));
-  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '';
-  return `${get('weekday')} ${get('day')} ${get('month')}, ${get('hour')}:${get('minute')} (${timeZone})`;
-}
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (

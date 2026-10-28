@@ -22,10 +22,12 @@ import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
 import { formatLocalDate } from '@/lib/booking-format';
-import { formatMoney, PASS_LABELS, slotTitle } from '@/lib/format';
+import { formatInstant, formatMoney, PASS_LABELS, slotTitle } from '@/lib/format';
 import { bookingStatus, cancelProblem, periodText } from '@/lib/my-bookings';
 import type { ProblemCopy } from '@/lib/problem-copy';
-import { formatInstant } from '@/lib/seat-picker';
+
+// The API has no cursor for this list yet (follow-up), so the page is capped.
+const PAGE_LIMIT = 50;
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -183,7 +185,7 @@ function CancelDialog({
 /** The renter's bookings that haven't ended (ui/03 section 6). */
 export function MyBookings() {
   const queryClient = useQueryClient();
-  const { data, isPending, error, refetch } = useBookingsListMine({ limit: 50 });
+  const { data, isPending, error, refetch } = useBookingsListMine({ limit: PAGE_LIMIT });
   const [target, setTarget] = useState<Booking | null>(null);
   const [problem, setProblem] = useState<ProblemCopy | null>(null);
   const [status, setStatus] = useState('');
@@ -236,18 +238,16 @@ export function MyBookings() {
         <p className="text-muted-foreground">Bookings that haven&apos;t ended, soonest first.</p>
         <p className="text-muted-foreground text-sm">Prices are paid directly to the owner.</p>
       </div>
-      <div>
-        {problem && (
-          <Alert variant="destructive" role="alert" tabIndex={-1} ref={alertRef}>
-            <AlertTitle>{problem.title}</AlertTitle>
-            <AlertDescription>
-              {problem.description
-                .map((part) => (typeof part === 'string' ? part : part.text))
-                .join('')}
-            </AlertDescription>
-          </Alert>
-        )}
-      </div>
+      {problem && (
+        <Alert variant="destructive" role="alert" tabIndex={-1} ref={alertRef}>
+          <AlertTitle>{problem.title}</AlertTitle>
+          <AlertDescription>
+            {problem.description
+              .map((part) => (typeof part === 'string' ? part : part.text))
+              .join('')}
+          </AlertDescription>
+        </Alert>
+      )}
       <p role="status" aria-live="polite" className="sr-only">
         {status}
       </p>
@@ -298,6 +298,11 @@ export function MyBookings() {
             <BookingCard key={booking.id} booking={booking} onCancel={setTarget} />
           ))}
         </ul>
+      )}
+      {items.length >= PAGE_LIMIT && (
+        <p role="note" className="text-muted-foreground text-sm">
+          Showing your next {PAGE_LIMIT} bookings. Later ones appear as these end.
+        </p>
       )}
       <CancelDialog
         booking={target}

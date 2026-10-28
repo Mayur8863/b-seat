@@ -17,6 +17,12 @@ export const reactRules = defineConfig(
     settings: { react: { version: 'detect' } },
     rules: {
       'react/prop-types': 'off',
+      // The strict preset allows tabpanel only. A labelled region that scrolls must be focusable, or keyboard
+      // users cannot scroll it (axe scrollable-region-focusable, WCAG 2.1.1). Other options keep the preset values.
+      'jsx-a11y/no-noninteractive-tabindex': [
+        'error',
+        { tags: [], roles: ['tabpanel', 'region'], allowExpressionValues: true },
+      ],
     },
   },
 );

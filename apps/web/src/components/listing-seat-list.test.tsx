@@ -257,4 +257,36 @@ describe('ListingSeatList plan view', () => {
     plan();
     expect(await screen.findByText('Loading the floor plan…')).toBeInTheDocument();
   });
+
+  it('a slot that already started shows Already started and cannot be chosen', async () => {
+    server.use(
+      getListingsSeatsMockHandler({
+        ...data([seat({ id: 'a', label: 'A1' })]),
+        slotTimes: { startTime: '00:00', endTime: '23:59', endsNextDay: false },
+      }),
+    );
+    renderWithQuery(
+      <ListingSeatList
+        spaceId="s1"
+        choice={{ pass: 'day', slot: 'day' }}
+        startDate="2020-01-01"
+        timeZone="Asia/Kolkata"
+        selectedSeatId={null}
+        onSelect={vi.fn()}
+      />,
+    );
+    expect(await screen.findByRole('radio', { name: 'A1, Already started' })).toBeDisabled();
+    expect(screen.getByText('0 of 1 seats are free for this pass.')).toBeInTheDocument();
+    expect(screen.getByText('That slot has already started')).toBeInTheDocument();
+  });
+
+  it('plan view hides the "hide seats" checkbox and makes the plan region focusable', async () => {
+    server.use(getListingsSeatsMockHandler(data(seats)), getListingLayoutGetMockHandler(layout));
+    plan();
+    await userEvent.click(await screen.findByRole('button', { name: 'Plan' }));
+    expect(screen.queryByRole('checkbox', { name: /Hide seats/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('region', { name: /Floor plan/ })).toHaveAttribute('tabindex', '0');
+    await userEvent.click(screen.getByRole('button', { name: 'List' }));
+    expect(screen.getByRole('checkbox', { name: /Hide seats/ })).toBeInTheDocument();
+  });
 });

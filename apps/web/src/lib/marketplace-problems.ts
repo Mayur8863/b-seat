@@ -87,6 +87,12 @@ export function describeOwnerProblem(
   }
 }
 
+/** The slot of the chosen start date began earlier today; shared by the date picker note and the book error. */
+export const SLOT_STARTED: ProblemCopy = {
+  title: 'That slot has already started',
+  description: ['Choose a later start date.'],
+};
+
 export interface BookProblem {
   copy: ProblemCopy;
   /** What the page should reload so the renter sees current data. */
@@ -166,7 +172,7 @@ export function describeBookProblem(
     );
   }
   if (is('booking-rule:slot-started')) {
-    return out('That slot has already started', ['Choose a later start date.']);
+    return out(SLOT_STARTED.title, SLOT_STARTED.description);
   }
   if (is('booking-rule:too-far-ahead')) {
     return out("That's too far ahead", [

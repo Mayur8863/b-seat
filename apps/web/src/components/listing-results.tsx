@@ -14,7 +14,7 @@ import { Skeleton } from '@bseat/ui/components/skeleton';
 import { Loader2Icon, MapPinIcon } from 'lucide-react';
 import type { Route } from 'next';
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useRef, useState } from 'react';
 
 import {
   type FindFilters,
@@ -25,6 +25,8 @@ import {
 import { type PassType, formatMoney, utilityLabel } from '@/lib/format';
 
 const MAX_BADGES = 5;
+const PAGE_SIZE = 20;
+const MAX_AUTO_ROUNDS = 3;
 const PASS_ORDER: PassType[] = ['day', 'week', 'month'];
 const NOUN: Record<PassType, string> = {
   day: 'day pass',
@@ -131,8 +133,14 @@ export function ListingResults({
 }: Props) {
   const query = filtersToQuery(filters);
   const first = useListingsSearch(filtersToApiParams(filters), { query: { retry: false } });
-  const [more, setMore] = useState<ListingSummary[]>([]);
-  const [cursor, setCursor] = useState<string | null | undefined>(undefined);
+  // Pages after the first belong to one first page; a refetch (same search run again) yields a new
+  // first page, which makes the old extra pages and cursor stale and they are ignored.
+  const [chain, setChain] = useState<{
+    base: unknown;
+    items: ListingSummary[];
+    cursor: string | null;
+    rounds: number;
+  } | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [moreFailed, setMoreFailed] = useState(false);
   const firstNewLink = useRef<HTMLAnchorElement>(null);
@@ -140,22 +148,32 @@ export function ListingResults({
   const headingRef = useRef<HTMLHeadingElement>(null);
 
   const page = first.data?.data;
+  const live = chain && chain.base === first.data ? chain : null;
+  const more = live?.items ?? [];
   const items = [...(page?.items ?? []), ...more];
-  const nextCursor = cursor === undefined ? (page?.nextCursor ?? null) : cursor;
+  const nextCursor = live ? live.cursor : (page?.nextCursor ?? null);
 
   useEffect(() => {
     if (moreFailed) moreAlert.current?.focus();
   }, [moreFailed]);
 
-  const showMore = async () => {
-    if (!nextCursor) return;
+  const showMore = async (auto = false) => {
+    if (!nextCursor || !first.data) return;
+    const base = first.data;
     setLoadingMore(true);
     setMoreFailed(false);
     try {
       const res = await listingsSearch(filtersToApiParams(filters, nextCursor));
-      setMore((m) => [...m, ...res.data.items]);
-      setCursor(res.data.nextCursor);
-      setTimeout(() => firstNewLink.current?.focus(), 0);
+      setChain((c) => {
+        const prev = c?.base === base ? c : null;
+        return {
+          base,
+          items: [...(prev?.items ?? []), ...res.data.items],
+          cursor: res.data.nextCursor,
+          rounds: (prev?.rounds ?? 0) + (auto ? 1 : 0),
+        };
+      });
+      if (!auto) setTimeout(() => firstNewLink.current?.focus(), 0);
     } catch {
       setMoreFailed(true);
     } finally {
@@ -163,18 +181,35 @@ export function ListingResults({
     }
   };
 
+  // The API caps each search, so a page can be short or empty while a cursor is still set (T029).
+  // Keep fetching quietly until a page of results is visible, up to a few rounds.
+  const rounds = live?.rounds ?? 0;
+  const filling =
+    nextCursor !== null && items.length < PAGE_SIZE && rounds < MAX_AUTO_ROUNDS && !moreFailed;
+  const fill = useEffectEvent(() => {
+    void showMore(true);
+  });
+  useEffect(() => {
+    if (!filling || loadingMore || first.isFetching) return;
+    const timer = setTimeout(fill, 0);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [filling, loadingMore, first.isFetching, nextCursor]);
+
   const where = filters.city ? `${filters.city}, ${countryName}` : countryName;
   const count = items.length;
-  const status = first.isPending
-    ? ''
-    : nextCursor
-      ? `Showing ${count} spaces`
-      : `${count === 1 ? '1 space' : `${count} spaces`} in ${where}`;
+  const status =
+    first.isPending || (count === 0 && filling)
+      ? ''
+      : nextCursor
+        ? `Showing ${count} spaces`
+        : `${count === 1 ? '1 space' : `${count} spaces`} in ${where}`;
   const applied = describeFilters(filters);
   const firstNewIndex = page?.items.length ?? 0;
 
   let body: React.ReactNode;
-  if (first.isPending) {
+  if (first.isPending || (items.length === 0 && filling)) {
     body = (
       <ul aria-busy="true" className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {[0, 1, 2].map((n) => (
@@ -202,6 +237,18 @@ export function ListingResults({
           </Button>
         </AlertDescription>
       </Alert>
+    );
+  } else if (items.length === 0 && nextCursor) {
+    body = (
+      <Card>
+        <CardContent className="grid justify-items-start gap-2">
+          <p className="font-medium">No matches in the spaces checked so far.</p>
+          <p className="text-muted-foreground">More spaces are left to check.</p>
+          <Button variant="outline" disabled={loadingMore} onClick={() => void showMore()}>
+            Show more spaces
+          </Button>
+        </CardContent>
+      </Card>
     );
   } else if (items.length === 0) {
     const located = Boolean(filters.city || filters.area);
@@ -287,7 +334,11 @@ export function ListingResults({
         Results
       </h2>
       <p role="status" className="text-muted-foreground">
-        {first.isPending ? <span className="sr-only">Searching…</span> : status}
+        {first.isPending || (count === 0 && filling) ? (
+          <span className="sr-only">Searching…</span>
+        ) : (
+          status
+        )}
       </p>
       {applied && !first.isPending && <p className="text-muted-foreground text-sm">{applied}</p>}
       {body}

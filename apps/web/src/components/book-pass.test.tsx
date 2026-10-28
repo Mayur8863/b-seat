@@ -94,7 +94,7 @@ beforeEach(() => {
 });
 
 describe('listing URL sync', () => {
-  it('preselects pass, slot and date from the URL and keeps back link search-only', async () => {
+  it('preselects pass, slot and date from the URL and keeps the search on the back link', async () => {
     renderWithQuery(<ListingDetails spaceId="s1" />);
     expect(
       await screen.findByRole('radio', { name: 'Day pass, Day slot, 07:00 to 19:00, ₹300.00' }),
@@ -102,7 +102,7 @@ describe('listing URL sync', () => {
     expect(screen.getByLabelText('Start date')).toHaveValue(date);
     expect(screen.getByRole('link', { name: 'Back to results' })).toHaveAttribute(
       'href',
-      '/find?country=IN',
+      `/find?${search}`,
     );
   });
 

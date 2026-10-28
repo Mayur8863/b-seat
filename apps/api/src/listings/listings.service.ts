@@ -1,4 +1,5 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { naturalSeatOrder } from '../marketplace/seat-order.js';
 import { and, asc, eq, inArray, isNull, sql, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
 
@@ -358,7 +359,7 @@ export class ListingsService {
         .from(seat)
         .leftJoin(cubicle, and(eq(cubicle.id, seat.cubicleId), isNull(cubicle.removedAt)))
         .where(and(inArray(seat.spaceId, ids), isNull(seat.removedAt)))
-        .orderBy(asc(seat.label)),
+        .orderBy(...naturalSeatOrder(), asc(seat.id)),
       this.db.select().from(availabilityCalendar).where(inArray(availabilityCalendar.spaceId, ids)),
     ]);
     const out = new Map<string, SpaceData>();

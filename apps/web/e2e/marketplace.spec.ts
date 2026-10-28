@@ -187,7 +187,6 @@ test.describe('known defects', () => {
   });
 
   test('QA-03 /find?country=GB shows the country in the select', async ({ browser }) => {
-    test.fail();
     const ctx = await browser.newContext();
     const page = await ctx.newPage();
     await signUp(page, 'renter');
@@ -200,7 +199,6 @@ test.describe('known defects', () => {
   test('QA-04 My bookings content starts at the same left edge as the other pages', async ({
     browser,
   }) => {
-    test.fail();
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
     const page = await ctx.newPage();
     await signUp(page, 'renter');
