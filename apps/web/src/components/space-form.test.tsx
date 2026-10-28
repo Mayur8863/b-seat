@@ -364,6 +364,68 @@ describe('SpaceForm (create)', () => {
     expect(screen.getByLabelText('City')).toHaveValue('Pune');
   });
 
+  it('keeps the form locked after a successful create so it cannot post twice', async () => {
+    useReference();
+    const bodies = captureCreate();
+    const user = userEvent.setup();
+    renderWithQuery(<SpaceForm mode="create" />);
+    await fillCreate(user);
+    await user.click(screen.getByRole('radio', { name: 'Open 24 hours' }));
+    await user.click(screen.getByRole('button', { name: 'Create space' }));
+    await waitFor(() => {
+      expect(push).toHaveBeenCalled();
+    });
+    expect(screen.getByRole('button', { name: 'Create space' })).toBeDisabled();
+    expect(bodies).toHaveLength(1);
+  });
+
+  it('keeps an Enter-separated description as two lines', async () => {
+    useReference();
+    const bodies = captureCreate();
+    const user = userEvent.setup();
+    renderWithQuery(<SpaceForm mode="create" />);
+    await fillCreate(user);
+    const description = screen.getByLabelText('Description');
+    await user.clear(description);
+    await user.type(description, 'a{Enter}b');
+    await user.click(screen.getByRole('radio', { name: 'Open 24 hours' }));
+    await user.click(screen.getByRole('button', { name: 'Create space' }));
+    await waitFor(() => {
+      expect(bodies[0]?.description).toBe('a\nb');
+    });
+  });
+
+  it('shows a utilities server error tied to the checkboxes and focuses the first one', async () => {
+    useReference();
+    server.use(
+      http.post('*/api/owner/spaces', () =>
+        HttpResponse.json(
+          {
+            type: 'urn:bseat:problem:validation',
+            title: 'Bad',
+            status: 400,
+            errors: [{ path: 'utilities.0', message: 'x' }],
+          },
+          { status: 400 },
+        ),
+      ),
+    );
+    const user = userEvent.setup();
+    renderWithQuery(<SpaceForm mode="create" />);
+    await fillCreate(user);
+    await user.click(screen.getByRole('radio', { name: 'Open 24 hours' }));
+    await user.click(screen.getByRole('button', { name: 'Create space' }));
+
+    const first = (await screen.findAllByRole('checkbox'))[0];
+    expect(first).toBeDefined();
+    await waitFor(() => {
+      expect(first).toHaveFocus();
+    });
+    expect(first).toHaveAccessibleDescription('Check this field and try again.');
+    await user.click(first!);
+    expect(screen.queryByText('Check this field and try again.')).not.toBeInTheDocument();
+  });
+
   it('disables the three selects with "Loading…" while the reference loads', () => {
     server.use(http.get('*/api/reference', () => new Promise(() => undefined)));
     renderWithQuery(<SpaceForm mode="create" />);
@@ -391,6 +453,9 @@ describe('SpaceForm (create)', () => {
     const user = userEvent.setup();
     renderWithQuery(<SpaceForm mode="create" />);
     expect(await screen.findByText("We couldn't load the country list.")).toBeInTheDocument();
+    for (const label of ['Country', 'Time zone', 'Currency']) {
+      expect(screen.getByLabelText(label)).toBeEnabled();
+    }
     fail = false;
     await user.click(screen.getByRole('button', { name: 'Try again' }));
     expect(await screen.findByRole('option', { name: 'India' })).toBeInTheDocument();

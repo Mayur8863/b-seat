@@ -86,6 +86,7 @@ export const schema = z
 /** Form state: the schema's input side (the description is normalised on the way out). */
 export type FormValues = z.input<typeof schema>;
 export type FieldName = keyof FormValues;
+export type FormOutput = z.output<typeof schema>;
 
 export const TEXT_FIELDS = [
   'name',
