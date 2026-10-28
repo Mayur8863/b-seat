@@ -127,6 +127,29 @@ describe('problem factories', () => {
     expect(err.extensions).toEqual({ conflicts });
   });
 
+  it('use the problem copy registry title and detail', () => {
+    const c: [{ seatId: string; label: string; bookedDates: []; marks: [] }] = [
+      { seatId: id, label: 'A-1', bookedDates: [], marks: [] },
+    ];
+    const text = (e: ProblemException) => [e.title, e.detail];
+    expect(text(publishIncomplete(['seat']))).toEqual([
+      'Listing incomplete',
+      'Add at least one seat and price at least one pass before publishing.',
+    ]);
+    expect(text(labelTaken(['A-1']))).toEqual([
+      'Seat label already used',
+      'Another active seat in this space already uses that label. Choose a different label.',
+    ]);
+    expect(text(occupancyConflict(c))).toEqual([
+      'Seats are booked',
+      'Some of these seats are booked by renters on those dates.',
+    ]);
+    expect(text(alreadyOccupied(c))).toEqual([
+      'Seats are already occupied',
+      "You've already marked some of these seats occupied on those dates.",
+    ]);
+  });
+
   it('strip undocumented fields from passed-in objects', () => {
     const row = {
       seatId: id,
