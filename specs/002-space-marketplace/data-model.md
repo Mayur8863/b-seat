@@ -204,6 +204,11 @@ New index: `booking_space_id_starts_at_idx (space_id, starts_at)` (owner booking
 
 `occupancy_mark_id_seat_id_unique (id, seat_id)` is the target of `seat_hold_occupancy_mark_fk`.
 
+Developer-chosen constraint names (T005): `booking_seat_space_fk` (booking `(seat_id, space_id)` to `seat`),
+`occupancy_mark_seat_space_fk` (mark `(seat_id, space_id)` to `seat`), `seat_hold_occupancy_mark_id_unique`
+(one hold per mark), `occupancy_mark_dates` (end date not before start date) and `occupancy_mark_note_length`
+(note at most 200 characters).
+
 ### seat_hold (new, `schema/booking.ts`)
 
 | Column            | Type        | Null | Default | Notes                                                                                     |
@@ -361,6 +366,9 @@ ADR-0009 section 3). Re-cancel returns 200 unchanged (ADR-0008 section 4); start
 Generated migrations first, `--custom` second, statements separated by `--> statement-breakpoint`, and
 `0000`–`0002` are never edited (ADR-0008, AGENTS.md). Tasks that generate migrations in parallel rebase and
 **re-run** `db:generate` instead of hand-merging the journal or snapshots.
+
+Note (T005): `0009_pass_bookings.sql` was hand-reordered so `booking_hold_key_unique` comes before
+`seat_hold_booking_fk`, which needs it. Regenerating `0009` emits them in the wrong order and needs the same fix.
 
 | Task | Migration (name)           | Kind      | Content                                                                                                                                                                                                                                                                                                                                                        |
 | ---- | -------------------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
