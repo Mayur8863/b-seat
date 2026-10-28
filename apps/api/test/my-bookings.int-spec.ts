@@ -6,12 +6,15 @@ import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import type { Database } from '../src/db/db.js';
-import { booking, seatHold, user } from '../src/db/schema/index.js';
+import { toLocal } from '../src/common/time/zoned-time.js';
+import { booking, seatHold, space, user } from '../src/db/schema/index.js';
 import {
   createListing,
   createSeats,
   insertHold,
   insertPassBooking,
+  localDateFromNow,
+  localInstant,
   signedInUser,
   testDb,
 } from './fixtures.js';
@@ -81,6 +84,19 @@ describe('my bookings (GET /api/bookings, POST /api/bookings/:id/cancel)', () =>
   });
   afterAll(() => app.close());
 
+  describe('booked times', () => {
+    it('do not change when the owner moves the shift change afterwards', async () => {
+      const start = localInstant(localDateFromNow(2, 'Asia/Kolkata'), '07:00', 'Asia/Kolkata');
+      const row = await pass(aId, seatAt(0), start.getTime() - Date.now());
+      await db.update(space).set({ shiftChangeAt: '09:30' }).where(eq(space.id, spaceId));
+      const res = await a.get('/api/bookings').expect(200);
+      expect(res.body.items[0]).toMatchObject({
+        id: row.id,
+        slotTimes: { startTime: '07:00', endTime: '19:00', endsNextDay: false },
+      });
+    });
+  });
+
   describe('list', () => {
     it('401 when signed out', async () => {
       await request(app.getHttpServer()).get('/api/bookings').expect(401);
@@ -95,6 +111,11 @@ describe('my bookings (GET /api/bookings, POST /api/bookings/:id/cancel)', () =>
       // Legacy hourly rows cannot be inserted any more (booking_no_new_hourly); the
       // `kind = 'pass'` filter is covered by the query itself.
       const res = await a.get('/api/bookings').expect(200);
+      // The times come from the booking's hold, here an arbitrary 12 h window.
+      const startLocal = toLocal(sooner.startsAt, 'Asia/Kolkata').time;
+      const endLocal = toLocal(sooner.endsAt, 'Asia/Kolkata').time;
+      const endNext =
+        toLocal(sooner.endsAt, 'Asia/Kolkata').date > toLocal(sooner.startsAt, 'Asia/Kolkata').date;
       const items = res.body.items as { id: string }[];
       expect(items.map((i) => i.id)).toEqual([sooner.id, later.id]);
       expect(res.body.items[0]).toMatchObject({
@@ -102,7 +123,7 @@ describe('my bookings (GET /api/bookings, POST /api/bookings/:id/cancel)', () =>
         pass: 'day',
         slot: 'day',
         timeZone: 'Asia/Kolkata',
-        slotTimes: { startTime: '07:00', endTime: '19:00', endsNextDay: false },
+        slotTimes: { startTime: startLocal, endTime: endLocal, endsNextDay: endNext },
         seat: { id: seatAt(1), label: 'S-02', cubicleName: null },
         space: { id: spaceId, area: 'Baner', city: 'Pune', country: 'IN' },
         price: { amount: '10.00', currency: 'GBP' },

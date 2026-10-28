@@ -74,6 +74,19 @@ describe('buildBookingEmails', () => {
     expect(renter.text).not.toContain('closed:');
   });
 
+  it('renders a multi-line, bidi-laden user name on one line, capped', () => {
+    const name = `Eve\nBcc: x@evil.test\r\n\u202Eevil${'z'.repeat(200)}`;
+    const { owner, renter } = buildBookingEmails(booking(), { ...RENTER, name }, OWNER, APP);
+    const greeting = renter.text.split('\n')[0] ?? '';
+    const line = owner.text.split('\n')[0] ?? '';
+    for (const l of [greeting, line, owner.text.split('\n')[2] ?? '']) {
+      expect(l).not.toMatch(/[\u202E\r]/);
+    }
+    expect(greeting).toMatch(/^Hi Eve Bcc: x@evil\.test evil/);
+    expect(owner.text.split('\n')[2]).toMatch(/^Eve Bcc: x@evil\.test evil/);
+    expect((owner.text.split('\n')[2] ?? '').length).toBeLessThan(160);
+  });
+
   it('shows a night slot across the DST change in the slot wall-clock', () => {
     const { renter } = buildBookingEmails(
       booking({
