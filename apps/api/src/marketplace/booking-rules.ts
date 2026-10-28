@@ -41,38 +41,42 @@ export interface PassRuleViolation {
   detail: string;
 }
 
-const TITLE = 'Booking rule broken';
-
-/** Problem type and contract detail text (contracts/README.md) of each rule. */
+/** Problem type, title and detail (contracts/README.md "Problem copy registry") of each rule. */
 const RULES = {
   'space-not-published': {
+    title: 'Space not listed',
     type: PROBLEM_TYPES.spaceNotPublished,
     detail: 'This space is no longer listed.',
   },
   'own-space': {
+    title: 'Your own space',
     type: PROBLEM_TYPES.ownSpace,
     detail: "You can't book a seat in your own space. Mark it occupied instead.",
   },
   'pass-not-offered': {
+    title: 'Pass not offered',
     type: PROBLEM_TYPES.passNotOffered,
     detail: "This space doesn't offer that pass for that slot.",
   },
   'start-day-closed': {
+    title: 'Start date closed',
     type: PROBLEM_TYPES.startDayClosed,
     detail: "This seat isn't available on the start date you chose.",
   },
   'slot-started': {
+    title: 'Slot already started',
     type: PROBLEM_TYPES.slotStarted,
     detail: 'That slot has already started. Choose a later start date.',
   },
   'too-far-ahead': {
+    title: 'Too far ahead',
     type: PROBLEM_TYPES.tooFarAhead,
     detail: 'Bookings can start at most 30 days ahead.',
   },
-} satisfies Record<PassBookingRule, { type: string; detail: string }>;
+} satisfies Record<PassBookingRule, { type: string; title: string; detail: string }>;
 
 function violation(rule: PassBookingRule): PassRuleViolation {
-  return { rule, status: 422, title: TITLE, ...RULES[rule] };
+  return { rule, status: 422, ...RULES[rule] };
 }
 
 export function evaluatePassBookingRules(

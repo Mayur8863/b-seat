@@ -24,3 +24,6 @@ export function isOpen(calendar: Calendar, date: string): boolean {
 export function resolveCalendar(own: Calendar | null, shared: Calendar): Calendar {
   return own ?? shared;
 }
+
+/** Fail closed: a space without a shared calendar offers no open day (T004 review). */
+export const CLOSED_CALENDAR: Calendar = { startDate: '0001-01-01', endDate: null, weekdays: 0 };

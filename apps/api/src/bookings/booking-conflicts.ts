@@ -1,7 +1,13 @@
-import { HttpStatus, type HttpException, NotFoundException } from '@nestjs/common';
+import {
+  HttpStatus,
+  type HttpException,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { DrizzleQueryError } from 'drizzle-orm';
 import pg from 'pg';
 
+import { PROBLEM_TYPES } from '../common/errors/problem-types.js';
 import { ProblemException } from '../common/errors/problem.exception.js';
 
 /**
@@ -11,9 +17,9 @@ import { ProblemException } from '../common/errors/problem.exception.js';
  */
 
 export const BOOKING_PROBLEM_TYPE = {
-  'seat-unavailable': 'urn:bseat:problem:booking:seat-unavailable',
-  'user-overlap': 'urn:bseat:problem:booking:user-overlap',
-  'already-started': 'urn:bseat:problem:booking:already-started',
+  'seat-unavailable': PROBLEM_TYPES.seatUnavailable,
+  'user-overlap': PROBLEM_TYPES.userOverlap,
+  'already-started': PROBLEM_TYPES.alreadyStarted,
 } as const;
 
 export type BookingConflict = keyof typeof BOOKING_PROBLEM_TYPE;
@@ -21,7 +27,7 @@ export type BookingConflict = keyof typeof BOOKING_PROBLEM_TYPE;
 const CONFLICT_COPY: Record<BookingConflict, { title: string; detail: string }> = {
   'seat-unavailable': {
     title: 'Seat unavailable',
-    detail: 'This seat is no longer available for that time.',
+    detail: 'This seat is no longer available for that period.',
   },
   'user-overlap': {
     title: 'Overlapping booking',
@@ -42,6 +48,7 @@ const EXCLUSION_VIOLATION = '23P01';
 const FOREIGN_KEY_VIOLATION = '23503';
 const DEADLOCK_DETECTED = '40P01';
 const LOCK_NOT_AVAILABLE = '55P03';
+const QUERY_CANCELED = '57014';
 
 const CONFLICT_BY_CONSTRAINT: Record<string, BookingConflict | undefined> = {
   seat_hold_seat_no_overlap: 'seat-unavailable',
@@ -67,12 +74,14 @@ export function classifyInsertError(
   const { code, constraint = '' } = err.cause;
   if (code === DEADLOCK_DETECTED) return 'retry';
   if (code === LOCK_NOT_AVAILABLE) return 'lock-timeout';
+  // A statement timeout under load is transient: tell the client to retry rather than 500.
+  if (code === QUERY_CANCELED) return new ServiceUnavailableException();
   if (code === EXCLUSION_VIOLATION) {
     const conflict = CONFLICT_BY_CONSTRAINT[constraint];
     return conflict ? bookingProblem(conflict) : 'rethrow';
   }
   if (code === FOREIGN_KEY_VIOLATION && SEAT_FOREIGN_KEYS.has(constraint)) {
-    return new NotFoundException('Seat not found');
+    return new NotFoundException();
   }
   return 'rethrow';
 }

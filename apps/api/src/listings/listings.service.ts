@@ -15,7 +15,7 @@ import {
   spaceSlot,
 } from '../db/schema/index.js';
 import { evaluatePassBookingRules } from '../marketplace/booking-rules.js';
-import type { Calendar } from '../marketplace/calendar-rules.js';
+import { CLOSED_CALENDAR as CLOSED, type Calendar } from '../marketplace/calendar-rules.js';
 import { passPeriod, type PassOccurrence } from '../marketplace/pass-period.js';
 import { offeredSlots } from '../marketplace/slots.js';
 import { spacesWithLayout } from '../owner-operations/layout.queries.js';
@@ -29,9 +29,6 @@ import type {
   SearchListingsInput,
   SeatAvailabilityInput,
 } from './listings.schemas.js';
-
-// Fail closed: a space without a shared calendar offers no open day (T004 review).
-const CLOSED: Calendar = { startDate: '0001-01-01', endDate: null, weekdays: 0 };
 
 interface Hold {
   seatId: string;

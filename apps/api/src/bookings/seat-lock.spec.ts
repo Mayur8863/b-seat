@@ -111,6 +111,29 @@ describe('withSeatLocks', () => {
     expect(err).toMatchObject({ type: 'urn:bseat:problem:booking:seat-unavailable' });
   });
 
+  it('runs beforeLocks inside each attempt, before the work', async () => {
+    const { db } = fakeDb();
+    const order: string[] = [];
+    const attempts = [() => Promise.reject(driverError('40P01')), () => Promise.resolve('ok')];
+    await withSeatLocks(
+      db,
+      SEAT_IDS,
+      () => {
+        order.push('work');
+        const next = attempts.shift();
+        return next ? next() : Promise.reject(new Error('extra attempt'));
+      },
+      {
+        ...options,
+        beforeLocks: () => {
+          order.push('before');
+          return Promise.resolve();
+        },
+      },
+    );
+    expect(order).toEqual(['before', 'work', 'before', 'work']);
+  });
+
   it('retries a deadlock and succeeds when the other writer was the victim', async () => {
     const { db, transaction } = fakeDb();
     const attempts = [() => Promise.reject(driverError('40P01')), () => Promise.resolve('ok')];

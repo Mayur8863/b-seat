@@ -54,10 +54,14 @@ export interface SeatLockOptions {
   classify: (err: unknown) => ErrorOutcome;
   /** Called before each deadlock retry (log `warn`, ids only). A throw is swallowed. */
   onRetry?: (attempt: number) => void;
+  /**
+   * Row locks to take after `lock_timeout` is set and before the seat locks. Use it only to
+   * follow a lock order another writer already has (see `BookingsService`); it must not take
+   * any lock the other seat writers could hold while they wait for the seat locks.
+   */
+  beforeLocks?: (tx: SeatLockTx) => Promise<void>;
   /** Called on a lock timeout (log `warn`, ids only). A throw is swallowed. */
   onLockTimeout?: () => void;
-  /** Runs after `lock_timeout` is set and before the seat locks: the space row lock goes here (deleteSeat's order). */
-  beforeLocks?: (tx: SeatLockTx) => Promise<void>;
 }
 
 function swallow(hook: () => void): void {
