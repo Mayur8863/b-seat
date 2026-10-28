@@ -1,6 +1,7 @@
 # ADR-0007: AWS deployment target
 
-- **Status:** Proposed
+- **Status:** Proposed. Amended 2026-10-28 by [ADR-0011](0011-space-photo-storage.md) (object storage for space
+  photos, 003 T001).
 - **Date:** 2026-10-22
 - **Deciders:** project lead, devops agent
 
@@ -17,6 +18,13 @@ without explicit human approval.
 - **Routing:** one ALB with path rules: `/api/*` and `/health/*` go to api, everything else
   goes to web (same-origin cookies, see ADR-0004). TLS terminates at the ALB (ACM).
 - **Data:** RDS PostgreSQL 18 (Multi-AZ in prod) and ElastiCache for Redis/Valkey 8.
+- **Object storage (amendment 2026-10-28, ADR-0011):** one private S3 bucket per environment
+  (`bseat-photos-<env>`) for space photos. Block Public Access on, bucket-owner-enforced ownership, SSE-S3, a
+  TLS-only bucket policy, versioning off, and incomplete multipart uploads aborted after 1 day. The api task role
+  may only `s3:PutObject`, `s3:GetObject` and `s3:DeleteObject` on `spaces/*`. Browsers read through presigned
+  GET URLs valid for at most 1 hour, and there is no CloudFront yet (a follow-up ADR). The api task's memory is
+  sized for in-request image processing (ADR-0011 section 4). Locally, an S3-compatible compose service named
+  `storage`. Like every resource here, the bucket is created only with human approval.
 - **Mail:** Amazon SES via SMTP (`SMTP_HOST`/`SMTP_PORT`).
 - **Secrets:** Secrets Manager / SSM, injected as ECS task env. Never baked into images.
 - **Migrations:** a one-off ECS task runs `drizzle-kit migrate` before the api service deploys.

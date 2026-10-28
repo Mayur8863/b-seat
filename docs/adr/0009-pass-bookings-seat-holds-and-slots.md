@@ -4,7 +4,8 @@
   ADR-0008 section 2); section 2's write steps and `40P01` note are updated to match. Amended 2026-10-28 in
   section 3 (booking header identity is immutable, T005 review follow-up). Amended 2026-10-28 in section 9
   (lock order: the space row comes before the seat locks, and `lock_timeout` before the space row; code review
-  A4); section 2's write steps and the Consequences are updated to match.
+  A4); section 2's write steps and the Consequences are updated to match. Amended 2026-10-28 in section 9.3 (the
+  photo writers of spec 003, [ADR-0011](0011-space-photo-storage.md) section 8).
 - **Date:** 2026-10-27
 - **Deciders:** architect agent (002 T001); the requester for the product decisions OQ-1 to OQ-12 (accepted 2026-10-27)
 - **Amends:** [ADR-0008](0008-booking-time-and-conflict-model.md) section 1 (DST at owner-set slot boundaries only)
@@ -267,6 +268,20 @@ lock.
    | Publish, pricing                               | `OwnerSpacesService.publish`, `updatePricing`         | `FOR UPDATE`                       | none                       | space, slot and price rows                                  |
    | Space edit, unpublish                          | `OwnerSpacesService.update`, `unpublish`              | `UPDATE space` (its implicit lock) | none                       | slot rows                                                   |
    | Calendar writes                                | `CalendarsService.putShared`, `putSeat`, `removeSeat` | `FOR UPDATE`                       | none                       | calendar rows                                               |
+   | Photo add (003)                                | `SpacePhotosService.add`                              | `FOR UPDATE` (with `owner_id`)     | none                       | count, delete the upload intent, insert the photo at n + 1  |
+   | Photo describe (003)                           | `SpacePhotosService.describe`                         | `FOR UPDATE` (with `owner_id`)     | none                       | `UPDATE` the photo                                          |
+   | Photo reorder (003)                            | `SpacePhotosService.reorder`                          | `FOR UPDATE` (with `owner_id`)     | none                       | read the photo ids, one `UPDATE` of all positions           |
+   | Photo delete (003)                             | `SpacePhotosService.remove`                           | `FOR UPDATE` (with `owner_id`)     | none                       | delete the photo, one `UPDATE` renumber, insert purge row   |
+
+   > **Amendment 2026-10-28 (003 T001, ADR-0011 section 8).** The four photo writers are added above. Each one
+   > sets `lock_timeout` first and then locks exactly one space row `FOR UPDATE`, in the statement that also
+   > checks `owner_id` (0 rows is a 404). They take no seat locks, and they run no storage I/O while they hold a
+   > lock: objects are written before the transaction and deleted by the purge sweep after it. `FOR UPDATE`, not
+   > `FOR SHARE`, because photo writers must queue behind each other (the 10-photo count and gap-free
+   > positions), and photos change the listing's content. Their transactions hold the row for milliseconds, so
+   > bookings of the space barely notice. Two new statements are **not** writers in this table: the upload-intent
+   > insert and the purge sweep. They lock only `photo_object_purge` rows, never a space, seat or photo row, so
+   > they cannot close a cycle. On `55P03` a photo writer logs `warn` `photo.lock_timeout` (item 4).
 
    **Why this order cannot deadlock.** A `FOR UPDATE` writer is the only holder of its space row, so no writer of
    that space holds a seat lock or a seat row that it will ask for. `FOR SHARE` writers do not block each other at
