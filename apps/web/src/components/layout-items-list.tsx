@@ -60,9 +60,8 @@ export function LayoutItemsList({
                     onEdit(e.id);
                   }}
                 >
-                  Edit
+                  Edit{' '}
                   <span className="sr-only">
-                    {' '}
                     {e.kind} {labelOf(e)}
                   </span>
                 </Button>

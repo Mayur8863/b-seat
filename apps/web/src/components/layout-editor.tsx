@@ -315,7 +315,10 @@ function Editor({
         onError: (error) => {
           const p = describeLayoutProblem(error);
           setSaveProblem(p);
-          if (p.revalidate) showProblems(validate(stateRef.current));
+          if (p.revalidate) {
+            const list = validate(stateRef.current);
+            if (list.length > 0) showProblems(list);
+          }
         },
       },
     );

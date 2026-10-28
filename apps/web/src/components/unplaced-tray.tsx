@@ -113,9 +113,8 @@ export function UnplacedTray({
                 setFull(!onPlace(r));
               }}
             >
-              Place on plan
+              Place on plan{' '}
               <span className="sr-only">
-                {' '}
                 {r.name.toLowerCase()} {r.label}
               </span>
             </Button>
