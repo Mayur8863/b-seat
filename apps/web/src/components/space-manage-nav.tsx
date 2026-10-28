@@ -10,6 +10,7 @@ export const MANAGE_LINKS: readonly { label: string; segment: string }[] = [
   { label: 'Details', segment: '' },
   { label: 'Seats', segment: '/seats' },
   { label: 'Passes and prices', segment: '/pricing' },
+  { label: 'Layout', segment: '/layout' },
 ];
 
 export const manageHref = (spaceId: string, segment: string) =>
