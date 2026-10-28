@@ -72,7 +72,7 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 | T040 | Listing page: seat availability for a pass                   | frontend-dev   | T031, T035             | M    | review                                                         | `feat/002-listing-seats`              |
 | T041 | Book a pass, confirmation, problem copy                      | frontend-dev   | T036, T040             | M    | review — dev done; next: QA (queued)                           | `feat/002-book-pass-ui`               |
 | T042 | Retire `/book`: redirect to `/find`, remove 001 components   | frontend-dev   | T039, T041             | S    | review — dev done; next: QA (queued)                           | `chore/002-retire-book-page`          |
-| T043 | Retire legacy `GET /api/spaces` routes                       | backend-dev    | T042                   | S    | todo                                                           | `chore/002-retire-legacy-spaces-api`  |
+| T043 | Retire legacy `GET /api/spaces` routes                       | backend-dev    | T042                   | S    | review — dev done; next: QA (queued)                           | `chore/002-retire-legacy-spaces-api`  |
 | T044 | QA US4: search and book e2e, races, performance, axe         | qa-engineer    | T009, T037, T038, T042 | M    | todo                                                           | `test/002-us4-search-book-e2e`        |
 | T045 | Docs US4                                                     | docs-writer    | T043, T044             | S    | todo                                                           | `docs/002-us4-search-book`            |
 | T046 | UI spec: occupancy, calendars, owner bookings                | ui-ux-designer | T018                   | M    | review — spec done; next: frontend tasks can start             | `docs/002-ui-owner-operations`        |
@@ -612,7 +612,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given the web app, When `grep -r "useSpacesList\|useSpacesAvailability" apps/web/src` runs, Then nothing is found, and lint, typecheck and tests pass.
 
 - [ ] T043 [US4] Retire the legacy spaces API: remove `apps/api/src/spaces/` (move or delete `resolveWindow`), its tests and registration; regenerate `apps/api/openapi.json`
-  - **Owner**: backend-dev · **Branch**: `chore/002-retire-legacy-spaces-api` · **Size**: S · **Depends on**: T042 · **Status**: todo
+  - **Owner**: backend-dev · **Branch**: `chore/002-retire-legacy-spaces-api` · **Size**: S · **Depends on**: T042 · **Status**: review — dev done; next: QA (queued)
   - **Note (T005 review)**: legacy hourly rows cannot be updated at all (not even cancelled) because of `booking_no_new_hourly`. Any legacy release must DELETE the row, or relax the check to allow a status-only change.
   - **Follow-up (T007 review)**: when the legacy files are removed or touched, make any remaining problem URNs import from `PROBLEM_TYPES` instead of duplicating the literals.
   - **Acceptance criteria**:
