@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   alreadyOccupied,
+  cubicleNameTaken,
   labelTaken,
   LabelTakenProblem,
   occupancyConflict,
@@ -9,6 +10,8 @@ import {
   PROBLEM_TYPES,
   publishIncomplete,
   PublishIncompleteProblem,
+  seatHasFutureBookings,
+  seatLimit,
 } from './problem-types.js';
 import { ProblemException } from './problem.exception.js';
 import { ProblemSchema } from './problem.js';
@@ -125,6 +128,51 @@ describe('problem factories', () => {
     expect(err.getStatus()).toBe(409);
     expect(err.type).toBe(PROBLEM_TYPES.occupancyAlreadyOccupied);
     expect(err.extensions).toEqual({ conflicts });
+  });
+
+  it('use the problem copy registry title and detail', () => {
+    const c: [{ seatId: string; label: string; bookedDates: []; marks: [] }] = [
+      { seatId: id, label: 'A-1', bookedDates: [], marks: [] },
+    ];
+    const text = (e: ProblemException) => [e.title, e.detail];
+    expect(text(publishIncomplete(['seat']))).toEqual([
+      'Listing incomplete',
+      'Add at least one seat and price at least one pass before publishing.',
+    ]);
+    expect(text(labelTaken(['A-1']))).toEqual([
+      'Seat label already used',
+      'Another active seat in this space already uses that label. Choose a different label.',
+    ]);
+    expect(text(occupancyConflict(c))).toEqual([
+      'Seats are booked',
+      'Some of these seats are booked by renters on those dates.',
+    ]);
+    expect(text(alreadyOccupied(c))).toEqual([
+      'Seats are already occupied',
+      "You've already marked some of these seats occupied on those dates.",
+    ]);
+  });
+
+  it('build the seat-limit, cubicle-name and future-booking problems from the registry', () => {
+    const text = (e: ProblemException) => [e.getStatus(), e.type, e.title, e.detail];
+    expect(text(seatLimit())).toEqual([
+      422,
+      PROBLEM_TYPES.seatLimit,
+      'Seat limit reached',
+      'A space can have at most 200 seats. No seats were added.',
+    ]);
+    expect(text(cubicleNameTaken())).toEqual([
+      409,
+      PROBLEM_TYPES.cubicleNameTaken,
+      'Cubicle name already used',
+      'Another active cubicle in this space already has that name. Choose a different name.',
+    ]);
+    expect(text(seatHasFutureBookings())).toEqual([
+      409,
+      PROBLEM_TYPES.seatHasFutureBookings,
+      'Upcoming bookings',
+      'Upcoming bookings prevent this removal. Wait until they end or are cancelled.',
+    ]);
   });
 
   it('strip undocumented fields from passed-in objects', () => {

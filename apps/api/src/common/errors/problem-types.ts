@@ -95,8 +95,8 @@ export function labelTaken(labels: NonEmpty<string>): ProblemException {
   return new ProblemException(
     409,
     PROBLEM_TYPES.labelTaken,
-    'Seat label taken',
-    'Another active seat in this space already uses that label.',
+    'Seat label already used',
+    'Another active seat in this space already uses that label. Choose a different label.',
     { labels: LabelTakenProblem.shape.labels.parse(labels) },
   );
 }
@@ -118,7 +118,37 @@ export function alreadyOccupied(conflicts: NonEmpty<Conflict>): ProblemException
     409,
     PROBLEM_TYPES.occupancyAlreadyOccupied,
     'Seats are already occupied',
-    'These seats already have active occupancy marks of yours on those dates.',
+    "You've already marked some of these seats occupied on those dates.",
     { conflicts: OccupancyConflictProblem.shape.conflicts.parse(conflicts) },
+  );
+}
+
+/** 422 more than 200 active seats in a space. */
+export function seatLimit(): ProblemException {
+  return new ProblemException(
+    422,
+    PROBLEM_TYPES.seatLimit,
+    'Seat limit reached',
+    'A space can have at most 200 seats. No seats were added.',
+  );
+}
+
+/** 409 another active cubicle of the space has that name. */
+export function cubicleNameTaken(): ProblemException {
+  return new ProblemException(
+    409,
+    PROBLEM_TYPES.cubicleNameTaken,
+    'Cubicle name already used',
+    'Another active cubicle in this space already has that name. Choose a different name.',
+  );
+}
+
+/** 409 removing a seat, or a cubicle's seats, with upcoming bookings. */
+export function seatHasFutureBookings(): ProblemException {
+  return new ProblemException(
+    409,
+    PROBLEM_TYPES.seatHasFutureBookings,
+    'Upcoming bookings',
+    'Upcoming bookings prevent this removal. Wait until they end or are cancelled.',
   );
 }

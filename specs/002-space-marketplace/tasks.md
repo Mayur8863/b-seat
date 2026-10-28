@@ -50,7 +50,7 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 | T018 | UI spec: owner listing, seats, slots and prices              | ui-ux-designer | T010                   | M    | done                                                           | `docs/002-ui-owner-listing`           |
 | T019 | Reference data API (countries, currencies, utilities)        | backend-dev    | T001                   | S    | done                                                           | `feat/002-reference-api`              |
 | T020 | Owner spaces API: CRUD, publish, unpublish                   | backend-dev    | T002, T004, T019       | M    | review — N1/N2 fixed; next: QA re-run (queued)                 | `feat/002-owner-spaces-api`           |
-| T021 | Seats and cubicles API                                       | backend-dev    | T005, T020             | M    | todo                                                           | `feat/002-seats-cubicles-api`         |
+| T021 | Seats and cubicles API                                       | backend-dev    | T005, T020             | M    | review — dev done; next: QA (queued)                           | `feat/002-seats-cubicles-api`         |
 | T022 | Space details form and create page                           | frontend-dev   | T014, T018, T019, T020 | M    | review — fix pass done; next: QA e2e in main checkout (queued) | `feat/002-space-form`                 |
 | T023 | Owner dashboard spaces, space overview, publish              | frontend-dev   | T022                   | M    | review — build done; next: QA (queued)                         | `feat/002-owner-dashboard`            |
 | T024 | Seats management page                                        | frontend-dev   | T021, T023             | M    | todo                                                           | `feat/002-seats-page`                 |
@@ -373,7 +373,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given `gen:api`, Then the listing schemas are committed.
 
 - [ ] T021 [US2] Add seats and cubicles to `apps/api/src/owner-spaces/` with `apps/api/test/owner-seats.int-spec.ts`; regenerate `apps/api/openapi.json`
-  - **Owner**: backend-dev · **Branch**: `feat/002-seats-cubicles-api` · **Size**: M · **Depends on**: T005, T020 · **Status**: todo
+  - **Owner**: backend-dev · **Branch**: `feat/002-seats-cubicles-api` · **Size**: M · **Depends on**: T005, T020 · **Status**: review — dev done; next: QA (queued)
   - **Problem factories (T007 review)**: Create problems with extensions only through the factories in `common/errors/problem-types.ts`; don't call `new ProblemException` with extensions directly.
   - **Carry-over (T003 review)**: every seat read and booking path filters `removed_at IS NULL` (legacy availability, list and create already do).
   - **Added (T018 review, OQ-D)**: cubicle `name` is `PlainText` 1–100 after trim (the merged `cubicle_name_length` check); seat `features` at most 10, each 1–40 after trim, no repeats ignoring case; the bulk pattern refines `to >= from`, at most 200 labels (path `pattern.to`) and every generated label at most 20 characters (path `pattern.prefix`). Generate migration `seat_features_max` (`CHECK cardinality(features) <= 10`).
