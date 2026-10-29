@@ -40,6 +40,7 @@ const me = (
     preferences,
   });
 const hub = {
+  cover: null,
   id: 's1',
   name: 'Hub One',
   country: 'IN',
@@ -124,7 +125,7 @@ describe('ListingSearchForm', () => {
     server.use(
       reference,
       me(null),
-      getListingsSearchMockHandler({ items: [hub], nextCursor: null }),
+      getListingsSearchMockHandler({ items: [hub], nextCursor: null, photoUrlsExpireAt: null }),
     );
     renderWithQuery(<ListingSearchForm />);
     const link = await screen.findByRole('link', { name: 'Hub One' });
@@ -145,7 +146,7 @@ describe('ListingSearchForm', () => {
     server.use(
       reference,
       me(null),
-      getListingsSearchMockHandler({ items: [hub], nextCursor: null }),
+      getListingsSearchMockHandler({ items: [hub], nextCursor: null, photoUrlsExpireAt: null }),
     );
     renderWithQuery(<ListingSearchForm />);
     await screen.findByRole('link', { name: 'Hub One' });
@@ -159,7 +160,11 @@ describe('ListingSearchForm', () => {
 
   it('selects the country from the URL once the list has loaded', async () => {
     search = 'country=GB&city=Probeville';
-    server.use(reference, me(null), getListingsSearchMockHandler({ items: [], nextCursor: null }));
+    server.use(
+      reference,
+      me(null),
+      getListingsSearchMockHandler({ items: [], nextCursor: null, photoUrlsExpireAt: null }),
+    );
     renderWithQuery(<ListingSearchForm />);
     await screen.findByRole('option', { name: 'United Kingdom' });
     expect(screen.getByLabelText('Country')).toHaveValue('GB');

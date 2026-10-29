@@ -15,6 +15,9 @@ const config: NextConfig = {
   transpilePackages: ['@bseat/ui', '@bseat/api-client'],
   typedRoutes: true,
   poweredByHeader: false,
+  // Signed photo URLs must reach the browser directly: an optimizer cache would outlive the
+  // 1-hour revocation window (ADR-0011 section 6, FR-019). No remotePatterns on purpose.
+  images: { unoptimized: true },
   redirects: () =>
     Promise.resolve([{ source: '/book/:path*', destination: '/find', permanent: true }]),
   rewrites: () => Promise.resolve([{ source: '/api/:path*', destination: `${apiUrl}/api/:path*` }]),

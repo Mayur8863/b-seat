@@ -53,7 +53,7 @@ only a human merges.
 | T016 | QA US1: owner upload e2e, axe, SC-002, SC-005                    | qa-engineer       | T014, T015                   | M    | todo   | `test/003-us1-add-photos`              |
 | T017 | Docs US1                                                         | docs-writer       | T016                         | S    | todo   | `docs/003-us1-add-photos`              |
 | T018 | Listing API: cover on search results, photos on the detail       | backend-dev       | T009                         | M    | review | `feat/003-listing-photos-api`          |
-| T019 | Space photo component, placeholder and cover on `/find` cards    | frontend-dev      | T012, T018                   | S    | todo   | `feat/003-find-card-cover`             |
+| T019 | Space photo component, placeholder and cover on `/find` cards    | frontend-dev      | T012, T018                   | S    | review | `feat/003-find-card-cover`             |
 | T020 | Listing gallery and large view (keyboard, pointer, touch)        | frontend-dev      | T012, T018, T019             | M    | todo   | `feat/003-listing-gallery`             |
 | T021 | QA US2: renter e2e, axe incl. large view, SC-003, SC-004, FR-019 | qa-engineer       | T019, T020                   | M    | todo   | `test/003-us2-renter-photos`           |
 | T022 | Docs US2                                                         | docs-writer       | T021                         | S    | todo   | `docs/003-us2-renter-photos`           |
@@ -293,7 +293,7 @@ first (T002, T003). After T001: T002, T003, T005, T006, T011 and T012 can start 
     - Given an unauthenticated request, Then 401 (FR-022).
 
 - [ ] T019 [US2] Add `apps/web/src/components/space-photo.tsx` (an image via `next/image` with width and height, the "No photos yet" placeholder, one refetch on load error) with tests; show the cover on cards in `listing-results.tsx`; **(T001)** set `images: { unoptimized: true }` globally in `apps/web/next.config.ts`, with no `remotePatterns` (ADR-0011 section 6)
-  - **Owner**: frontend-dev · **Branch**: `feat/003-find-card-cover` · **Size**: S · **Depends on**: T012, T018 · **Status**: todo
+  - **Owner**: frontend-dev · **Branch**: `feat/003-find-card-cover` · **Size**: S · **Depends on**: T012, T018 · **Status**: review
   - **Scope**: ui/02-renter-photos.md; research R-10. Refetch search results before `photoUrlsExpireAt`.
   - **Acceptance criteria**:
     - Given a result with a cover, Then the card shows the image with `alt` = `altText` and the `card` URL (AC 2.1, AC 2.7).
