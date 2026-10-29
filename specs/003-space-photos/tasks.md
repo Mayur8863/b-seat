@@ -48,8 +48,8 @@ only a human merges.
 | T011 | UI spec: owner Photos section                                    | ui-ux-designer    | T001                         | M    | review | `docs/003-ui-owner-photos`             |
 | T012 | UI spec: cover, placeholder, gallery and large view              | ui-ux-designer    | T001                         | S    | review | `docs/003-ui-renter-photos`            |
 | T013 | Upload-queue model (pure reducer, TDD)                           | frontend-dev      | T011                         | S    | todo   | `feat/003-upload-queue-model`          |
-| T014 | Owner Photos page: nav, list, empty state, count, upload queue   | frontend-dev      | T009, T010, T011, T013       | M    | todo   | `feat/003-owner-photos-page`           |
-| T015 | Describe photos and guard leaving with unfinished uploads        | frontend-dev      | T014                         | S    | todo   | `feat/003-photo-describe-leave-guard`  |
+| T014 | Owner Photos page: nav, list, empty state, count, upload queue   | frontend-dev      | T009, T010, T011, T013       | M    | review | `feat/003-owner-photos-page`           |
+| T015 | Describe photos and guard leaving with unfinished uploads        | frontend-dev      | T014                         | S    | review | `feat/003-photo-describe-leave-guard`  |
 | T016 | QA US1: owner upload e2e, axe, SC-002, SC-005                    | qa-engineer       | T014, T015                   | M    | todo   | `test/003-us1-add-photos`              |
 | T017 | Docs US1                                                         | docs-writer       | T016                         | S    | todo   | `docs/003-us1-add-photos`              |
 | T018 | Listing API: cover on search results, photos on the detail       | backend-dev       | T009                         | M    | review | `feat/003-listing-photos-api`          |
@@ -59,7 +59,7 @@ only a human merges.
 | T022 | Docs US2                                                         | docs-writer       | T021                         | S    | todo   | `docs/003-us2-renter-photos`           |
 | T023 | Reorder and delete API                                           | backend-dev       | T009                         | M    | review | `feat/003-photo-reorder-delete-api`    |
 | T024 | Purge sweep (scheduler, lease claim) and overdue alert log       | backend-dev       | T023                         | M    | review | `feat/003-photo-purge`                 |
-| T025 | Reorder controls and delete dialog                               | frontend-dev      | T011, T014, T023             | M    | todo   | `feat/003-photo-reorder-delete-ui`     |
+| T025 | Reorder controls and delete dialog                               | frontend-dev      | T011, T014, T023             | M    | review | `feat/003-photo-reorder-delete-ui`     |
 | T026 | QA US3: keyboard reorder, permanent delete, purge                | qa-engineer       | T024, T025                   | M    | todo   | `test/003-us3-arrange-photos`          |
 | T027 | Docs US3: photo-storage runbook (purge operations)               | docs-writer       | T026                         | S    | todo   | `docs/003-us3-arrange-photos`          |
 | T028 | 10-photo limit under concurrency (race test first)               | backend-dev       | T008                         | S    | review | `feat/003-photo-limit-race`            |
@@ -239,7 +239,7 @@ first (T002, T003). After T001: T002, T003, T005, T006, T011 and T012 can start 
     - Given the PR, Then tests were committed first and changed-line coverage is ≥ 80% (constitution II).
 
 - [ ] T014 [US1] Add `apps/web/src/app/(app)/owner/spaces/[spaceId]/photos/page.tsx`, the "Photos" item in `space-manage-nav.tsx` (+ test), and `space-photo-manager.tsx` and `photo-upload-queue.tsx` (+ tests): list, empty state, "n of 10", add control, upload queue UI, limit states
-  - **Owner**: frontend-dev · **Branch**: `feat/003-owner-photos-page` · **Size**: M · **Depends on**: T009, T010, T011, T013 · **Status**: todo
+  - **Owner**: frontend-dev · **Branch**: `feat/003-owner-photos-page` · **Size**: M · **Depends on**: T009, T010, T011, T013 · **Status**: review
   - **Scope**: ui/01-owner-photos.md. Data through `useSpacePhotosList` and `uploadSpacePhoto`. A polite live region for queue summaries; `progressbar` per uploading file. Refetch the list before `photoUrlsExpireAt`.
   - **Acceptance criteria**:
     - Given any owner space page, Then "Photos" is in the space navigation and reachable by keyboard, with `aria-current` on the Photos page (AC 1.1, FR-001).
@@ -250,7 +250,7 @@ first (T002, T003). After T001: T002, T003, T005, T006, T011 and T012 can start 
     - Given loading, error and success states of the list, Then each renders as specified (FR-026).
 
 - [ ] T015 [US1] Add description editing (`photo-description-form.tsx`, React Hook Form + Zod, labelled, `aria-describedby` errors) and the unfinished-upload leave guard (`use-leave-guard.ts`) with tests
-  - **Owner**: frontend-dev · **Branch**: `feat/003-photo-describe-leave-guard` · **Size**: S · **Depends on**: T014 · **Status**: todo
+  - **Owner**: frontend-dev · **Branch**: `feat/003-photo-describe-leave-guard` · **Size**: S · **Depends on**: T014 · **Status**: review
   - **Scope**: research R-8, R-9 (check the Next 16 docs with context7 for a supported navigation-block API first).
   - **Acceptance criteria**:
     - Given a photo, When the owner saves a description of up to 150 characters, Then it shows as saved and is used as the image's `alt`; When cleared, Then `alt` falls back to "<space name> photo N" (AC 1.7, FR-008).
@@ -358,7 +358,7 @@ first (T002, T003). After T001: T002, T003, T005, T006, T011 and T012 can start 
     - Given the API boots twice (two tasks), Then exactly one job scheduler exists for the sweep.
 
 - [ ] T025 [US3] Add `photo-reorder-controls.tsx` (drag with pointer events plus "Move earlier", "Move later", "Make cover"; live announcements) and `delete-photo-dialog.tsx` to the Photos section, with tests; handle 409 `photo:order-stale` by refetching with the ui spec message
-  - **Owner**: frontend-dev · **Branch**: `feat/003-photo-reorder-delete-ui` · **Size**: M · **Depends on**: T011, T014, T023 · **Status**: todo
+  - **Owner**: frontend-dev · **Branch**: `feat/003-photo-reorder-delete-ui` · **Size**: M · **Depends on**: T011, T014, T023 · **Status**: review (pointer drag skipped, optional per ui 5.3)
   - **Acceptance criteria**:
     - Given 5 photos, When the owner uses only the keyboard to press "Make cover" on the 4th, Then it moves first, focus stays on the moved photo's control, and the live region announces the new position (AC 3.1, AC 3.2, FR-009).
     - Given a drag from position 3 to 1, Then the same order is saved; Given a single photo, Then no reorder controls are offered (edge).
