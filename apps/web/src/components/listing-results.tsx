@@ -144,6 +144,7 @@ export function ListingResults({
   const [loadingMore, setLoadingMore] = useState(false);
   const [moreFailed, setMoreFailed] = useState(false);
   const firstNewLink = useRef<HTMLAnchorElement>(null);
+  const pendingFocus = useRef(false);
   const moreAlert = useRef<HTMLDivElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
 
@@ -156,6 +157,14 @@ export function ListingResults({
   useEffect(() => {
     if (moreFailed) moreAlert.current?.focus();
   }, [moreFailed]);
+
+  // Focus after the commit that renders the new cards; a timer can fire before it.
+  useEffect(() => {
+    if (pendingFocus.current && firstNewLink.current) {
+      pendingFocus.current = false;
+      firstNewLink.current.focus();
+    }
+  }, [items.length]);
 
   const showMore = async (auto = false) => {
     if (!nextCursor || !first.data) return;
@@ -173,7 +182,7 @@ export function ListingResults({
           rounds: (prev?.rounds ?? 0) + (auto ? 1 : 0),
         };
       });
-      if (!auto) setTimeout(() => firstNewLink.current?.focus(), 0);
+      if (!auto) pendingFocus.current = true;
     } catch {
       setMoreFailed(true);
     } finally {
