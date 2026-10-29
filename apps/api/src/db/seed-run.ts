@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { seedDemoPasswordField } from '../config/seed-password.js';
 import type { Database } from './db.js';
 import { seedAccounts } from './demo-accounts.js';
+import { seedPhotos, storageFromEnv, type PhotoStore } from './demo-photos.js';
 import { assertSeedSpaces, DEMO_SPACES, seedSpaces } from './demo-spaces.js';
 import { SeedError } from './seed-error.js';
 
@@ -29,6 +30,7 @@ export interface SeedConnection {
 export async function runSeed(
   env: Record<string, string | undefined>,
   connect: (databaseUrl: string) => SeedConnection,
+  store: () => PhotoStore = () => storageFromEnv(env),
 ): Promise<void> {
   if (!SEEDABLE_ENVS.includes(env.NODE_ENV)) {
     throw new SeedError(
@@ -49,10 +51,14 @@ export async function runSeed(
 
   const { db, close } = connect(parsed.data.DATABASE_URL);
   try {
-    await db.transaction(async (tx) => {
-      const { ownerId } = await seedAccounts(tx, password);
-      await seedSpaces(tx, ownerId);
+    const ownerId = await db.transaction(async (tx) => {
+      const accounts = await seedAccounts(tx, password);
+      await seedSpaces(tx, accounts.ownerId);
+      return accounts.ownerId;
     });
+    // Outside the transaction: storage calls must not hold a connection, and a storage outage
+    // leaves the accounts and spaces committed so a re-run only adds the photos.
+    await seedPhotos(db, store(), ownerId);
   } finally {
     await close();
   }

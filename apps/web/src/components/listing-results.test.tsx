@@ -1,5 +1,5 @@
 import { getListingsSearchMockHandler } from '@bseat/api-client/mocks';
-import { screen, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it, vi } from 'vitest';
@@ -21,6 +21,7 @@ const item = (n: number, over = {}) => ({
   currency: 'INR',
   lowestPrices: { day: '300.00', week: null, month: '5000.00' },
   hasLayout: false,
+  cover: null,
   ...over,
 });
 
@@ -47,7 +48,11 @@ describe('ListingResults', () => {
 
   it('success: card shows area, utilities, only offered prices, and links to the space', async () => {
     server.use(
-      getListingsSearchMockHandler({ items: [item(1, { hasLayout: true })], nextCursor: null }),
+      getListingsSearchMockHandler({
+        items: [item(1, { hasLayout: true })],
+        nextCursor: null,
+        photoUrlsExpireAt: null,
+      }),
     );
     render({ ...base, city: 'Pune' });
     const link = await screen.findByRole('link', { name: 'Hub 1' });
@@ -66,6 +71,63 @@ describe('ListingResults', () => {
     expect(screen.getByRole('status')).toHaveTextContent('1 space in Pune, India');
   });
 
+  it('cover: card image with alt, signed URL; placeholder when none; one tab stop per card', async () => {
+    server.use(
+      getListingsSearchMockHandler({
+        items: [
+          item(1, {
+            cover: {
+              altText: 'Bright room',
+              card: { url: 'https://s3.test/c1.webp?sig=1', width: 640, height: 480 },
+            },
+          }),
+          item(2),
+        ],
+        nextCursor: null,
+        photoUrlsExpireAt: null,
+      }),
+    );
+    render();
+    const img = await screen.findByRole('img', { name: 'Bright room' });
+    expect(img).toHaveAttribute('src', 'https://s3.test/c1.webp?sig=1');
+    expect(screen.getByText('No photos yet')).toBeInTheDocument();
+    expect(screen.getAllByRole('link')).toHaveLength(2);
+    expect(screen.getByRole('link', { name: 'Hub 1' }).className).toContain('after:absolute');
+  });
+
+  it('cover error: refetches the search once', async () => {
+    let calls = 0;
+    server.use(
+      http.get('*/api/listings', () => {
+        calls += 1;
+        return HttpResponse.json({
+          items: [
+            item(1, {
+              cover: {
+                altText: 'Bright room',
+                card: { url: `https://s3.test/c1.webp?sig=${calls}`, width: 640, height: 480 },
+              },
+            }),
+          ],
+          nextCursor: null,
+          photoUrlsExpireAt: '2099-01-01T00:00:00Z',
+        });
+      }),
+    );
+    render();
+    const img = await screen.findByRole('img', { name: 'Bright room' });
+    fireEvent.error(img);
+    await waitFor(() => {
+      expect(calls).toBe(2);
+    });
+    await waitFor(() =>
+      expect(screen.getByRole('img', { name: 'Bright room' })).toHaveAttribute(
+        'src',
+        'https://s3.test/c1.webp?sig=2',
+      ),
+    );
+  });
+
   it('error: alert with a retry that refetches', async () => {
     const user = userEvent.setup();
     let calls = 0;
@@ -74,7 +136,7 @@ describe('ListingResults', () => {
         calls += 1;
         return calls === 1
           ? HttpResponse.json({ type: 'x', title: 'x', status: 500 }, { status: 500 })
-          : HttpResponse.json({ items: [item(1)], nextCursor: null });
+          : HttpResponse.json({ items: [item(1)], nextCursor: null, photoUrlsExpireAt: null });
       }),
     );
     render();
@@ -86,7 +148,9 @@ describe('ListingResults', () => {
   it('empty with a city: offers the whole country', async () => {
     const user = userEvent.setup();
     const whole = vi.fn();
-    server.use(getListingsSearchMockHandler({ items: [], nextCursor: null }));
+    server.use(
+      getListingsSearchMockHandler({ items: [], nextCursor: null, photoUrlsExpireAt: null }),
+    );
     render({ ...base, city: 'Pune' }, { onSearchWholeCountry: whole });
     expect(await screen.findByText('No spaces match your search.')).toBeInTheDocument();
     expect(
@@ -99,7 +163,9 @@ describe('ListingResults', () => {
   it('empty with only other filters: offers Clear filters', async () => {
     const user = userEvent.setup();
     const clear = vi.fn();
-    server.use(getListingsSearchMockHandler({ items: [], nextCursor: null }));
+    server.use(
+      getListingsSearchMockHandler({ items: [], nextCursor: null, photoUrlsExpireAt: null }),
+    );
     render({ ...base, pass: 'week' }, { onClearFilters: clear });
     expect(
       await screen.findByText('Try fewer filters or a different start date.'),
@@ -109,7 +175,9 @@ describe('ListingResults', () => {
   });
 
   it('empty with the country only: nothing to widen', async () => {
-    server.use(getListingsSearchMockHandler({ items: [], nextCursor: null }));
+    server.use(
+      getListingsSearchMockHandler({ items: [], nextCursor: null, photoUrlsExpireAt: null }),
+    );
     render();
     expect(await screen.findByText('No spaces are listed in India yet.')).toBeInTheDocument();
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
@@ -162,7 +230,7 @@ describe('ListingResults', () => {
         const cursor = new URL(request.url).searchParams.get('cursor');
         if (!cursor) return HttpResponse.json({ items: [], nextCursor: 'c1' });
         if (cursor === 'c1') return HttpResponse.json({ items: [], nextCursor: 'c2' });
-        return HttpResponse.json({ items: [item(7)], nextCursor: null });
+        return HttpResponse.json({ items: [item(7)], nextCursor: null, photoUrlsExpireAt: null });
       }),
     );
     render({ ...base, city: 'Pune' });
@@ -193,7 +261,12 @@ describe('ListingResults', () => {
     server.use(
       http.get('*/api/listings', ({ request }) => {
         const cursor = new URL(request.url).searchParams.get('cursor');
-        if (cursor) return HttpResponse.json({ items: [item(21)], nextCursor: null });
+        if (cursor)
+          return HttpResponse.json({
+            items: [item(21)],
+            nextCursor: null,
+            photoUrlsExpireAt: null,
+          });
         round += 1;
         return HttpResponse.json({ items: fullPage, nextCursor: round === 1 ? 'c1' : null });
       }),

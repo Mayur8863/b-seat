@@ -3,6 +3,7 @@ import { naturalSeatOrder } from '../marketplace/seat-order.js';
 import { and, asc, eq, inArray, isNull, sql, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
 
+import { Clock } from '../common/time/clock.js';
 import { PlainText } from '../common/schemas/field-formats.js';
 import { ProblemException } from '../common/errors/problem.exception.js';
 import { fullDaySaving } from '../common/money/money.js';
@@ -14,12 +15,15 @@ import {
   passPrice,
   seat,
   space,
+  spacePhoto,
   spaceSlot,
 } from '../db/schema/index.js';
 import { evaluatePassBookingRules } from '../marketplace/booking-rules.js';
 import { CLOSED_CALENDAR as CLOSED, type Calendar } from '../marketplace/calendar-rules.js';
 import { passPeriod, type PassOccurrence } from '../marketplace/pass-period.js';
 import { offeredSlots } from '../marketplace/slots.js';
+import { photoKeys } from '../photos/photo-keys.js';
+import { StorageService } from '../storage/storage.service.js';
 import { spacesWithLayout } from '../owner-operations/layout.queries.js';
 import { openingHoursOf, slotTimes } from '../owner-spaces/owner-spaces.service.js';
 import type {
@@ -62,7 +66,11 @@ const offeredPrice = sql`(${space.openingMode} = 'fixed_hours') = (${passPrice.s
 
 @Injectable()
 export class ListingsService {
-  constructor(@Inject(DB) private readonly db: Database) {}
+  constructor(
+    @Inject(DB) private readonly db: Database,
+    private readonly storage: StorageService,
+    private readonly clock: Clock,
+  ) {}
 
   async get(userId: string, spaceId: string): Promise<Listing> {
     const [s] = await this.db
@@ -103,6 +111,16 @@ export class ListingsService {
       return day && night && fullDay ? fullDaySaving(day, night, fullDay) : null;
     };
     const savings = { day: saving('day'), week: saving('week'), month: saving('month') };
+    const photoRows = await this.db
+      .select()
+      .from(spacePhoto)
+      .where(eq(spacePhoto.spaceId, spaceId))
+      .orderBy(asc(spacePhoto.position));
+    const keys = photoRows.flatMap((r) => {
+      const k = photoKeys(r.spaceId, r.id);
+      return [k.card, k.display];
+    });
+    const signed = await this.storage.signGetUrls(keys, this.clock.now());
 
     return {
       id: s.id,
@@ -121,6 +139,19 @@ export class ListingsService {
       offers,
       fullDaySavings: savings.day || savings.week || savings.month ? savings : null,
       isOwnSpace: s.ownerId === userId,
+      photos: photoRows.map((r, i) => ({
+        id: r.id,
+        position: r.position,
+        description: r.description,
+        altText: r.description ?? `${s.name} photo ${r.position}`,
+        card: { url: signed.urls[i * 2] ?? '', width: 640, height: 480 },
+        display: {
+          url: signed.urls[i * 2 + 1] ?? '',
+          width: r.displayWidth,
+          height: r.displayHeight,
+        },
+      })),
+      photoUrlsExpireAt: photoRows.length > 0 ? signed.expiresAt.toISOString() : null,
     };
   }
 
@@ -226,20 +257,55 @@ export class ListingsService {
       this.db,
       page.map((p) => p.id),
     );
+    // One query for every cover on the page; cards only ever get the small variant (FR-018).
+    const covers =
+      page.length === 0
+        ? []
+        : await this.db
+            .select({
+              id: spacePhoto.id,
+              spaceId: spacePhoto.spaceId,
+              description: spacePhoto.description,
+            })
+            .from(spacePhoto)
+            .where(
+              and(
+                inArray(
+                  spacePhoto.spaceId,
+                  page.map((p) => p.id),
+                ),
+                eq(spacePhoto.position, 1),
+              ),
+            );
+    const signed = await this.storage.signGetUrls(
+      covers.map((c) => photoKeys(c.spaceId, c.id).card),
+      this.clock.now(),
+    );
+    const coverOf = new Map(covers.map((c, i) => [c.spaceId, { ...c, url: signed.urls[i] ?? '' }]));
     return {
-      items: page.map((s) => ({
-        id: s.id,
-        name: s.name,
-        country: s.country ?? '',
-        city: s.city ?? '',
-        area: s.area ?? '',
-        utilities: s.utilities as Listing['utilities'],
-        customUtilities: s.customUtilities,
-        currency: s.currency ?? '',
-        lowestPrices: lowest.get(s.id) ?? { day: null, week: null, month: null },
-        hasLayout: withLayout.has(s.id),
-      })),
+      items: page.map((s) => {
+        const cover = coverOf.get(s.id);
+        return {
+          id: s.id,
+          name: s.name,
+          country: s.country ?? '',
+          city: s.city ?? '',
+          area: s.area ?? '',
+          utilities: s.utilities as Listing['utilities'],
+          customUtilities: s.customUtilities,
+          currency: s.currency ?? '',
+          lowestPrices: lowest.get(s.id) ?? { day: null, week: null, month: null },
+          hasLayout: withLayout.has(s.id),
+          cover: cover
+            ? {
+                altText: cover.description ?? `${s.name} photo 1`,
+                card: { url: cover.url, width: 640, height: 480 },
+              }
+            : null,
+        };
+      }),
       nextCursor,
+      photoUrlsExpireAt: covers.length > 0 ? signed.expiresAt.toISOString() : null,
     };
   }
 

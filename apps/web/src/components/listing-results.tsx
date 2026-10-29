@@ -16,12 +16,14 @@ import type { Route } from 'next';
 import Link from 'next/link';
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
 
+import { SpacePhoto } from '@/components/space-photo';
 import {
   type FindFilters,
   describeFilters,
   filtersToApiParams,
   filtersToQuery,
 } from '@/lib/find-filters';
+import { usePhotoRefresh } from '@/lib/use-photo-refresh';
 import { type PassType, formatMoney, utilityLabel } from '@/lib/format';
 
 const MAX_BADGES = 5;
@@ -56,22 +58,32 @@ function Prices({ item }: { item: ListingSummary }) {
 function ResultCard({
   item,
   query,
+  eager,
+  onRefresh,
   linkRef,
 }: {
   item: ListingSummary;
   query: string;
+  eager: boolean;
+  onRefresh: () => Promise<void>;
   linkRef?: React.Ref<HTMLAnchorElement>;
 }) {
   const utilities = [...item.utilities.map(utilityLabel), ...item.customUtilities];
   return (
     <li>
-      <Card className="hover:bg-muted/50 h-full p-4">
+      <Card className="hover:bg-muted/50 relative h-full p-4">
+        <SpacePhoto
+          variant="card"
+          eager={eager}
+          onRefresh={onRefresh}
+          photo={item.cover ? { ...item.cover.card, alt: item.cover.altText } : null}
+        />
         <div className="grid gap-2">
           <h3 className="text-base font-medium">
             <Link
               ref={linkRef}
               href={`/spaces/${item.id}${query ? `?${query}` : ''}` as Route}
-              className="text-primary underline-offset-4 hover:underline"
+              className="text-primary underline-offset-4 after:absolute after:inset-0 hover:underline"
             >
               {item.name}
             </Link>
@@ -132,7 +144,10 @@ export function ListingResults({
   onClearFilters,
 }: Props) {
   const query = filtersToQuery(filters);
-  const first = useListingsSearch(filtersToApiParams(filters), { query: { retry: false } });
+  const first = useListingsSearch(filtersToApiParams(filters), {
+    query: { retry: false, staleTime: 30_000, refetchOnMount: true, refetchOnWindowFocus: true },
+  });
+  const refreshPhotos = usePhotoRefresh(first.data?.data.photoUrlsExpireAt, first.refetch);
   // Pages after the first belong to one first page; a refetch (same search run again) yields a new
   // first page, which makes the old extra pages and cursor stale and they are ignored.
   const [chain, setChain] = useState<{
@@ -214,7 +229,7 @@ export function ListingResults({
       <ul aria-busy="true" className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {[0, 1, 2].map((n) => (
           <li key={n} aria-hidden="true">
-            <Skeleton className="h-40 rounded-xl" />
+            <Skeleton className="h-72 rounded-xl" />
           </li>
         ))}
       </ul>
@@ -292,6 +307,8 @@ export function ListingResults({
               key={item.id}
               item={item}
               query={query}
+              eager={n < 3}
+              onRefresh={refreshPhotos}
               linkRef={n === firstNewIndex && more.length > 0 ? firstNewLink : undefined}
             />
           ))}

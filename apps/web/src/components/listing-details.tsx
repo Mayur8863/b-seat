@@ -18,6 +18,8 @@ import { ListingSeatList, type SeatSelection } from '@/components/listing-seat-l
 import { type PassChoice, PassOptions } from '@/components/pass-options';
 import { StartDateField } from '@/components/start-date-field';
 import { type BookingSelection, YourSelection } from '@/components/your-selection';
+import { ListingGallery } from '@/components/listing-gallery';
+import { usePhotoRefresh } from '@/lib/use-photo-refresh';
 import { slotTitle, utilityLabel } from '@/lib/format';
 import { parseListingParams, withListingParams } from '@/lib/listing-params';
 import { describeBookProblem, SLOT_STARTED } from '@/lib/marketplace-problems';
@@ -68,7 +70,15 @@ function Details({ listing }: { listing: Listing }) {
   );
 }
 
-function Body({ listing, onRefetch }: { listing: Listing; onRefetch: () => void }) {
+function Body({
+  listing,
+  onRefetch,
+  onRefreshPhotos,
+}: {
+  listing: Listing;
+  onRefetch: () => void;
+  onRefreshPhotos: () => Promise<void>;
+}) {
   const params = useSearchParams();
   const queryClient = useQueryClient();
   const me = useMeGet();
@@ -169,6 +179,11 @@ function Body({ listing, onRefetch }: { listing: Listing; onRefetch: () => void 
   );
   return (
     <div className="grid gap-8">
+      <ListingGallery
+        spaceName={listing.name}
+        photos={listing.photos}
+        onRefresh={onRefreshPhotos}
+      />
       <Details listing={listing} />
       {listing.isOwnSpace ? (
         <Alert role="status">
@@ -276,11 +291,14 @@ function Body({ listing, onRefetch }: { listing: Listing; onRefetch: () => void 
 
 /** Listing page v1 (ui/03 section 4): details and pass options. Seats and booking attach in T040/T041. */
 export function ListingDetails({ spaceId }: { spaceId: string }) {
-  const { data, isPending, error, refetch } = useListingsGet(spaceId);
+  const { data, isPending, error, refetch } = useListingsGet(spaceId, {
+    query: { staleTime: 30_000, refetchOnMount: true, refetchOnWindowFocus: true },
+  });
   const listing = data?.data;
   const onRefetch = useCallback(() => {
     void refetch();
   }, [refetch]);
+  const refreshPhotos = usePhotoRefresh(listing?.photoUrlsExpireAt, refetch);
   // The search that led here; a link without one (or a shared deep link) just says "Find a space".
   const params = useSearchParams();
   // Captured once: the booking choice is mirrored into the URL later, and the link must return
@@ -312,6 +330,7 @@ export function ListingDetails({ spaceId }: { spaceId: string }) {
         </span>
         <div aria-hidden="true" className="grid gap-4">
           <Skeleton className="h-8 w-64" />
+          <Skeleton className="aspect-[4/3] w-full rounded-xl lg:max-w-xl" />
           <Skeleton className="h-24" />
           <Skeleton className="h-20" />
           <Skeleton className="h-20" />
@@ -363,7 +382,7 @@ export function ListingDetails({ spaceId }: { spaceId: string }) {
           {listing.area}, {listing.city}, {countryName(listing.country)}
         </p>
       </div>
-      <Body listing={listing} onRefetch={onRefetch} />
+      <Body listing={listing} onRefetch={onRefetch} onRefreshPhotos={refreshPhotos} />
     </main>
   );
 }

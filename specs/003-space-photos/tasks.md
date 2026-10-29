@@ -52,21 +52,21 @@ only a human merges.
 | T015 | Describe photos and guard leaving with unfinished uploads        | frontend-dev      | T014                         | S    | review | `feat/003-photo-describe-leave-guard`  |
 | T016 | QA US1: owner upload e2e, axe, SC-002, SC-005                    | qa-engineer       | T014, T015                   | M    | todo   | `test/003-us1-add-photos`              |
 | T017 | Docs US1                                                         | docs-writer       | T016                         | S    | todo   | `docs/003-us1-add-photos`              |
-| T018 | Listing API: cover on search results, photos on the detail       | backend-dev       | T009                         | M    | todo   | `feat/003-listing-photos-api`          |
-| T019 | Space photo component, placeholder and cover on `/find` cards    | frontend-dev      | T012, T018                   | S    | todo   | `feat/003-find-card-cover`             |
-| T020 | Listing gallery and large view (keyboard, pointer, touch)        | frontend-dev      | T012, T018, T019             | M    | todo   | `feat/003-listing-gallery`             |
+| T018 | Listing API: cover on search results, photos on the detail       | backend-dev       | T009                         | M    | review | `feat/003-listing-photos-api`          |
+| T019 | Space photo component, placeholder and cover on `/find` cards    | frontend-dev      | T012, T018                   | S    | review | `feat/003-find-card-cover`             |
+| T020 | Listing gallery and large view (keyboard, pointer, touch)        | frontend-dev      | T012, T018, T019             | M    | review | `feat/003-listing-gallery`             |
 | T021 | QA US2: renter e2e, axe incl. large view, SC-003, SC-004, FR-019 | qa-engineer       | T019, T020                   | M    | todo   | `test/003-us2-renter-photos`           |
 | T022 | Docs US2                                                         | docs-writer       | T021                         | S    | todo   | `docs/003-us2-renter-photos`           |
-| T023 | Reorder and delete API                                           | backend-dev       | T009                         | M    | todo   | `feat/003-photo-reorder-delete-api`    |
-| T024 | Purge sweep (scheduler, lease claim) and overdue alert log       | backend-dev       | T023                         | M    | todo   | `feat/003-photo-purge`                 |
+| T023 | Reorder and delete API                                           | backend-dev       | T009                         | M    | review | `feat/003-photo-reorder-delete-api`    |
+| T024 | Purge sweep (scheduler, lease claim) and overdue alert log       | backend-dev       | T023                         | M    | review | `feat/003-photo-purge`                 |
 | T025 | Reorder controls and delete dialog                               | frontend-dev      | T011, T014, T023             | M    | todo   | `feat/003-photo-reorder-delete-ui`     |
 | T026 | QA US3: keyboard reorder, permanent delete, purge                | qa-engineer       | T024, T025                   | M    | todo   | `test/003-us3-arrange-photos`          |
 | T027 | Docs US3: photo-storage runbook (purge operations)               | docs-writer       | T026                         | S    | todo   | `docs/003-us3-arrange-photos`          |
-| T028 | 10-photo limit under concurrency (race test first)               | backend-dev       | T008                         | S    | todo   | `feat/003-photo-limit-race`            |
+| T028 | 10-photo limit under concurrency (race test first)               | backend-dev       | T008                         | S    | review | `feat/003-photo-limit-race`            |
 | T029 | QA US4: limit e2e and the SC-006 race                            | qa-engineer       | T014, T028                   | S    | todo   | `test/003-us4-photo-limit`             |
 | T030 | Docs US4                                                         | docs-writer       | T029                         | S    | todo   | `docs/003-us4-photo-limit`             |
 | T031 | Seed photo assets: download, resize, credits                     | backend-dev       | T006                         | S    | review | `feat/003-seed-photo-assets`           |
-| T032 | Seed wiring: attach photos to London HQ and Pune Hub             | backend-dev       | T003, T008, T031             | S    | todo   | `feat/003-seed-photos`                 |
+| T032 | Seed wiring: attach photos to London HQ and Pune Hub             | backend-dev       | T003, T008, T031             | S    | review | `feat/003-seed-photos`                 |
 | T033 | QA US5: offline seed, idempotency, credits                       | qa-engineer       | T032                         | S    | todo   | `test/003-us5-seed-photos`             |
 | T034 | Docs US5                                                         | docs-writer       | T033                         | S    | todo   | `docs/003-us5-seed-photos`             |
 | T035 | Security review of the photo feature                             | security-reviewer | T016, T021, T026, T029, T033 | S    | todo   | none (read-only; findings in tasks.md) |
@@ -282,7 +282,7 @@ first (T002, T003). After T001: T002, T003, T005, T006, T011 and T012 can start 
 **Independent test**: spec US2 (one published space with 4 photos, one with none).
 
 - [ ] T018 [US2] Add `cover` and `photoUrlsExpireAt` to `ListingSummary` / `ListingSearchResults`, and `photos` and `photoUrlsExpireAt` to `Listing`, in `apps/api/src/listings/` (schemas, service: the cover `LEFT JOIN`, the photo read); regenerate `openapi.json`; write `apps/api/test/listings-photos.int-spec.ts` first
-  - **Owner**: backend-dev · **Branch**: `feat/003-listing-photos-api` · **Size**: M · **Depends on**: T009 · **Status**: todo
+  - **Owner**: backend-dev · **Branch**: `feat/003-listing-photos-api` · **Size**: M · **Depends on**: T009 · **Status**: review (2026-10-29)
   - **Scope**: contracts/photos.md "Renter additions"; research R-4, R-5. Additive fields only. Search stays one query per page.
   - **Acceptance criteria**:
     - Given a published space with 4 photos and one with none, When a renter searches, Then the first item's `cover` has the position-1 `altText` and a `card` URL only (no `display` URL anywhere in the search response), and the second's `cover` is `null` (AC 2.1, AC 2.2, AC 2.7, FR-016, FR-018).
@@ -293,7 +293,7 @@ first (T002, T003). After T001: T002, T003, T005, T006, T011 and T012 can start 
     - Given an unauthenticated request, Then 401 (FR-022).
 
 - [ ] T019 [US2] Add `apps/web/src/components/space-photo.tsx` (an image via `next/image` with width and height, the "No photos yet" placeholder, one refetch on load error) with tests; show the cover on cards in `listing-results.tsx`; **(T001)** set `images: { unoptimized: true }` globally in `apps/web/next.config.ts`, with no `remotePatterns` (ADR-0011 section 6)
-  - **Owner**: frontend-dev · **Branch**: `feat/003-find-card-cover` · **Size**: S · **Depends on**: T012, T018 · **Status**: todo
+  - **Owner**: frontend-dev · **Branch**: `feat/003-find-card-cover` · **Size**: S · **Depends on**: T012, T018 · **Status**: review
   - **Scope**: ui/02-renter-photos.md; research R-10. Refetch search results before `photoUrlsExpireAt`.
   - **Acceptance criteria**:
     - Given a result with a cover, Then the card shows the image with `alt` = `altText` and the `card` URL (AC 2.1, AC 2.7).
@@ -303,7 +303,7 @@ first (T002, T003). After T001: T002, T003, T005, T006, T011 and T012 can start 
     - Given loading, empty, error and success states of the results, Then each still renders as in 002 with the cover added (FR-026).
 
 - [ ] T020 [US2] Add `listing-gallery.tsx` and `photo-lightbox.tsx` (`@bseat/ui` Dialog, arrow keys, buttons, pointer swipe, "n of m", captions, focus return) with tests, and show the gallery or placeholder in `listing-details.tsx`
-  - **Owner**: frontend-dev · **Branch**: `feat/003-listing-gallery` · **Size**: M · **Depends on**: T012, T018, T019 · **Status**: todo
+  - **Owner**: frontend-dev · **Branch**: `feat/003-listing-gallery` · **Size**: M · **Depends on**: T012, T018, T019 · **Status**: review
   - **Scope**: ui/02-renter-photos.md; research R-10. No new dependency.
   - **Acceptance criteria**:
     - Given a listing with 7 photos, Then the gallery starts with the cover, shows "7 photos", and shows captions for described photos only (AC 2.3, FR-017).
@@ -334,7 +334,7 @@ first (T002, T003). After T001: T002, T003, T005, T006, T011 and T012 can start 
 **Independent test**: spec US3 (5 photos; keyboard move 4th to first; delete the 2nd).
 
 - [ ] T023 [US3] Add `PUT /api/owner/spaces/{spaceId}/photos/order` and `DELETE /api/owner/spaces/{spaceId}/photos/{photoId}` (`reorder`, `remove`: renumber, purge row; no enqueue, see T024); regenerate `openapi.json`; write `apps/api/test/photos-arrange.int-spec.ts` first
-  - **Owner**: backend-dev · **Branch**: `feat/003-photo-reorder-delete-api` · **Size**: M · **Depends on**: T009 · **Status**: todo
+  - **Owner**: backend-dev · **Branch**: `feat/003-photo-reorder-delete-api` · **Size**: M · **Depends on**: T009 · **Status**: review (2026-10-29; stacked on feat/003-listing-photos-api)
   - **Scope**: contracts/photos.md; ADR-0011 sections 7 to 9; research R-6, R-7. Lock order per ADR-0009 9.3 rows (data-model.md). **(T001)** Reorder and the renumber are each one `UPDATE` statement, with no `SET CONSTRAINTS`. Delete inserts the purge row and enqueues nothing; the sweep is T024.
   - **Acceptance criteria**:
     - Given 5 photos, When the order puts the 4th first, Then positions are 1..5 in the new order, and the new first is the cover in the owner list and the listing (AC 3.1, AC 3.2, FR-009).
@@ -385,7 +385,7 @@ first (T002, T003). After T001: T002, T003, T005, T006, T011 and T012 can start 
 **Independent test**: spec US4 (8 photos, choose 4 → 2 added, 2 not added).
 
 - [ ] T028 [US4] Write `apps/api/test/photos-race.int-spec.ts` first (15 concurrent uploads to an empty space), then harden `space-photos.service.ts`: **(T001)** map `23514` on `space_photo_position_range` to 409 `photo:limit-reached`, treat `23505` on `space_photo_position_unique` as a 500 logged at `error` (a service bug, ADR-0011 section 7), log `photo.lock_timeout` on `55P03`, and confirm the semaphore's 503 path
-  - **Owner**: backend-dev · **Branch**: `feat/003-photo-limit-race` · **Size**: S · **Depends on**: T008 · **Status**: todo
+  - **Owner**: backend-dev · **Branch**: `feat/003-photo-limit-race` · **Size**: S · **Depends on**: T008 · **Status**: review
   - **Acceptance criteria**:
     - Given 15 concurrent valid uploads to a space with 0 photos, When all finish, Then exactly 10 × 201 and 5 × 409 `photo:limit-reached`, positions are 1..10, no 5xx (admission 16 admits all 15), and the 5 losers left no objects after one sweep run (SC-006, AC 4.4, FR-002). Repeat 10 times.
     - Given the processing semaphore is saturated beyond 20 s, Then the request gets 503 `photo:busy` with `Retry-After` (R-3).
@@ -419,7 +419,7 @@ first (T002, T003). After T001: T002, T003, T005, T006, T011 and T012 can start 
     - Given `photos.ts`, Then every photo has a description of at most 150 characters, and each space's position 1 is a suitable cover (AC 5.1).
 
 - [ ] T032 [US5] Seed the photos in `apps/api/src/db/seed.ts` / `demo-spaces.ts` through the processing and storage code (a space with zero photos gets its set, others are left alone), and extend `apps/api/test/seed.int-spec.ts`
-  - **Owner**: backend-dev · **Branch**: `feat/003-seed-photos` · **Size**: S · **Depends on**: T003, T008, T031 · **Status**: todo
+  - **Owner**: backend-dev · **Branch**: `feat/003-seed-photos` · **Size**: S · **Depends on**: T003, T008, T031 · **Status**: review
   - **Acceptance criteria**:
     - Given a fresh database and bucket, When the seed runs, Then London HQ has 5 and Pune Hub 4 photos in `photos.ts` order with descriptions, and their objects exist (AC 5.1, FR-024).
     - Given the seed runs twice, Then the counts stay 5 and 4 and no extra objects are written (AC 5.2).

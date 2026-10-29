@@ -169,7 +169,7 @@ describe('listing search API', () => {
 
   it('returns an empty page when nothing matches', async () => {
     const res = await renter.get('/api/listings?country=IN&city=Nowhere');
-    expect(res.body).toEqual({ items: [], nextCursor: null });
+    expect(res.body).toEqual({ items: [], nextCursor: null, photoUrlsExpireAt: null });
   });
 
   describe('locations', () => {

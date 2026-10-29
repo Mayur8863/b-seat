@@ -29,6 +29,8 @@ const listing = (over: Partial<Listing> = {}): Listing =>
     customUtilities: ['Rooftop'],
     openingHours: { mode: 'always_open', shiftChangeAt: '19:00' },
     isOwnSpace: false,
+    photos: [],
+    photoUrlsExpireAt: null,
     offers: [
       {
         slot: 'day',
@@ -95,6 +97,33 @@ describe('ListingDetails', () => {
       `/find?${q}`,
     );
     search = '';
+  });
+
+  it('photos: the gallery sits between the location and the details; none shows the placeholder', async () => {
+    const photo = (n: number) => ({
+      id: `p${n}`,
+      position: n,
+      description: null,
+      altText: `Alt ${n}`,
+      card: { url: `https://s3.test/c${n}.webp`, width: 640, height: 480 },
+      display: { url: `https://s3.test/d${n}.webp`, width: 1600, height: 1200 },
+    });
+    server.use(
+      getListingsGetMockHandler(
+        listing({ photos: [photo(1), photo(2)], photoUrlsExpireAt: '2099-01-01T00:00:00Z' }),
+      ),
+    );
+    const first = renderWithQuery(<ListingDetails spaceId="s1" />);
+    const gallery = await screen.findByRole('heading', { name: 'Photos' });
+    expect(screen.getByText('2 photos')).toBeInTheDocument();
+    const about = screen.getByRole('heading', { name: 'About this space' });
+    expect(gallery.compareDocumentPosition(about) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    first.unmount();
+
+    server.use(getListingsGetMockHandler(listing()));
+    renderWithQuery(<ListingDetails spaceId="s1" />);
+    expect(await screen.findByText('No photos yet')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'About this space' })).toBeInTheDocument();
   });
 
   it('loading: busy status', () => {

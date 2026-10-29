@@ -4,6 +4,8 @@ import pg from 'pg';
 import request from 'supertest';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { seedPhotos, type PhotoStore } from '../src/db/demo-photos.js';
+import { StorageService } from '../src/storage/storage.service.js';
 import { DEMO_OWNER_EMAIL, DEMO_RENTER_EMAIL, seedAccounts } from '../src/db/demo-accounts.js';
 import { DEMO_SPACES, type SeedSpace, seedSpaces } from '../src/db/demo-spaces.js';
 import {
@@ -17,6 +19,7 @@ import {
   session,
   space,
   spaceLayout,
+  spacePhoto,
   spaceSlot,
   user,
 } from '../src/db/schema/index.js';
@@ -362,6 +365,95 @@ describe('demo marketplace seed (FR-012, OQ-11)', () => {
   });
 });
 
+describe('demo photos seed (T032, AC 5.1 to 5.3)', () => {
+  let app: NestExpressApplication;
+  beforeAll(async () => {
+    app = await createTestApp();
+  });
+  beforeEach(() => resetDb(app));
+  afterEach(() => vi.restoreAllMocks());
+  afterAll(() => app.close());
+
+  const photosOf = async (name: string) => {
+    const db = testDb(app);
+    return db
+      .select({
+        id: spacePhoto.id,
+        position: spacePhoto.position,
+        description: spacePhoto.description,
+        spaceId: spacePhoto.spaceId,
+      })
+      .from(spacePhoto)
+      .innerJoin(space, eq(space.id, spacePhoto.spaceId))
+      .where(eq(space.name, name))
+      .orderBy(asc(spacePhoto.position));
+  };
+
+  async function seedWithPhotos(store: PhotoStore) {
+    const db = testDb(app);
+    const { ownerId } = await seedAccounts(db, PASSWORD);
+    await seedSpaces(db, ownerId);
+    await seedPhotos(db, store, ownerId);
+  }
+
+  it('gives London HQ 5 and Pune Hub 4 photos in order with descriptions and objects, once', async () => {
+    const storage = app.get(StorageService);
+    const put = vi.spyOn(storage, 'putObject');
+    await seedWithPhotos(storage);
+    const london = await photosOf('London HQ');
+    const pune = await photosOf('Pune Hub');
+    expect(london.map((p) => p.position)).toEqual([1, 2, 3, 4, 5]);
+    expect(pune.map((p) => p.position)).toEqual([1, 2, 3, 4]);
+    expect(london[0]?.description).toMatch(/open-plan/);
+    expect(put).toHaveBeenCalledTimes(18);
+
+    const first = london[0];
+    if (!first) throw new Error('no photo');
+    const { urls } = await storage.signGetUrls(
+      [
+        `spaces/${first.spaceId}/${first.id}/card.webp`,
+        `spaces/${first.spaceId}/${first.id}/display.webp`,
+      ],
+      new Date(),
+    );
+    for (const url of urls) expect((await fetch(url)).status).toBe(200);
+
+    put.mockClear();
+    await seedWithPhotos(storage);
+    expect(put).not.toHaveBeenCalled();
+    expect(await photosOf('London HQ')).toHaveLength(5);
+    expect(await photosOf('Pune Hub')).toHaveLength(4);
+  });
+
+  it('leaves a space that already has a photo alone', async () => {
+    const storage = app.get(StorageService);
+    await seedWithPhotos(storage);
+    const db = testDb(app);
+    const [gone] = await photosOf('Pune Hub');
+    if (!gone) throw new Error('no photo');
+    await db.delete(spacePhoto).where(eq(spacePhoto.id, gone.id));
+    const put = vi.spyOn(storage, 'putObject');
+    await seedWithPhotos(storage);
+    expect(put).not.toHaveBeenCalled();
+    expect(await photosOf('Pune Hub')).toHaveLength(3);
+  });
+
+  it('fails with a clear message and no rows when storage is unreachable, then resumes', async () => {
+    const down: PhotoStore = {
+      putObject: () => Promise.reject(new Error('connect ECONNREFUSED secret')),
+    };
+    const err = await seedWithPhotos(down).catch((e: unknown) => e);
+    expect(err).toMatchObject({
+      name: 'SeedError',
+      message: expect.stringMatching(/photo storage/),
+    });
+    expect((err as Error).message).not.toContain('secret');
+    expect(await photosOf('London HQ')).toHaveLength(0);
+    await seedWithPhotos(app.get(StorageService));
+    expect(await photosOf('London HQ')).toHaveLength(5);
+  });
+});
+
 describe('runSeed guards', () => {
   const connect = vi.fn<(url: string) => SeedConnection>();
   afterEach(() => connect.mockReset());
@@ -432,8 +524,8 @@ describe('runSeed guards', () => {
       const db = testDb(app);
       const close = vi.fn(() => Promise.resolve());
       connect.mockReturnValue({ db, close });
-      await runSeed(base, connect);
-      await runSeed(base, connect);
+      await runSeed(base, connect, () => app.get(StorageService));
+      await runSeed(base, connect, () => app.get(StorageService));
       expect(close).toHaveBeenCalledTimes(2);
       expect(await db.select().from(space)).toHaveLength(2);
       expect(out.join('\n')).not.toContain(PASSWORD);
