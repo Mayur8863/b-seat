@@ -3145,6 +3145,155 @@
           "owner-operations"
         ]
       }
+    },
+    "/api/owner/spaces/{spaceId}/photos": {
+      "post": {
+        "operationId": "SpacePhotos_upload",
+        "parameters": [
+          {
+            "name": "spaceId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "title": "UploadSpacePhotoInput",
+                "required": [
+                  "file"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "One JPEG, PNG or WebP image, at most 10 MB"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnerSpacePhoto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "No file part, or extra parts",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Renter account or foreign Origin",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "photo:limit-reached",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhotoLimitProblem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "photo:too-large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhotoTooLargeProblem"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "photo:unsupported-format",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhotoFormatProblem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "photo:dimensions-out-of-range or photo:unreadable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhotoDimensionsProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "photo:busy, with Retry-After",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ],
+        "tags": [
+          "space-photos"
+        ]
+      }
     }
   },
   "info": {
@@ -6447,6 +6596,348 @@
           "lastEndsAt",
           "price",
           "createdAt"
+        ],
+        "additionalProperties": false
+      },
+      "OwnerSpacePhoto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "position": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10,
+            "description": "1 is the cover"
+          },
+          "description": {
+            "nullable": true,
+            "type": "string"
+          },
+          "altText": {
+            "type": "string",
+            "description": "The description, or \"<space name> photo <position>\""
+          },
+          "card": {
+            "description": "640 by 480",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PhotoImage"
+              }
+            ]
+          },
+          "display": {
+            "description": "Up to 1600 on the long edge",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PhotoImage"
+              }
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+            "description": "UTC instant (ISO 8601)"
+          }
+        },
+        "required": [
+          "id",
+          "position",
+          "description",
+          "altText",
+          "card",
+          "display",
+          "createdAt"
+        ],
+        "additionalProperties": false
+      },
+      "PhotoImage": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Signed, short-lived address of the image"
+          },
+          "width": {
+            "type": "integer",
+            "minimum": 0,
+            "exclusiveMinimum": true,
+            "maximum": 9007199254740991
+          },
+          "height": {
+            "type": "integer",
+            "minimum": 0,
+            "exclusiveMinimum": true,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "url",
+          "width",
+          "height"
+        ],
+        "additionalProperties": false
+      },
+      "PhotoLimitProblem": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "URI identifying the problem type"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "detail": {
+            "type": "string"
+          },
+          "instance": {
+            "type": "string"
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "errors": {
+            "description": "Field-level validation errors",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path",
+                "message"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "limit": {
+            "type": "number",
+            "enum": [
+              10
+            ],
+            "description": "Photos allowed per space"
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "status",
+          "limit"
+        ],
+        "additionalProperties": false
+      },
+      "PhotoTooLargeProblem": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "URI identifying the problem type"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "detail": {
+            "type": "string"
+          },
+          "instance": {
+            "type": "string"
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "errors": {
+            "description": "Field-level validation errors",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path",
+                "message"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "maxBytes": {
+            "type": "number",
+            "enum": [
+              10485760
+            ],
+            "description": "Largest accepted file, in bytes"
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "status",
+          "maxBytes"
+        ],
+        "additionalProperties": false
+      },
+      "PhotoFormatProblem": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "URI identifying the problem type"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "detail": {
+            "type": "string"
+          },
+          "instance": {
+            "type": "string"
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "errors": {
+            "description": "Field-level validation errors",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path",
+                "message"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "accepted": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "jpeg",
+                "png",
+                "webp"
+              ]
+            },
+            "description": "Accepted formats"
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "status",
+          "accepted"
+        ],
+        "additionalProperties": false
+      },
+      "PhotoDimensionsProblem": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "URI identifying the problem type"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "detail": {
+            "type": "string"
+          },
+          "instance": {
+            "type": "string"
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "errors": {
+            "description": "Field-level validation errors",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path",
+                "message"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "minLongEdge": {
+            "type": "number",
+            "enum": [
+              800
+            ]
+          },
+          "maxLongEdge": {
+            "type": "number",
+            "enum": [
+              12000
+            ]
+          },
+          "maxPixels": {
+            "type": "number",
+            "enum": [
+              50000000
+            ]
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "status",
+          "minLongEdge",
+          "maxLongEdge",
+          "maxPixels"
         ],
         "additionalProperties": false
       }

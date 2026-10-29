@@ -15,7 +15,7 @@ const widen = (value: object) => value as unknown as ProblemExtensions;
 
 function run(exception: unknown, reqId: unknown = 'req-1') {
   const logger = { setContext: vi.fn(), error: vi.fn() } as unknown as PinoLogger;
-  const res = { status: vi.fn(), type: vi.fn(), json: vi.fn() };
+  const res = { status: vi.fn(), type: vi.fn(), json: vi.fn(), set: vi.fn() };
   res.status.mockReturnValue(res);
   res.type.mockReturnValue(res);
   const host = {
@@ -79,6 +79,13 @@ describe('ProblemFilter', () => {
       instance: '/x',
       requestId: 'req-1',
     });
+  });
+
+  it('sets the headers of a ProblemException', () => {
+    const { res } = run(
+      new ProblemException(503, 'urn:bseat:problem:t', 'T', 'd', undefined, { 'Retry-After': '5' }),
+    );
+    expect(res.set).toHaveBeenCalledWith({ 'Retry-After': '5' });
   });
 
   it('logs a 5xx ProblemException like any server error', () => {

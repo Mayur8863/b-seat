@@ -42,7 +42,7 @@ only a human merges.
 | T005 | Photo schema and migration, constraint tests first               | backend-dev       | T001                         | S    | review | `feat/003-photo-schema`                |
 | T006 | Image processing module with sharp (TDD)                         | backend-dev       | T001                         | M    | review | `feat/003-photo-processing`            |
 | T007 | Production image loads sharp; AWS storage runbook                | devops            | T006                         | S    | todo   | `chore/003-photo-runtime`              |
-| T008 | Upload API: validate, process, store, insert                     | backend-dev       | T002, T004, T005, T006       | M    | todo   | `feat/003-photo-upload-api`            |
+| T008 | Upload API: validate, process, store, insert                     | backend-dev       | T002, T004, T005, T006       | M    | review | `feat/003-photo-upload-api`            |
 | T009 | Owner photo list and describe API                                | backend-dev       | T008                         | S    | todo   | `feat/003-photo-list-api`              |
 | T010 | `uploadSpacePhoto` XHR helper in the api-client                  | frontend-dev      | T008                         | S    | todo   | `feat/003-upload-helper`               |
 | T011 | UI spec: owner Photos section                                    | ui-ux-designer    | T001                         | M    | review | `docs/003-ui-owner-photos`             |
@@ -171,7 +171,7 @@ first (T002, T003). After T001: T002, T003, T005, T006, T011 and T012 can start 
 **Independent test**: spec US1 (3 valid files and 1 too large on a draft space).
 
 - [ ] T008 [US1] Add `apps/api/src/photos/` (`photos.module.ts`, `space-photos.controller.ts`, `space-photos.service.ts` `add`, `space-photos.schemas.ts`, `upload-semaphore.ts`) for `POST /api/owner/spaces/{spaceId}/photos`; add the problem types and registry copy; regenerate `apps/api/openapi.json`; write `apps/api/test/photos.int-spec.ts` first
-  - **Owner**: backend-dev · **Branch**: `feat/003-photo-upload-api` · **Size**: M · **Depends on**: T002, T004, T005, T006 · **Status**: todo
+  - **Owner**: backend-dev · **Branch**: `feat/003-photo-upload-api` · **Size**: M · **Depends on**: T002, T004, T005, T006 · **Status**: review (2026-10-29; the global CsrfGuard supplies the Origin check, so no separate OriginGuard was added)
   - **Scope**: contracts/photos.md "Upload" and contracts/README.md; ADR-0011 sections 2, 3, 7, 8 and 9; research R-2, R-3, R-6, R-7. Multer memory storage with `fileSize` 10 MiB, `files: 1`, `fields: 0`, `parts: 1`. Lock order: `lock_timeout`, then the space row `FOR UPDATE` scoped by `owner_id`. The basic count check (409 at 10) is here; the concurrency proof is T028. Logs per contract, never the file name.
     - **(T001)** `OriginGuard` is a reusable guard in `apps/api/src/common/` (with its own spec).
     - `upload-limits.ts` holds admission (16 in flight, immediate 503 `photo:busy`) and the processing semaphore (2, 20 s wait). Guards and admission run before multer reads the body.
