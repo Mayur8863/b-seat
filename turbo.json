@@ -17,6 +17,8 @@
     "API_INTERNAL_URL",
     "LOG_LEVEL",
     "OTEL_*",
+    "S3_*",
+    "PHOTO_URL_TTL_SECONDS",
     "E2E_BASE_URL"
   ],
   "tasks": {
