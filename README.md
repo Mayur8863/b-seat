@@ -28,13 +28,23 @@ directly to the owner**; there is no online payment.
 - **Occupancy.** Mark seats occupied for a period, with an optional note, and end the mark. A mark that
   clashes with existing bookings is refused.
 - **Bookings.** See upcoming bookings at the space, filter them by date and page through them.
+- **Photos.** Add up to 10 photos from the Photos page. Each file uploads with its own progress bar, and a
+  failed file shows why, with Retry and Dismiss. JPEG, PNG and WebP are accepted, up to 10 MB, 800 to
+  12,000 px on the long edge and 50 megapixels at most. HEIC, GIF and animated images are refused. Location
+  and camera metadata are removed. Photos can be **arranged** with Move earlier, Move later and Make cover
+  (buttons only, no drag yet); the first photo is the cover. Each photo can have an optional **description**
+  of up to 150 characters, which is its caption and text alternative. **Delete** is permanent, with no undo;
+  a background sweep removes the files from storage every 5 minutes.
+  Renters see photos only while the space is published.
 
 **For renters**
 
 - **Find a space** (`/find`). Search by country, city, area, start date, pass, slot and utilities. The
-  filters are in the URL, so results can be shared. Each result shows the lowest price per pass.
-- **Space page** (`/spaces/{id}`). Details, offered slots and prices, and each seat as free, taken or
-  closed for the pass and start date you pick. A space with a floor plan can show it instead of a list.
+  filters are in the URL, so results can be shared. Each result shows the cover photo (or a placeholder)
+  and the lowest price per pass.
+- **Space page** (`/spaces/{id}`). A photo gallery (open a photo for a larger view), details, offered slots
+  and prices, and each seat as free, taken or closed for the pass and start date you pick. A space with a
+  floor plan can show it instead of a list.
 - **Book a pass.** Pick one seat for a day, week or month pass. A weekly or monthly pass keeps the same
   seat for the whole period. Days when the seat is unavailable are skipped at the same price, so the
   end date does not move. The confirmation shows the price and the offline-payment note.
@@ -49,27 +59,30 @@ Mailpit at `http://localhost:8025`. See [booking confirmations](docs/runbooks/bo
 `renter@bseat.local` (renter). The owner's password comes from `SEED_DEMO_PASSWORD`; compose has a
 dev-only default, and [.env.example](.env.example) shows how to override it. The seed creates two
 published spaces: London HQ (Europe/London, open 24 hours, 12 seats in two cubicles, with a sample
-floor plan) and Pune Hub (Asia/Kolkata, 8 seats, working hours).
+floor plan and five photos) and Pune Hub (Asia/Kolkata, 8 seats, working hours, four photos). The seed
+photos are committed to the repo and read from disk, so seeding needs no internet. Credits are in
+[CREDITS.md](apps/api/src/db/seed-photos/CREDITS.md).
 
 ### Routes and API
 
 Pages: `/dashboard`, `/find`, `/spaces/{id}`, `/bookings` for renters; `/owner/spaces/new` and
-`/owner/spaces/{id}` (with its Details, Seats, Passes and prices, Layout, Availability and Bookings
+`/owner/spaces/{id}` (with its Details, Photos, Seats, Passes and prices, Layout, Availability and Bookings
 pages) for owners. `/book` redirects to `/find`.
 
 Full schemas are in Swagger UI at http://localhost:3001/docs. Routes are under `/api`. Resource routes
 need a signed-in session cookie; sign-in is Better Auth under `/api/auth`.
 
-| Method  | Path                               | Purpose                                                                        |
-| ------- | ---------------------------------- | ------------------------------------------------------------------------------ |
-| GET     | `/api/listings`                    | Search published spaces (`country` required, plus filters)                     |
-| GET     | `/api/listings/locations`          | City and area suggestions for the search box                                   |
-| GET     | `/api/listings/{spaceId}`          | A published space with its offered passes and prices                           |
-| GET     | `/api/listings/{spaceId}/seats`    | Free, taken or closed seats for a pass, slot and start date                    |
-| POST    | `/api/listings/{spaceId}/bookings` | Book one seat for a day, week or month pass                                    |
-| GET     | `/api/bookings`                    | My upcoming bookings                                                           |
-| POST    | `/api/bookings/{bookingId}/cancel` | Cancel my booking that has not started                                         |
-| various | `/api/owner/spaces/...`            | Owner spaces, seats, cubicles, pricing, layout, calendars, occupancy, bookings |
+| Method  | Path                                    | Purpose                                                                        |
+| ------- | --------------------------------------- | ------------------------------------------------------------------------------ |
+| GET     | `/api/listings`                         | Search published spaces (`country` required, plus filters)                     |
+| GET     | `/api/listings/locations`               | City and area suggestions for the search box                                   |
+| GET     | `/api/listings/{spaceId}`               | A published space with its offered passes, prices and photos                   |
+| GET     | `/api/listings/{spaceId}/seats`         | Free, taken or closed seats for a pass, slot and start date                    |
+| POST    | `/api/listings/{spaceId}/bookings`      | Book one seat for a day, week or month pass                                    |
+| GET     | `/api/bookings`                         | My upcoming bookings                                                           |
+| POST    | `/api/bookings/{bookingId}/cancel`      | Cancel my booking that has not started                                         |
+| various | `/api/owner/spaces/{spaceId}/photos...` | Owner photos: list, add (multipart `file`), describe, reorder, delete          |
+| various | `/api/owner/spaces/...`                 | Owner spaces, seats, cubicles, pricing, layout, calendars, occupancy, bookings |
 
 The 001 routes `GET /api/spaces` and `GET /api/spaces/{spaceId}/availability` were removed in favour of
 `/api/listings`. Hourly booking is gone; passes replace it.
@@ -84,12 +97,29 @@ Notes that the schemas do not show:
   `type` is `urn:bseat:problem:booking-rule:<rule>`. A clash is a 409, `booking:seat-unavailable` or
   `booking:user-overlap`. The full list and its copy are in
   [002 contracts](specs/002-space-marketplace/contracts/README.md).
+- **Photo URLs are signed and expire.** Each photo has a `card` URL (for cards and thumbnails) and a `display`
+  URL (for the large view), signed for `PHOTO_URL_TTL_SECONDS` (default 3600, at most 3600). `photoUrlsExpireAt`
+  says when they stop working, so fetch the list again before then. A URL copied earlier keeps working until
+  it expires, so unpublishing hides photos from renters only once the TTL has passed. See
+  [ADR-0011](docs/adr/0011-space-photo-storage.md).
+- **Photo errors are problem details** with `urn:bseat:problem:photo:<name>` types: `limit-reached` (409, at
+  10 photos), `too-large` (413), `unsupported-format` (415), `dimensions-out-of-range` and `unreadable` (422),
+  `busy` (503 with `Retry-After`) and `order-stale` (409, the reorder list did not match the space's photos).
+  The copy is in [003 contracts](specs/003-space-photos/contracts/README.md).
 - **Cross-site writes are refused.** An unsafe request (POST, PUT, PATCH, DELETE) from another site gets 403. Set `TRUSTED_ORIGINS` for deployed environments; see [origins and CSRF](docs/runbooks/origins-and-csrf.md).
 
 ### Known limitations
 
-These are open follow-ups from the 002 reviews, listed in
+Known gaps in the 003 photos feature come first. Then come the open follow-ups from the 002 reviews, listed in
 [tasks.md, Review follow-ups](specs/002-space-marketplace/tasks.md#review-follow-ups).
+
+- **The 003 photos feature is not fully reviewed yet.** Its QA, security review and docs are still to do,
+  so the feature may change.
+- **Photos cannot be reordered by drag.** Use Move earlier, Move later and Make cover.
+- **Photo uploads have no per-user rate limit.** The API refuses uploads above 16 in flight per process
+  (503 `photo:busy`), and the 10-photo limit caps each space, but nothing limits one owner.
+- **Object storage runs only in local Docker (SeaweedFS).** The AWS bucket and IAM for photos are not created
+  yet; they need a human decision (ADR-0011, ADR-0007).
 
 - **My bookings shows at most 50 upcoming bookings**, with no paging.
 - **`GET /api/listings` has no rate limit yet.**
@@ -143,7 +173,8 @@ See [AGENTS.md](AGENTS.md#commands) for the full list.
 
 Next.js 16 (App Router) · React 19 · Tailwind v4 · shadcn/ui · TanStack Query · React Hook Form + Zod ·
 NestJS 12 · Zod (Standard Schema) → OpenAPI → orval client · Drizzle + PostgreSQL 18 · Redis 8 + BullMQ ·
-Better Auth · Vitest · Testing Library + MSW · Playwright + axe · pnpm + Turborepo · Docker · GitHub Actions.
+Better Auth · S3-compatible object storage (SeaweedFS locally) · sharp · Vitest · Testing Library + MSW ·
+Playwright + axe · pnpm + Turborepo · Docker · GitHub Actions.
 Why each was chosen: [docs/adr](docs/adr/README.md).
 
 ## Repository structure
@@ -230,3 +261,5 @@ Schemathesis API fuzzing, gitleaks, Semgrep and Trivy (lockfile and images).
 - [docs/runbooks/booking-confirmations.md](docs/runbooks/booking-confirmations.md): confirmation emails, Mailpit and lost-email handling
 - [docs/runbooks/origins-and-csrf.md](docs/runbooks/origins-and-csrf.md): `TRUSTED_ORIGINS` and 403s on writes
 - [specs/002-space-marketplace](specs/002-space-marketplace/spec.md): the space marketplace spec, plan and contracts
+- [specs/003-space-photos](specs/003-space-photos/spec.md): the space photos spec, plan and tasks
+- [docs/adr/0011-space-photo-storage.md](docs/adr/0011-space-photo-storage.md): photo storage, processing and signed URLs
