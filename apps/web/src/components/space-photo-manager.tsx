@@ -8,7 +8,6 @@ import {
   useSpacePhotosList,
 } from '@bseat/api-client';
 import { Alert, AlertDescription, AlertTitle } from '@bseat/ui/components/alert';
-import { Badge } from '@bseat/ui/components/badge';
 import { Button } from '@bseat/ui/components/button';
 import { Card } from '@bseat/ui/components/card';
 import { Skeleton } from '@bseat/ui/components/skeleton';
@@ -18,10 +17,15 @@ import type { Route } from 'next';
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { LeaveDialog } from '@/components/leave-dialog';
+import { PhotoCard } from '@/components/photo-card';
 import { PhotoUploadQueue } from '@/components/photo-upload-queue';
+import { useLeaveGuard } from '@/components/use-leave-guard';
+import type { ProblemCopy } from '@/lib/problem-copy';
 import { uploadProblem } from '@/lib/photo-upload/problem';
 import {
   announce,
+  hasUnfinishedUploads,
   initialQueue,
   nextToStart,
   PHOTO_LIMIT,
@@ -74,6 +78,11 @@ export function SpacePhotoManager({ spaceId }: { spaceId: string }) {
   const addButton = useRef<HTMLButtonElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const sessionAlert = useRef<HTMLDivElement>(null);
+  const [pageAlert, setPageAlert] = useState<ProblemCopy | null>(null);
+  const pageAlertRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (pageAlert) pageAlertRef.current?.focus();
+  }, [pageAlert]);
 
   const dispatch = useCallback(
     (action: QueueAction) => {
@@ -160,6 +169,11 @@ export function SpacePhotoManager({ spaceId }: { spaceId: string }) {
   useEffect(() => {
     if (sessionEnded) sessionAlert.current?.focus();
   }, [sessionEnded]);
+
+  const unfinished = state.items.filter((i) =>
+    ['waiting', 'uploading', 'processing'].includes(i.status.kind),
+  ).length;
+  const guard = useLeaveGuard(hasUnfinishedUploads(state));
 
   const free = room(state, count);
   const atLimit = count >= PHOTO_LIMIT;
@@ -281,6 +295,23 @@ export function SpacePhotoManager({ spaceId }: { spaceId: string }) {
         </Alert>
       )}
 
+      {pageAlert && (
+        <Alert variant="destructive" role="alert" ref={pageAlertRef} tabIndex={-1}>
+          <AlertTitle>{pageAlert.title}</AlertTitle>
+          <AlertDescription>
+            {pageAlert.description.map((part) =>
+              typeof part === 'string' ? (
+                part
+              ) : (
+                <Link key={part.href} href={part.href} className="underline underline-offset-4">
+                  {part.text}
+                </Link>
+              ),
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
+
       <PhotoUploadQueue
         items={state.items}
         dispatch={(action) => {
@@ -335,37 +366,22 @@ export function SpacePhotoManager({ spaceId }: { spaceId: string }) {
               <ol aria-label="Photos in order" className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {photos.items.map((photo, index) => (
                   <li key={photo.id}>
-                    <Card className="p-3">
-                      <article aria-labelledby={`photo-${photo.id}-heading`} className="grid gap-3">
-                        {/* Signed storage URL; next/image would need a remote pattern per bucket. */}
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={photo.card.url}
-                          alt={photo.altText}
-                          width={photo.card.width}
-                          height={photo.card.height}
-                          className="bg-muted aspect-[4/3] w-full rounded-lg object-cover"
-                          onError={() => {
-                            if (refetchedOnError.current) return;
-                            refetchedOnError.current = true;
-                            void list.refetch();
-                          }}
-                        />
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h3
-                            id={`photo-${photo.id}-heading`}
-                            tabIndex={-1}
-                            className="font-medium"
-                          >
-                            Photo {photo.position}
-                          </h3>
-                          {index === 0 && <Badge>Cover</Badge>}
-                          <span className="text-muted-foreground text-sm">
-                            {index + 1} of {photos.items.length}
-                          </span>
-                        </div>
-                      </article>
-                    </Card>
+                    <PhotoCard
+                      spaceId={spaceId}
+                      spaceName={space?.name}
+                      photo={photo}
+                      index={index}
+                      total={photos.items.length}
+                      onImageError={() => {
+                        if (refetchedOnError.current) return;
+                        refetchedOnError.current = true;
+                        void list.refetch();
+                      }}
+                      onSaved={(position) => {
+                        say(`Description saved for photo ${position}.`);
+                      }}
+                      onPageProblem={setPageAlert}
+                    />
                   </li>
                 ))}
               </ol>
@@ -373,6 +389,13 @@ export function SpacePhotoManager({ spaceId }: { spaceId: string }) {
           )
         )}
       </section>
+
+      <LeaveDialog
+        open={guard.pending}
+        count={unfinished}
+        onStay={guard.stay}
+        onLeave={guard.leave}
+      />
 
       <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
         {liveText}

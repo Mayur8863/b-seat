@@ -5,6 +5,7 @@ import {
 } from '@bseat/api-client/mocks';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import Link from 'next/link';
 import { http, HttpResponse } from 'msw';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -14,6 +15,8 @@ import { renderWithQuery } from '@/test/render';
 import { SpacePhotoManager } from './space-photo-manager';
 
 const upload = vi.hoisted(() => vi.fn());
+const push = vi.hoisted(() => vi.fn());
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
 vi.mock('@bseat/api-client', async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   uploadSpacePhoto: upload,
@@ -42,6 +45,7 @@ const png = (name: string) => new File(['x'], name, { type: 'image/png' });
 
 beforeEach(() => {
   upload.mockReset();
+  push.mockReset();
 });
 
 describe('SpacePhotoManager', () => {
@@ -180,5 +184,35 @@ describe('SpacePhotoManager', () => {
       'href',
       '/sign-in?next=%2Fowner%2Fspaces%2Fs1%2Fphotos',
     );
+  });
+
+  it('asks before an in-app link leaves with unfinished uploads, and stays or leaves', async () => {
+    serve(0);
+    upload.mockImplementation(() => new Promise(() => undefined));
+    const user = userEvent.setup();
+    const { container } = renderWithQuery(
+      <>
+        <Link href="/owner/spaces/s1/seats">Seats</Link>
+        <SpacePhotoManager spaceId="s1" />
+      </>,
+    );
+    await screen.findByText('0 of 10 photos');
+    await user.click(screen.getByRole('link', { name: 'Seats' }));
+    expect(push).not.toHaveBeenCalled();
+    expect(screen.queryByText('Leave this page?')).not.toBeInTheDocument();
+    await user.upload(container.querySelector<HTMLInputElement>('input[type=file]')!, [
+      png('a.png'),
+      png('b.png'),
+    ]);
+    await user.click(screen.getByRole('link', { name: 'Seats' }));
+    expect(await screen.findByText(/2 photos haven't finished uploading/)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Stay on this page' }));
+    expect(push).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(screen.getByRole('link', { name: 'Seats' })).toHaveFocus();
+    });
+    await user.click(screen.getByRole('link', { name: 'Seats' }));
+    await user.click(await screen.findByRole('button', { name: 'Leave and cancel' }));
+    expect(push).toHaveBeenCalledWith('/owner/spaces/s1/seats');
   });
 });

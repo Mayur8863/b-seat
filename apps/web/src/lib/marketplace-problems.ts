@@ -23,7 +23,10 @@ export type OwnerAction =
   | 'load occupancy details'
   | 'save the calendar'
   | "switch that seat's calendar"
-  | 'load availability';
+  | 'load availability'
+  | 'save that description'
+  | 'move that photo'
+  | 'delete that photo';
 
 export type MissingItem = 'seat' | 'pricedPass';
 

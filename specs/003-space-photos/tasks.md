@@ -49,7 +49,7 @@ only a human merges.
 | T012 | UI spec: cover, placeholder, gallery and large view              | ui-ux-designer    | T001                         | S    | review | `docs/003-ui-renter-photos`            |
 | T013 | Upload-queue model (pure reducer, TDD)                           | frontend-dev      | T011                         | S    | todo   | `feat/003-upload-queue-model`          |
 | T014 | Owner Photos page: nav, list, empty state, count, upload queue   | frontend-dev      | T009, T010, T011, T013       | M    | review | `feat/003-owner-photos-page`           |
-| T015 | Describe photos and guard leaving with unfinished uploads        | frontend-dev      | T014                         | S    | todo   | `feat/003-photo-describe-leave-guard`  |
+| T015 | Describe photos and guard leaving with unfinished uploads        | frontend-dev      | T014                         | S    | review | `feat/003-photo-describe-leave-guard`  |
 | T016 | QA US1: owner upload e2e, axe, SC-002, SC-005                    | qa-engineer       | T014, T015                   | M    | todo   | `test/003-us1-add-photos`              |
 | T017 | Docs US1                                                         | docs-writer       | T016                         | S    | todo   | `docs/003-us1-add-photos`              |
 | T018 | Listing API: cover on search results, photos on the detail       | backend-dev       | T009                         | M    | todo   | `feat/003-listing-photos-api`          |
@@ -250,7 +250,7 @@ first (T002, T003). After T001: T002, T003, T005, T006, T011 and T012 can start 
     - Given loading, error and success states of the list, Then each renders as specified (FR-026).
 
 - [ ] T015 [US1] Add description editing (`photo-description-form.tsx`, React Hook Form + Zod, labelled, `aria-describedby` errors) and the unfinished-upload leave guard (`use-leave-guard.ts`) with tests
-  - **Owner**: frontend-dev · **Branch**: `feat/003-photo-describe-leave-guard` · **Size**: S · **Depends on**: T014 · **Status**: todo
+  - **Owner**: frontend-dev · **Branch**: `feat/003-photo-describe-leave-guard` · **Size**: S · **Depends on**: T014 · **Status**: review
   - **Scope**: research R-8, R-9 (check the Next 16 docs with context7 for a supported navigation-block API first).
   - **Acceptance criteria**:
     - Given a photo, When the owner saves a description of up to 150 characters, Then it shows as saved and is used as the image's `alt`; When cleared, Then `alt` falls back to "<space name> photo N" (AC 1.7, FR-008).
