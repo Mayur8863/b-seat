@@ -54,7 +54,7 @@ only a human merges.
 | T017 | Docs US1                                                         | docs-writer       | T016                         | S    | todo   | `docs/003-us1-add-photos`              |
 | T018 | Listing API: cover on search results, photos on the detail       | backend-dev       | T009                         | M    | review | `feat/003-listing-photos-api`          |
 | T019 | Space photo component, placeholder and cover on `/find` cards    | frontend-dev      | T012, T018                   | S    | review | `feat/003-find-card-cover`             |
-| T020 | Listing gallery and large view (keyboard, pointer, touch)        | frontend-dev      | T012, T018, T019             | M    | todo   | `feat/003-listing-gallery`             |
+| T020 | Listing gallery and large view (keyboard, pointer, touch)        | frontend-dev      | T012, T018, T019             | M    | review | `feat/003-listing-gallery`             |
 | T021 | QA US2: renter e2e, axe incl. large view, SC-003, SC-004, FR-019 | qa-engineer       | T019, T020                   | M    | todo   | `test/003-us2-renter-photos`           |
 | T022 | Docs US2                                                         | docs-writer       | T021                         | S    | todo   | `docs/003-us2-renter-photos`           |
 | T023 | Reorder and delete API                                           | backend-dev       | T009                         | M    | review | `feat/003-photo-reorder-delete-api`    |
@@ -303,7 +303,7 @@ first (T002, T003). After T001: T002, T003, T005, T006, T011 and T012 can start 
     - Given loading, empty, error and success states of the results, Then each still renders as in 002 with the cover added (FR-026).
 
 - [ ] T020 [US2] Add `listing-gallery.tsx` and `photo-lightbox.tsx` (`@bseat/ui` Dialog, arrow keys, buttons, pointer swipe, "n of m", captions, focus return) with tests, and show the gallery or placeholder in `listing-details.tsx`
-  - **Owner**: frontend-dev · **Branch**: `feat/003-listing-gallery` · **Size**: M · **Depends on**: T012, T018, T019 · **Status**: todo
+  - **Owner**: frontend-dev · **Branch**: `feat/003-listing-gallery` · **Size**: M · **Depends on**: T012, T018, T019 · **Status**: review
   - **Scope**: ui/02-renter-photos.md; research R-10. No new dependency.
   - **Acceptance criteria**:
     - Given a listing with 7 photos, Then the gallery starts with the cover, shows "7 photos", and shows captions for described photos only (AC 2.3, FR-017).
