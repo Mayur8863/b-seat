@@ -10,10 +10,30 @@ import {
   StandardUtility,
   TimeZone,
 } from '../common/schemas/field-formats.js';
+import { PhotoImageSchema } from '../photos/space-photos.schemas.js';
 import { PassTypeEnum, SlotKindEnum } from '../marketplace/enums.js';
 
 const Money = z.string().describe('Decimal amount with two fraction digits');
 const Saving = z.object({ amount: Money, percent: z.int() });
+
+export const ListingCoverSchema = z
+  .object({ altText: z.string(), card: PhotoImageSchema })
+  .meta({ id: 'ListingCover' });
+
+export const ListingPhotoSchema = z
+  .object({
+    id: z.uuid(),
+    position: z.number().int().min(1).max(10),
+    description: z.string().nullable().describe('Shown as a caption when not null'),
+    altText: z.string(),
+    card: PhotoImageSchema.describe('Gallery thumbnail'),
+    display: PhotoImageSchema.describe('Main image and large view'),
+  })
+  .meta({ id: 'ListingPhoto' });
+
+const PhotoUrlsExpireAt = Instant.nullable().describe(
+  'When the signed photo URLs expire; null when there are none',
+);
 
 /** Renter-facing detail: no owner identity, contact or occupancy data (R-3). */
 export const ListingSchema = z
@@ -51,6 +71,8 @@ export const ListingSchema = z
       .object({ day: Saving.nullable(), week: Saving.nullable(), month: Saving.nullable() })
       .nullable(),
     isOwnSpace: z.boolean(),
+    photos: z.array(ListingPhotoSchema).describe('In position order; empty means no photos'),
+    photoUrlsExpireAt: PhotoUrlsExpireAt,
   })
   .meta({ id: 'Listing' });
 export type Listing = z.infer<typeof ListingSchema>;
@@ -92,11 +114,16 @@ export const ListingSummarySchema = z
       month: Money.nullable(),
     }),
     hasLayout: z.boolean(),
+    cover: ListingCoverSchema.nullable().describe('The first photo; null shows a placeholder'),
   })
   .meta({ id: 'ListingSummary' });
 
 export const ListingSearchResultsSchema = z
-  .object({ items: z.array(ListingSummarySchema), nextCursor: z.string().nullable() })
+  .object({
+    items: z.array(ListingSummarySchema),
+    nextCursor: z.string().nullable(),
+    photoUrlsExpireAt: PhotoUrlsExpireAt,
+  })
   .meta({ id: 'ListingSearchResults' });
 export type ListingSearchResults = z.infer<typeof ListingSearchResultsSchema>;
 

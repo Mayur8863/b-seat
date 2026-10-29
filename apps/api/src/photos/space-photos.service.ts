@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, asc, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, gt, sql } from 'drizzle-orm';
 import { DrizzleQueryError } from 'drizzle-orm/errors';
 import { PinoLogger } from 'nestjs-pino';
 import pg from 'pg';
@@ -11,6 +11,7 @@ import {
   photoBusy,
   photoDimensionsOutOfRange,
   photoLimitReached,
+  photoOrderStale,
   photoUnreadable,
   photoUnsupportedFormat,
 } from '../common/errors/problem-types.js';
@@ -26,8 +27,11 @@ import {
   type DescribeSpacePhotoInput,
   type OwnerSpacePhoto,
   type OwnerSpacePhotos,
+  type ReorderSpacePhotosInput,
 } from './space-photos.schemas.js';
 import { PROCESSING_WAIT_MS, Semaphore } from './upload-limits.js';
+
+type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];
 
 const CARD = { width: 640, height: 480 } as const;
 
@@ -169,6 +173,70 @@ export class SpacePhotosService {
     const [item] = (await this.present(name, [row])).items;
     if (!item) throw new NotFoundException();
     return item;
+  }
+
+  async reorder(
+    ownerId: string,
+    spaceId: string,
+    input: ReorderSpacePhotosInput,
+  ): Promise<OwnerSpacePhotos> {
+    await this.db.transaction(async (tx) => {
+      await this.lockOwnedSpace(tx, ownerId, spaceId);
+      const current = await tx
+        .select({ id: spacePhoto.id })
+        .from(spacePhoto)
+        .where(eq(spacePhoto.spaceId, spaceId));
+      const sent = new Set(input.photoIds);
+      const same =
+        sent.size === input.photoIds.length &&
+        sent.size === current.length &&
+        current.every((r) => sent.has(r.id));
+      if (!same) throw photoOrderStale();
+      // One statement: the deferrable-immediate unique is checked at its end (ADR-0011 section 7).
+      const values = sql.join(
+        input.photoIds.map((id, i) => sql`(${id}::uuid, ${i + 1}::smallint)`),
+        sql`, `,
+      );
+      await tx.execute(sql`
+        UPDATE space_photo SET position = v.position, updated_at = now()
+        FROM (VALUES ${values}) AS v(id, position)
+        WHERE space_photo.id = v.id AND space_photo.space_id = ${spaceId}`);
+    });
+    this.logger.info({ spaceId }, 'photo.reordered');
+    return this.list(ownerId, spaceId);
+  }
+
+  async remove(ownerId: string, spaceId: string, photoId: string): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      await this.lockOwnedSpace(tx, ownerId, spaceId);
+      const [gone] = await tx
+        .delete(spacePhoto)
+        .where(and(eq(spacePhoto.id, photoId), eq(spacePhoto.spaceId, spaceId)))
+        .returning({ position: spacePhoto.position });
+      if (!gone) throw new NotFoundException();
+      // One statement, so the unique is checked once at its end.
+      await tx
+        .update(spacePhoto)
+        .set({ position: sql`${spacePhoto.position} - 1`, updatedAt: sql`now()` })
+        .where(and(eq(spacePhoto.spaceId, spaceId), gt(spacePhoto.position, gone.position)));
+      // The objects go at the next purge sweep; nothing touches storage here.
+      await tx
+        .insert(photoObjectPurge)
+        .values({ spaceId, photoId, reason: 'deleted', dueAt: sql`now()` });
+    });
+    this.logger.info({ spaceId, photoId }, 'photo.deleted');
+  }
+
+  private async lockOwnedSpace(tx: Tx, ownerId: string, spaceId: string): Promise<string> {
+    const [locked] = await withLockTimeout(tx, this.logger, { spaceId }, () =>
+      tx
+        .select({ name: space.name })
+        .from(space)
+        .where(and(eq(space.id, spaceId), eq(space.ownerId, ownerId)))
+        .for('update', { of: space }),
+    );
+    if (!locked) throw new NotFoundException();
+    return locked.name;
   }
 
   /** One `now` and one signing call per response, so every URL shares a window. */

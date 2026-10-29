@@ -146,6 +146,8 @@ describe('listing detail API', () => {
         'offers',
         'fullDaySavings',
         'isOwnSpace',
+        'photos',
+        'photoUrlsExpireAt',
       ].sort(),
     );
   });

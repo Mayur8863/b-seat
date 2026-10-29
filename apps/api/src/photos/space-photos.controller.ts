@@ -1,6 +1,9 @@
 import {
   Body,
   Controller,
+  Delete,
+  HttpCode,
+  Put,
   Get,
   Param,
   Patch,
@@ -15,6 +18,7 @@ import {
   ApiBody,
   type ApiBodyOptions,
   ApiConflictResponse,
+  ApiNoContentResponse,
   ApiConsumes,
   ApiCookieAuth,
   ApiCreatedResponse,
@@ -47,6 +51,8 @@ import {
   OwnerSpacePhotoSchema,
   type OwnerSpacePhotos,
   OwnerSpacePhotosSchema,
+  type ReorderSpacePhotosInput,
+  ReorderSpacePhotosInputSchema,
 } from './space-photos.schemas.js';
 import { SpacePhotosService } from './space-photos.service.js';
 import { UploadAdmissionGuard } from './upload-admission.guard.js';
@@ -105,6 +111,32 @@ export class SpacePhotosController {
     @Body({ schema: DescribeSpacePhotoInputSchema }) input: DescribeSpacePhotoInput,
   ): Promise<OwnerSpacePhoto> {
     return this.photos.describe(session.user.id, spaceId, photoId, input);
+  }
+
+  @Put('order')
+  @ApiOkResponse({ standardSchema: OwnerSpacePhotosSchema })
+  @ApiBadRequestResponse({ standardSchema: ProblemSchema })
+  @ApiNotFoundResponse({ standardSchema: ProblemSchema })
+  @ApiConflictResponse({ standardSchema: ProblemSchema, description: 'photo:order-stale' })
+  reorder(
+    @CurrentSession() session: AuthSession,
+    @Param('spaceId', { schema: SpaceId }) spaceId: string,
+    @Body({ schema: ReorderSpacePhotosInputSchema }) input: ReorderSpacePhotosInput,
+  ): Promise<OwnerSpacePhotos> {
+    return this.photos.reorder(session.user.id, spaceId, input);
+  }
+
+  @Delete(':photoId')
+  @HttpCode(204)
+  @ApiNoContentResponse({ description: 'Deleted; the files are removed by the purge sweep' })
+  @ApiBadRequestResponse({ standardSchema: ProblemSchema })
+  @ApiNotFoundResponse({ standardSchema: ProblemSchema })
+  remove(
+    @CurrentSession() session: AuthSession,
+    @Param('spaceId', { schema: SpaceId }) spaceId: string,
+    @Param('photoId', { schema: SpaceId }) photoId: string,
+  ): Promise<void> {
+    return this.photos.remove(session.user.id, spaceId, photoId);
   }
 
   @Post()
