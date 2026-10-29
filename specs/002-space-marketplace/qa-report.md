@@ -139,4 +139,4 @@ The first e2e run still failed QA-05 because the API container was serving old c
 
 ### Task status
 
-All 35 tasks that were at `review` are `done` except T039, which stays at `review` for QA-12.
+All 36 tasks that were at `review` are `done` (T039 after the QA-12 fix was verified).
