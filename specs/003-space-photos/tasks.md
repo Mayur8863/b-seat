@@ -345,7 +345,7 @@ first (T002, T003). After T001: T002, T003, T005, T006, T011 and T012 can start 
     - Given another owner's space or photo, Then 404; a renter, Then 403 (AC 3.6, FR-011).
 
 - [ ] T024 [US3] Register the `photo-purge` queue and add `apps/api/src/photos/photo-purge.processor.ts`: **(T001)** a single sweep, run by a BullMQ job scheduler every 5 minutes (`upsertJobScheduler` at boot). It claims up to 100 due, unleased rows with a lease (`attempts + 1`, `last_attempt_at = now()`, `FOR UPDATE SKIP LOCKED`, its own short transaction), commits, deletes both keys with `deleteObject`, then deletes each finished row, and repeats while full batches remain. It logs `photo.purge_overdue` at `error` for rows more than 12 hours past `due_at`. Write `apps/api/test/photo-purge.int-spec.ts` first
-  - **Owner**: backend-dev · **Branch**: `feat/003-photo-purge` · **Size**: M · **Depends on**: T023 · **Status**: todo
+  - **Owner**: backend-dev · **Branch**: `feat/003-photo-purge` · **Size**: M · **Depends on**: T023 · **Status**: review (2026-10-29)
   - **Scope**: ADR-0011 section 9; data-model.md "Sweep claim". The sweep also purges T008's abandoned-upload intents once due. No transaction is held open across storage calls, and there is no per-row job.
   - **Acceptance criteria**:
     - Given a deleted photo, When the sweep runs, Then both objects are gone from storage and the purge row is deleted (FR-010).
