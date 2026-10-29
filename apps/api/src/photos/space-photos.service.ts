@@ -6,7 +6,7 @@ import { DrizzleQueryError } from 'drizzle-orm/errors';
 import { PinoLogger } from 'nestjs-pino';
 import pg from 'pg';
 
-import { LOCK_TIMEOUT } from '../bookings/seat-lock.js';
+import { LOCK_TIMEOUT, withLockTimeout } from '../bookings/seat-lock.js';
 import {
   photoBusy,
   photoDimensionsOutOfRange,
