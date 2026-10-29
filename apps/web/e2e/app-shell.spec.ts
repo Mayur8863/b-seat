@@ -49,6 +49,8 @@ test('signed-in shell: nav, current page, keyboard walk, mobile menu axe', async
   // Keyboard: from the skip link, every nav link gets a visible focus ring.
   await page.goto('/dashboard');
   await expect(page.getByRole('heading', { level: 1, name: 'Dashboard' })).toBeVisible();
+  // The role-aware links render after the session loads; tabbing earlier lands on a different element.
+  await expect(page.getByRole('link', { name: 'Find a space' }).first()).toBeAttached();
   await page.evaluate(() => {
     (document.activeElement as HTMLElement | null)?.blur();
   });

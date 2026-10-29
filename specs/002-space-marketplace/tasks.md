@@ -28,79 +28,79 @@ open question (plan.md, OQ-n) are marked; the proposed default is used only if a
 
 ## Summary table
 
-| ID   | Title                                                        | Owner          | Depends on             | Size | Status                          | Branch                                |
-| ---- | ------------------------------------------------------------ | -------------- | ---------------------- | ---- | ------------------------------- | ------------------------------------- |
-| T001 | ADR-0009, ADR-0010 and plan approval                         | architect      | none                   | M    | done                            | `docs/002-marketplace-adrs`           |
-| T002 | Account role: Better Auth field, migration, role guard       | backend-dev    | T001                   | M    | done                            | `feat/002-account-role`               |
-| T003 | Listing schema: space columns, cubicle, seat changes         | backend-dev    | T001                   | M    | done                            | `feat/002-listing-schema`             |
-| T004 | Pricing and calendar schema, shared calendar backfill        | backend-dev    | T003                   | M    | done                            | `feat/002-pricing-calendar-schema`    |
-| T005 | Pass booking header, seat holds, occupancy marks, exclusions | backend-dev    | T003, T008             | M    | done                            | `feat/002-seat-hold-schema`           |
-| T006 | Slot, calendar and pass-period engine (pure, TDD)            | backend-dev    | T001                   | M    | done                            | `feat/002-slot-engine`                |
-| T007 | Money, problem types and pass booking rules (pure, TDD)      | backend-dev    | T006                   | M    | done                            | `feat/002-pass-rules`                 |
-| T008 | Retire hourly create; legacy space reads published-only      | backend-dev    | T003                   | S    | done                            | `chore/002-retire-hourly-create`      |
-| T009 | Seed: demo owner and renter, priced listings, calendars      | backend-dev    | T002, T004, T012       | M    | done                            | `feat/002-seed-marketplace`           |
-| T010 | UI spec: index, shell, nav, sign-up, dashboards              | ui-ux-designer | T001                   | M    | done                            | `docs/002-ui-shell-accounts`          |
-| T011 | Test plan and traceability skeleton                          | qa-engineer    | T001                   | S    | done                            | `test/002-test-plan`                  |
-| T012 | Wire `SEED_DEMO_PASSWORD` into compose and CI                | devops         | T001                   | S    | done                            | `chore/002-seed-env`                  |
-| T013 | Renter preferences API                                       | backend-dev    | T002                   | S    | done                            | `feat/002-renter-preferences-api`     |
-| T014 | Signed-in shell, role-aware nav, role dashboards             | frontend-dev   | T002, T010             | M    | done                            | `feat/002-app-nav`                    |
-| T015 | Sign-up role choice and optional preferences                 | frontend-dev   | T002, T013, T014, T019 | M    | done                            | `feat/002-sign-up-role`               |
-| T016 | QA US1: accounts and navigation e2e, axe                     | qa-engineer    | T011, T014, T015       | M    | todo                            | `test/002-us1-accounts-e2e`           |
-| T017 | Docs US1                                                     | docs-writer    | T016                   | S    | todo                            | `docs/002-us1-accounts`               |
-| T018 | UI spec: owner listing, seats, slots and prices              | ui-ux-designer | T010                   | M    | done                            | `docs/002-ui-owner-listing`           |
-| T019 | Reference data API (countries, currencies, utilities)        | backend-dev    | T001                   | S    | done                            | `feat/002-reference-api`              |
-| T020 | Owner spaces API: CRUD, publish, unpublish                   | backend-dev    | T002, T004, T019       | M    | done: QA pass 2                 | `feat/002-owner-spaces-api`           |
-| T021 | Seats and cubicles API                                       | backend-dev    | T005, T020             | M    | done: QA pass 2                 | `feat/002-seats-cubicles-api`         |
-| T022 | Space details form and create page                           | frontend-dev   | T014, T018, T019, T020 | M    | done: QA pass 2                 | `feat/002-space-form`                 |
-| T023 | Owner dashboard spaces, space overview, publish              | frontend-dev   | T022                   | M    | done: QA pass 2                 | `feat/002-owner-dashboard`            |
-| T024 | Seats management page                                        | frontend-dev   | T021, T023             | M    | done: QA pass 2                 | `feat/002-seats-page`                 |
-| T025 | QA US2: listing e2e, axe, owner scoping                      | qa-engineer    | T009, T011, T023, T024 | M    | todo                            | `test/002-us2-listing-e2e`            |
-| T026 | Docs US2                                                     | docs-writer    | T025                   | S    | todo                            | `docs/002-us2-listing`                |
-| T027 | Slots and pricing API                                        | backend-dev    | T007, T020             | M    | done: QA pass 2                 | `feat/002-pricing-api`                |
-| T028 | Listing detail API with offers and 24-hour saving            | backend-dev    | T027                   | S    | done: QA pass 2                 | `feat/002-listing-detail-api`         |
-| T029 | UI spec: search, listing page, booking, my bookings          | ui-ux-designer | T010                   | M    | done: QA pass 2                 | `docs/002-ui-renter-booking`          |
-| T030 | Owner pricing page                                           | frontend-dev   | T023, T027             | M    | done: QA pass 2                 | `feat/002-pricing-page`               |
-| T031 | Listing page v1: details and pass options                    | frontend-dev   | T014, T028, T029       | M    | done: QA pass 2                 | `feat/002-listing-page`               |
-| T032 | QA US3: pricing e2e, axe                                     | qa-engineer    | T030, T031             | S    | todo                            | `test/002-us3-pricing-e2e`            |
-| T033 | Docs US3                                                     | docs-writer    | T032                   | S    | todo                            | `docs/002-us3-pricing`                |
-| T034 | Listing search and location suggestions API                  | backend-dev    | T027                   | M    | done: QA pass 2                 | `feat/002-listing-search-api`         |
-| T035 | Seat availability for a pass API                             | backend-dev    | T005, T028             | M    | done: QA pass 2                 | `feat/002-seat-availability-api`      |
-| T036 | Create pass booking API (rules, holds, races)                | backend-dev    | T008, T035             | M    | done: QA pass 2                 | `feat/002-create-pass-booking-api`    |
-| T037 | Renter and owner booking emails                              | backend-dev    | T036                   | S    | done: QA pass 2                 | `feat/002-booking-emails`             |
-| T038 | Search availability filter (date, pass, slot)                | backend-dev    | T034, T035             | M    | done: QA pass 2                 | `feat/002-search-availability-filter` |
-| T039 | Find a space page                                            | frontend-dev   | T013, T014, T029, T034 | M    | done: QA pass 2, QA-12 verified | `feat/002-find-page`                  |
-| T040 | Listing page: seat availability for a pass                   | frontend-dev   | T031, T035             | M    | done: QA pass 2                 | `feat/002-listing-seats`              |
-| T041 | Book a pass, confirmation, problem copy                      | frontend-dev   | T036, T040             | M    | done: QA pass 2                 | `feat/002-book-pass-ui`               |
-| T042 | Retire `/book`: redirect to `/find`, remove 001 components   | frontend-dev   | T039, T041             | S    | done: QA pass 2                 | `chore/002-retire-book-page`          |
-| T043 | Retire legacy `GET /api/spaces` routes                       | backend-dev    | T042                   | S    | done: QA pass 2                 | `chore/002-retire-legacy-spaces-api`  |
-| T044 | QA US4: search and book e2e, races, performance, axe         | qa-engineer    | T009, T037, T038, T042 | M    | todo                            | `test/002-us4-search-book-e2e`        |
-| T045 | Docs US4                                                     | docs-writer    | T043, T044             | S    | todo                            | `docs/002-us4-search-book`            |
-| T046 | UI spec: occupancy, calendars, owner bookings                | ui-ux-designer | T018                   | M    | done: QA pass 2                 | `docs/002-ui-owner-operations`        |
-| T047 | Occupancy API and seat state today                           | backend-dev    | T006, T021             | M    | done: QA pass 2                 | `feat/002-occupancy-api`              |
-| T048 | Occupancy UI on the seats page                               | frontend-dev   | T024, T046, T047       | M    | done: QA pass 2                 | `feat/002-occupancy-ui`               |
-| T049 | QA US5: occupancy e2e, booking-vs-mark race, axe             | qa-engineer    | T036, T048             | M    | todo                            | `test/002-us5-occupancy`              |
-| T050 | Docs US5                                                     | docs-writer    | T049                   | S    | todo                            | `docs/002-us5-occupancy`              |
-| T051 | Availability calendars API                                   | backend-dev    | T006, T021             | M    | done: QA pass 2                 | `feat/002-calendar-api`               |
-| T052 | Availability calendar page                                   | frontend-dev   | T023, T046, T051       | M    | done: QA pass 2                 | `feat/002-availability-page`          |
-| T053 | QA US6: calendar e2e, axe                                    | qa-engineer    | T036, T052             | S    | todo                            | `test/002-us6-calendar`               |
-| T054 | Docs US6                                                     | docs-writer    | T053                   | S    | todo                            | `docs/002-us6-calendar`               |
-| T055 | My bookings and cancel API                                   | backend-dev    | T036                   | M    | done: QA pass 2                 | `feat/002-my-bookings-api`            |
-| T056 | Owner bookings list API                                      | backend-dev    | T036                   | S    | done: QA pass 2                 | `feat/002-owner-bookings-api`         |
-| T057 | My bookings page, cancel, dashboard next booking             | frontend-dev   | T014, T029, T055       | M    | done: QA pass 2                 | `feat/002-my-bookings-page`           |
-| T058 | Owner bookings page with date filter                         | frontend-dev   | T023, T046, T056       | M    | done: QA pass 2                 | `feat/002-owner-bookings-page`        |
-| T059 | QA US7: bookings lists e2e, axe                              | qa-engineer    | T057, T058             | S    | todo                            | `test/002-us7-bookings`               |
-| T060 | Docs US7                                                     | docs-writer    | T059                   | S    | todo                            | `docs/002-us7-bookings`               |
-| T061 | UI spec: layout editor and renter plan                       | ui-ux-designer | T018, T029             | M    | done: QA pass 2                 | `docs/002-ui-layout`                  |
-| T062 | Layout schema and API (owner and renter)                     | backend-dev    | T021                   | M    | done: QA pass 2                 | `feat/002-layout-api`                 |
-| T063 | Seed a sample layout                                         | backend-dev    | T009, T062             | S    | done: QA pass 2                 | `feat/002-seed-layout`                |
-| T064 | Layout editor model (pure reducer, TDD)                      | frontend-dev   | T061, T062             | M    | done: QA pass 2                 | `feat/002-layout-editor-model`        |
-| T065 | Layout editor page (grid, pointer, keyboard, form)           | frontend-dev   | T023, T064             | M    | done: QA pass 2                 | `feat/002-layout-editor`              |
-| T066 | Renter plan view on the listing page                         | frontend-dev   | T040, T061, T062       | M    | done: QA pass 2                 | `feat/002-renter-plan`                |
-| T067 | QA US8: layout e2e (keyboard only), axe                      | qa-engineer    | T063, T065, T066       | M    | todo                            | `test/002-us8-layout`                 |
-| T068 | Docs US8                                                     | docs-writer    | T067                   | S    | todo                            | `docs/002-us8-layout`                 |
-| T069 | Booking hardening carried over from 001 reviews              | backend-dev    | T037                   | S    | done: QA pass 2                 | `chore/002-booking-hardening`         |
-| T070 | QA final regression, SC-001/SC-002 timing, traceability      | qa-engineer    | see task               | S    | todo                            | `test/002-final-regression`           |
-| T071 | Docs release: README overview, ADR index, changesets         | docs-writer    | T070                   | S    | todo                            | `docs/002-release`                    |
+| ID   | Title                                                        | Owner          | Depends on             | Size | Status                                                                                                          | Branch                                |
+| ---- | ------------------------------------------------------------ | -------------- | ---------------------- | ---- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| T001 | ADR-0009, ADR-0010 and plan approval                         | architect      | none                   | M    | done                                                                                                            | `docs/002-marketplace-adrs`           |
+| T002 | Account role: Better Auth field, migration, role guard       | backend-dev    | T001                   | M    | done                                                                                                            | `feat/002-account-role`               |
+| T003 | Listing schema: space columns, cubicle, seat changes         | backend-dev    | T001                   | M    | done                                                                                                            | `feat/002-listing-schema`             |
+| T004 | Pricing and calendar schema, shared calendar backfill        | backend-dev    | T003                   | M    | done                                                                                                            | `feat/002-pricing-calendar-schema`    |
+| T005 | Pass booking header, seat holds, occupancy marks, exclusions | backend-dev    | T003, T008             | M    | done                                                                                                            | `feat/002-seat-hold-schema`           |
+| T006 | Slot, calendar and pass-period engine (pure, TDD)            | backend-dev    | T001                   | M    | done                                                                                                            | `feat/002-slot-engine`                |
+| T007 | Money, problem types and pass booking rules (pure, TDD)      | backend-dev    | T006                   | M    | done                                                                                                            | `feat/002-pass-rules`                 |
+| T008 | Retire hourly create; legacy space reads published-only      | backend-dev    | T003                   | S    | done                                                                                                            | `chore/002-retire-hourly-create`      |
+| T009 | Seed: demo owner and renter, priced listings, calendars      | backend-dev    | T002, T004, T012       | M    | done                                                                                                            | `feat/002-seed-marketplace`           |
+| T010 | UI spec: index, shell, nav, sign-up, dashboards              | ui-ux-designer | T001                   | M    | done                                                                                                            | `docs/002-ui-shell-accounts`          |
+| T011 | Test plan and traceability skeleton                          | qa-engineer    | T001                   | S    | done                                                                                                            | `test/002-test-plan`                  |
+| T012 | Wire `SEED_DEMO_PASSWORD` into compose and CI                | devops         | T001                   | S    | done                                                                                                            | `chore/002-seed-env`                  |
+| T013 | Renter preferences API                                       | backend-dev    | T002                   | S    | done                                                                                                            | `feat/002-renter-preferences-api`     |
+| T014 | Signed-in shell, role-aware nav, role dashboards             | frontend-dev   | T002, T010             | M    | done                                                                                                            | `feat/002-app-nav`                    |
+| T015 | Sign-up role choice and optional preferences                 | frontend-dev   | T002, T013, T014, T019 | M    | done                                                                                                            | `feat/002-sign-up-role`               |
+| T016 | QA US1: accounts and navigation e2e, axe                     | qa-engineer    | T011, T014, T015       | M    | done: QA final pass                                                                                             | `test/002-us1-accounts-e2e`           |
+| T017 | Docs US1                                                     | docs-writer    | T016                   | S    | todo                                                                                                            | `docs/002-us1-accounts`               |
+| T018 | UI spec: owner listing, seats, slots and prices              | ui-ux-designer | T010                   | M    | done                                                                                                            | `docs/002-ui-owner-listing`           |
+| T019 | Reference data API (countries, currencies, utilities)        | backend-dev    | T001                   | S    | done                                                                                                            | `feat/002-reference-api`              |
+| T020 | Owner spaces API: CRUD, publish, unpublish                   | backend-dev    | T002, T004, T019       | M    | done: QA pass 2                                                                                                 | `feat/002-owner-spaces-api`           |
+| T021 | Seats and cubicles API                                       | backend-dev    | T005, T020             | M    | done: QA pass 2                                                                                                 | `feat/002-seats-cubicles-api`         |
+| T022 | Space details form and create page                           | frontend-dev   | T014, T018, T019, T020 | M    | done: QA pass 2                                                                                                 | `feat/002-space-form`                 |
+| T023 | Owner dashboard spaces, space overview, publish              | frontend-dev   | T022                   | M    | done: QA pass 2                                                                                                 | `feat/002-owner-dashboard`            |
+| T024 | Seats management page                                        | frontend-dev   | T021, T023             | M    | done: QA pass 2                                                                                                 | `feat/002-seats-page`                 |
+| T025 | QA US2: listing e2e, axe, owner scoping                      | qa-engineer    | T009, T011, T023, T024 | M    | done: QA final pass                                                                                             | `test/002-us2-listing-e2e`            |
+| T026 | Docs US2                                                     | docs-writer    | T025                   | S    | todo                                                                                                            | `docs/002-us2-listing`                |
+| T027 | Slots and pricing API                                        | backend-dev    | T007, T020             | M    | done: QA pass 2                                                                                                 | `feat/002-pricing-api`                |
+| T028 | Listing detail API with offers and 24-hour saving            | backend-dev    | T027                   | S    | done: QA pass 2                                                                                                 | `feat/002-listing-detail-api`         |
+| T029 | UI spec: search, listing page, booking, my bookings          | ui-ux-designer | T010                   | M    | done: QA pass 2                                                                                                 | `docs/002-ui-renter-booking`          |
+| T030 | Owner pricing page                                           | frontend-dev   | T023, T027             | M    | done: QA pass 2                                                                                                 | `feat/002-pricing-page`               |
+| T031 | Listing page v1: details and pass options                    | frontend-dev   | T014, T028, T029       | M    | done: QA pass 2                                                                                                 | `feat/002-listing-page`               |
+| T032 | QA US3: pricing e2e, axe                                     | qa-engineer    | T030, T031             | S    | done: QA final pass                                                                                             | `test/002-us3-pricing-e2e`            |
+| T033 | Docs US3                                                     | docs-writer    | T032                   | S    | todo                                                                                                            | `docs/002-us3-pricing`                |
+| T034 | Listing search and location suggestions API                  | backend-dev    | T027                   | M    | done: QA pass 2                                                                                                 | `feat/002-listing-search-api`         |
+| T035 | Seat availability for a pass API                             | backend-dev    | T005, T028             | M    | done: QA pass 2                                                                                                 | `feat/002-seat-availability-api`      |
+| T036 | Create pass booking API (rules, holds, races)                | backend-dev    | T008, T035             | M    | done: QA pass 2                                                                                                 | `feat/002-create-pass-booking-api`    |
+| T037 | Renter and owner booking emails                              | backend-dev    | T036                   | S    | done: QA pass 2                                                                                                 | `feat/002-booking-emails`             |
+| T038 | Search availability filter (date, pass, slot)                | backend-dev    | T034, T035             | M    | done: QA pass 2                                                                                                 | `feat/002-search-availability-filter` |
+| T039 | Find a space page                                            | frontend-dev   | T013, T014, T029, T034 | M    | done: QA pass 2, QA-12 verified                                                                                 | `feat/002-find-page`                  |
+| T040 | Listing page: seat availability for a pass                   | frontend-dev   | T031, T035             | M    | done: QA pass 2                                                                                                 | `feat/002-listing-seats`              |
+| T041 | Book a pass, confirmation, problem copy                      | frontend-dev   | T036, T040             | M    | done: QA pass 2                                                                                                 | `feat/002-book-pass-ui`               |
+| T042 | Retire `/book`: redirect to `/find`, remove 001 components   | frontend-dev   | T039, T041             | S    | done: QA pass 2                                                                                                 | `chore/002-retire-book-page`          |
+| T043 | Retire legacy `GET /api/spaces` routes                       | backend-dev    | T042                   | S    | done: QA pass 2                                                                                                 | `chore/002-retire-legacy-spaces-api`  |
+| T044 | QA US4: search and book e2e, races, performance, axe         | qa-engineer    | T009, T037, T038, T042 | M    | review: perf-spec (1,000 spaces, SC-003/SC-004 p95, EXPLAIN) and the page-level search journey checks not built | `test/002-us4-search-book-e2e`        |
+| T045 | Docs US4                                                     | docs-writer    | T043, T044             | S    | todo                                                                                                            | `docs/002-us4-search-book`            |
+| T046 | UI spec: occupancy, calendars, owner bookings                | ui-ux-designer | T018                   | M    | done: QA pass 2                                                                                                 | `docs/002-ui-owner-operations`        |
+| T047 | Occupancy API and seat state today                           | backend-dev    | T006, T021             | M    | done: QA pass 2                                                                                                 | `feat/002-occupancy-api`              |
+| T048 | Occupancy UI on the seats page                               | frontend-dev   | T024, T046, T047       | M    | done: QA pass 2                                                                                                 | `feat/002-occupancy-ui`               |
+| T049 | QA US5: occupancy e2e, booking-vs-mark race, axe             | qa-engineer    | T036, T048             | M    | done: QA final pass                                                                                             | `test/002-us5-occupancy`              |
+| T050 | Docs US5                                                     | docs-writer    | T049                   | S    | todo                                                                                                            | `docs/002-us5-occupancy`              |
+| T051 | Availability calendars API                                   | backend-dev    | T006, T021             | M    | done: QA pass 2                                                                                                 | `feat/002-calendar-api`               |
+| T052 | Availability calendar page                                   | frontend-dev   | T023, T046, T051       | M    | done: QA pass 2                                                                                                 | `feat/002-availability-page`          |
+| T053 | QA US6: calendar e2e, axe                                    | qa-engineer    | T036, T052             | S    | done: QA final pass                                                                                             | `test/002-us6-calendar`               |
+| T054 | Docs US6                                                     | docs-writer    | T053                   | S    | todo                                                                                                            | `docs/002-us6-calendar`               |
+| T055 | My bookings and cancel API                                   | backend-dev    | T036                   | M    | done: QA pass 2                                                                                                 | `feat/002-my-bookings-api`            |
+| T056 | Owner bookings list API                                      | backend-dev    | T036                   | S    | done: QA pass 2                                                                                                 | `feat/002-owner-bookings-api`         |
+| T057 | My bookings page, cancel, dashboard next booking             | frontend-dev   | T014, T029, T055       | M    | done: QA pass 2                                                                                                 | `feat/002-my-bookings-page`           |
+| T058 | Owner bookings page with date filter                         | frontend-dev   | T023, T046, T056       | M    | done: QA pass 2                                                                                                 | `feat/002-owner-bookings-page`        |
+| T059 | QA US7: bookings lists e2e, axe                              | qa-engineer    | T057, T058             | S    | done: QA final pass                                                                                             | `test/002-us7-bookings`               |
+| T060 | Docs US7                                                     | docs-writer    | T059                   | S    | todo                                                                                                            | `docs/002-us7-bookings`               |
+| T061 | UI spec: layout editor and renter plan                       | ui-ux-designer | T018, T029             | M    | done: QA pass 2                                                                                                 | `docs/002-ui-layout`                  |
+| T062 | Layout schema and API (owner and renter)                     | backend-dev    | T021                   | M    | done: QA pass 2                                                                                                 | `feat/002-layout-api`                 |
+| T063 | Seed a sample layout                                         | backend-dev    | T009, T062             | S    | done: QA pass 2                                                                                                 | `feat/002-seed-layout`                |
+| T064 | Layout editor model (pure reducer, TDD)                      | frontend-dev   | T061, T062             | M    | done: QA pass 2                                                                                                 | `feat/002-layout-editor-model`        |
+| T065 | Layout editor page (grid, pointer, keyboard, form)           | frontend-dev   | T023, T064             | M    | done: QA pass 2                                                                                                 | `feat/002-layout-editor`              |
+| T066 | Renter plan view on the listing page                         | frontend-dev   | T040, T061, T062       | M    | done: QA pass 2                                                                                                 | `feat/002-renter-plan`                |
+| T067 | QA US8: layout e2e (keyboard only), axe                      | qa-engineer    | T063, T065, T066       | M    | done: QA final pass                                                                                             | `test/002-us8-layout`                 |
+| T068 | Docs US8                                                     | docs-writer    | T067                   | S    | todo                                                                                                            | `docs/002-us8-layout`                 |
+| T069 | Booking hardening carried over from 001 reviews              | backend-dev    | T037                   | S    | done: QA pass 2                                                                                                 | `chore/002-booking-hardening`         |
+| T070 | QA final regression, SC-001/SC-002 timing, traceability      | qa-engineer    | see task               | S    | review: blocked by T044 perf runs (3 consecutive) and bin/security, not run; SC-001/SC-002 timed and sweep done | `test/002-final-regression`           |
+| T071 | Docs release: README overview, ADR index, changesets         | docs-writer    | T070                   | S    | todo                                                                                                            | `docs/002-release`                    |
 
 ---
 
@@ -302,8 +302,8 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given a renter on the dashboard, When they edit preferences, Then the success state shows and `GET /api/me` reflects them (FR-002).
     - Given a signed-in user (server-validated session), When opening `/sign-up` Then redirect to `/dashboard`, and `/sign-in?next=…` redirects to `safeNext(next)`; a stale cookie does not redirect (ui/01 section 4).
 
-- [ ] T016 [US1] QA: `apps/web/e2e/accounts-nav.spec.ts` (journeys + axe); set T002, T013, T014 and T015 to `done` when green
-  - **Owner**: qa-engineer · **Branch**: `test/002-us1-accounts-e2e` · **Size**: M · **Depends on**: T011, T014, T015 · **Status**: todo
+- [x] T016 [US1] QA: `apps/web/e2e/accounts-nav.spec.ts` (journeys + axe); set T002, T013, T014 and T015 to `done` when green
+  - **Owner**: qa-engineer · **Branch**: `test/002-us1-accounts-e2e` · **Size**: M · **Depends on**: T011, T014, T015 · **Status**: done
   - **Follow-up**: Sign out has no pending state; disable it while signing out so a double click doesn't send two requests (T014 code-review follow-up)
   - **Scope**: test-plan.md sections 6 and 7.1 to 7.3. Until T057 lands, the renter dashboard is asserted by its neutral card and the "Find a space" link, never by "You have no upcoming bookings" (T059 asserts that text).
   - **Acceptance criteria**:
@@ -418,8 +418,8 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given a seat with future bookings, When Remove is confirmed, Then the refusal copy shows and the seat stays (edge).
     - Given rename and cubicle assignment, When saved, Then the list updates (AC 2.3). All states per ui/02 (FR-032).
 
-- [ ] T025 [US2] QA: `apps/web/e2e/owner-listing.spec.ts` (journey + axe) and an owner-scoping sweep `apps/api/test/owner-scoping.int-spec.ts`; set T018–T024 to `done` when green
-  - **Owner**: qa-engineer · **Branch**: `test/002-us2-listing-e2e` · **Size**: M · **Depends on**: T009, T011, T023, T024 · **Status**: todo
+- [x] T025 [US2] QA: `apps/web/e2e/owner-listing.spec.ts` (journey + axe) and an owner-scoping sweep `apps/api/test/owner-scoping.int-spec.ts`; set T018–T024 to `done` when green
+  - **Owner**: qa-engineer · **Branch**: `test/002-us2-listing-e2e` · **Size**: M · **Depends on**: T009, T011, T023, T024 · **Status**: done
   - **Acceptance criteria**:
     - Given a new owner, When they create a space, add 20 seats by pattern and try to publish without prices, Then publishing is refused with what is missing; after a price is added through the API, it publishes (AC 2.1–2.4). The time from sign-up to publish is recorded against SC-001 (final check in T070).
     - Given every `/api/owner/*` route, When called by another owner with a real id and with a random UUID, Then the two responses are identical 404s, and a renter gets 403 (FR-009, AC 2.6).
@@ -490,8 +490,8 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given a `fullDaySavings` entry, When rendered, Then the 24-hour option shows the saving as an amount and a percentage (AC 3.5, FR-012).
     - Given a 404, When rendered, Then the not-found state shows. Given loading and 500, Then those states show (FR-032).
 
-- [ ] T032 [US3] QA: `apps/web/e2e/pricing.spec.ts` (owner sets prices, renter sees them, axe); set T027–T031 to `done` when green
-  - **Owner**: qa-engineer · **Branch**: `test/002-us3-pricing-e2e` · **Size**: S · **Depends on**: T030, T031 · **Status**: todo
+- [x] T032 [US3] QA: `apps/web/e2e/pricing.spec.ts` (owner sets prices, renter sees them, axe); set T027–T031 to `done` when green
+  - **Owner**: qa-engineer · **Branch**: `test/002-us3-pricing-e2e` · **Size**: S · **Depends on**: T030, T031 · **Status**: done
   - **Acceptance criteria**:
     - Given a 24-hour space, When the owner enables three slots with day and monthly prices, Then a renter sees exactly those options and the 24-hour saving (US3 independent test, AC 3.1–3.5).
     - Given the owner switches the space to fixed hours while a night booking exists (fixture), Then the booking is unchanged and only "Working hours" is offered (edge "switching mode").
@@ -620,7 +620,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given `gen:api`, Then `Space`, `SpaceList`, `AvailabilityQueryInput`, `SpaceAvailability` and `SeatAvailability` are gone from `openapi.json`, and the web typecheck passes.
 
 - [ ] T044 [US4] QA: `apps/web/e2e/search-book.spec.ts` (journey + axe), `apps/api/test/booking-races.int-spec.ts` (mixed slots), `apps/api/test/marketplace.perf-spec.ts`; set T034–T043 to `done` when green
-  - **Owner**: qa-engineer · **Branch**: `test/002-us4-search-book-e2e` · **Size**: M · **Depends on**: T009, T037, T038, T042 · **Status**: todo
+  - **Owner**: qa-engineer · **Branch**: `test/002-us4-search-book-e2e` · **Size**: M · **Depends on**: T009, T037, T038, T042 · **Status**: review: perf-spec (1,000 spaces, SC-003/SC-004 p95, EXPLAIN) and the page-level search journey checks not built
   - **Note (T005 review)**: decide how SQLSTATE `57014` (statement timeout under load) maps (see T036). The race tests may need `SET LOCAL statement_timeout`, as in da090b8.
   - **Scope**: e2e picks dates 2–28 days ahead and the first free seat (avoid collisions with persisted dev data, 001 T014 lesson). Use a sturdy sign-up helper (API sign-up, wait for hydration), no retries-only fixes.
   - **Perf spec**: `marketplace.perf-spec.ts` (suffix `.perf-spec.ts`, so it does not match the `test/**/*.int-spec.ts` include in `apps/api/vitest.config.ts`) runs only through its own vitest config or project and a dedicated `@bseat/api` script that QA runs; it is excluded from the default `bin/pnpm test` so it neither slows the suite nor disturbs the shared test DB (test-plan.md sections 5 and 8). Whether CI runs it is a devops follow-up (Notes).
@@ -684,8 +684,8 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given a conflict refusal, When shown, Then the conflicting dates per seat are listed (AC 5.3).
     - Given an occupied seat, When "Mark vacant" is confirmed, Then it reads vacant (AC 5.2).
 
-- [ ] T049 [US5] QA: `apps/web/e2e/occupancy.spec.ts` (journey + axe) and `apps/api/test/occupancy-races.int-spec.ts`; set T046–T048 to `done` when green
-  - **Owner**: qa-engineer · **Branch**: `test/002-us5-occupancy` · **Size**: M · **Depends on**: T036, T048 · **Status**: todo
+- [x] T049 [US5] QA: `apps/web/e2e/occupancy.spec.ts` (journey + axe) and `apps/api/test/occupancy-races.int-spec.ts`; set T046–T048 to `done` when green
+  - **Owner**: qa-engineer · **Branch**: `test/002-us5-occupancy` · **Size**: M · **Depends on**: T036, T048 · **Status**: done
   - **Acceptance criteria**:
     - Given a seat marked occupied for next week, When a renter views and tries to book it, Then it shows taken and booking is refused; after marking vacant it can be booked (US5 independent test).
     - Given 10 bookings and 10 occupancy marks racing for one seat and overlapping dates, When run 5 times, Then exactly one request succeeds each time (SC-005 second half, FR-018).
@@ -720,8 +720,8 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given a seat, When switched to its own calendar and back, Then the UI reflects each state (AC 6.3).
     - Given weekday toggles, When used by keyboard, Then each has a label and a pressed state not conveyed by colour alone (SC-007).
 
-- [ ] T053 [US6] QA: `apps/web/e2e/calendar.spec.ts` (journey + axe); set T051–T052 to `done` when green
-  - **Owner**: qa-engineer · **Branch**: `test/002-us6-calendar` · **Size**: S · **Depends on**: T036, T052 · **Status**: todo
+- [x] T053 [US6] QA: `apps/web/e2e/calendar.spec.ts` (journey + axe); set T051–T052 to `done` when green
+  - **Owner**: qa-engineer · **Branch**: `test/002-us6-calendar` · **Size**: S · **Depends on**: T036, T052 · **Status**: done
   - **Acceptance criteria**:
     - Given the US6 independent test setup, When a renter books, Then only allowed days per seat can start a pass, closed days in a weekly pass are skipped at the same price, and booking a closed start day is refused with the ui/03 copy (AC 6.2–6.4).
     - Given the availability page, When axe runs, Then zero violations (SC-007).
@@ -774,8 +774,8 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given more bookings than one page, When the owner asks for more (ui/04 paging control), Then the next page loads with `nextCursor` and focus moves per ui/04 (architect, T001: paged list).
     - Given empty, loading and error, Then ui/04 states show (FR-032).
 
-- [ ] T059 [US7] QA: `apps/web/e2e/bookings-lists.spec.ts` (journey + axe); set T055–T058 to `done` when green
-  - **Owner**: qa-engineer · **Branch**: `test/002-us7-bookings` · **Size**: S · **Depends on**: T057, T058 · **Status**: todo
+- [x] T059 [US7] QA: `apps/web/e2e/bookings-lists.spec.ts` (journey + axe); set T055–T058 to `done` when green
+  - **Owner**: qa-engineer · **Branch**: `test/002-us7-bookings` · **Size**: S · **Depends on**: T057, T058 · **Status**: done
   - **Acceptance criteria**:
     - Given the US7 independent test setup, When each renter and the owner open their lists, Then renters see only their own, the owner sees all three, and cancelling one frees its seat (AC 7.1–7.4).
     - Given `/bookings` (items, empty), the renter dashboard summary and the owner bookings page, When axe runs, Then zero violations (SC-007).
@@ -840,8 +840,8 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given a listing with a layout and a chosen pass, slot and date, When the plan renders, Then each seat shows its label and free/taken with text or icon, and choosing a free seat starts the T041 booking flow (AC 8.4, FR-031).
     - Given the toggle, When switched, Then the list view shows the same seats (FR-031). Given no layout, Then only the list shows (AC 8.5).
 
-- [ ] T067 [US8] QA: `apps/web/e2e/layout.spec.ts` (pointer and keyboard-only journeys + axe); set T061–T066 to `done` when green
-  - **Owner**: qa-engineer · **Branch**: `test/002-us8-layout` · **Size**: M · **Depends on**: T063, T065, T066 · **Status**: todo
+- [x] T067 [US8] QA: `apps/web/e2e/layout.spec.ts` (pointer and keyboard-only journeys + axe); set T061–T066 to `done` when green
+  - **Owner**: qa-engineer · **Branch**: `test/002-us8-layout` · **Size**: M · **Depends on**: T063, T065, T066 · **Status**: done
   - **Acceptance criteria**:
     - Given the US8 independent test, When run with a pointer and again with the keyboard only, Then the saved plan matches and a renter books from it (AC 8.1–8.4).
     - Given the editor (with an item selected and a form open) and the renter plan, When axe runs, Then zero violations (SC-007).
@@ -863,7 +863,7 @@ After T001: T002, T003, T006, T010, T011, T012 and T019 can start in parallel. M
     - Given the Mailpit helper, When it builds its URL, Then it comes from `MAILPIT_URL` (default `http://localhost:8025`) and no other host is contacted.
 
 - [ ] T070 Final QA: full suite, SC-001 and SC-002 timed journeys, traceability sign-off in `specs/002-space-marketplace/test-plan.md`
-  - **Owner**: qa-engineer · **Branch**: `test/002-final-regression` · **Size**: S · **Depends on**: T016, T025, T032, T044, T049, T053, T059, T067, T069 · **Status**: todo
+  - **Owner**: qa-engineer · **Branch**: `test/002-final-regression` · **Size**: S · **Depends on**: T016, T025, T032, T044, T049, T053, T059, T067, T069 · **Status**: review: blocked by T044 perf runs (3 consecutive) and bin/security, not run; SC-001/SC-002 timed and sweep done
   - **Acceptance criteria**:
     - Given a new owner, When they sign up, list a space with 20 seats, set prices and publish without help, Then it takes under 10 minutes (SC-001). Evidence: the scripted e2e time plus its step and field count (test-plan.md section 5.4); a human run is recorded too if one is available.
     - Given a renter, When they go from the dashboard to a confirmed booking by keyboard only, Then under 60 s with no typed address (SC-002).
