@@ -48,7 +48,7 @@ only a human merges.
 | T011 | UI spec: owner Photos section                                    | ui-ux-designer    | T001                         | M    | review | `docs/003-ui-owner-photos`             |
 | T012 | UI spec: cover, placeholder, gallery and large view              | ui-ux-designer    | T001                         | S    | review | `docs/003-ui-renter-photos`            |
 | T013 | Upload-queue model (pure reducer, TDD)                           | frontend-dev      | T011                         | S    | todo   | `feat/003-upload-queue-model`          |
-| T014 | Owner Photos page: nav, list, empty state, count, upload queue   | frontend-dev      | T009, T010, T011, T013       | M    | todo   | `feat/003-owner-photos-page`           |
+| T014 | Owner Photos page: nav, list, empty state, count, upload queue   | frontend-dev      | T009, T010, T011, T013       | M    | review | `feat/003-owner-photos-page`           |
 | T015 | Describe photos and guard leaving with unfinished uploads        | frontend-dev      | T014                         | S    | todo   | `feat/003-photo-describe-leave-guard`  |
 | T016 | QA US1: owner upload e2e, axe, SC-002, SC-005                    | qa-engineer       | T014, T015                   | M    | todo   | `test/003-us1-add-photos`              |
 | T017 | Docs US1                                                         | docs-writer       | T016                         | S    | todo   | `docs/003-us1-add-photos`              |
@@ -239,7 +239,7 @@ first (T002, T003). After T001: T002, T003, T005, T006, T011 and T012 can start 
     - Given the PR, Then tests were committed first and changed-line coverage is ≥ 80% (constitution II).
 
 - [ ] T014 [US1] Add `apps/web/src/app/(app)/owner/spaces/[spaceId]/photos/page.tsx`, the "Photos" item in `space-manage-nav.tsx` (+ test), and `space-photo-manager.tsx` and `photo-upload-queue.tsx` (+ tests): list, empty state, "n of 10", add control, upload queue UI, limit states
-  - **Owner**: frontend-dev · **Branch**: `feat/003-owner-photos-page` · **Size**: M · **Depends on**: T009, T010, T011, T013 · **Status**: todo
+  - **Owner**: frontend-dev · **Branch**: `feat/003-owner-photos-page` · **Size**: M · **Depends on**: T009, T010, T011, T013 · **Status**: review
   - **Scope**: ui/01-owner-photos.md. Data through `useSpacePhotosList` and `uploadSpacePhoto`. A polite live region for queue summaries; `progressbar` per uploading file. Refetch the list before `photoUrlsExpireAt`.
   - **Acceptance criteria**:
     - Given any owner space page, Then "Photos" is in the space navigation and reachable by keyboard, with `aria-current` on the Photos page (AC 1.1, FR-001).
