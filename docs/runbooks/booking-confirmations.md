@@ -1,37 +1,45 @@
 # Runbook: booking confirmation emails
 
-After a booking commits, the API queues a confirmation email in Redis (BullMQ). The mail worker
-sends it over SMTP. The booking never depends on the email: if the email cannot be queued, the
-API still returns 201 (FR-008, ADR-0008 section 5). See [ADR-0008](../adr/0008-booking-time-and-conflict-model.md).
+After a booking commits, the API queues two emails in Redis (BullMQ): a confirmation to the renter and a
+notification to the space owner. The mail worker sends them over SMTP. The booking never depends on the
+email: if an email cannot be queued, the API still returns 201 (FR-021, ADR-0008 section 5). See
+[ADR-0008](../adr/0008-booking-time-and-conflict-model.md) and [ADR-0009](../adr/0009-pass-bookings-seat-holds-and-slots.md).
 
 ## See confirmation emails locally
 
 1. Start the stack with `docker compose up -d --wait`. Mailpit must be running.
-2. Book a seat, from the Book a seat page at http://localhost:3000/book or through
-   `POST /api/bookings` in Swagger at http://localhost:3001/docs.
-3. Open http://localhost:8025. The email appears within a few seconds.
-   - Recipient: the email address of the signed-in account.
-   - Subject: `Seat <label> booked at <space> on <date>`.
-   - Body: space, seat, local date and time range, and the space's time zone.
+2. Book a pass: open a space at http://localhost:3000/find, pick a seat and confirm, or use
+   `POST /api/listings/{spaceId}/bookings` in Swagger at http://localhost:3001/docs.
+3. Open http://localhost:8025. Both emails appear within a few seconds.
+   - Renter: to the signed-in account. Subject `Booking confirmed: seat <label> at <space> from <start date>`.
+   - Owner: to the space's owner. Subject `New booking at <space>: seat <label> from <start date>`.
+   - Body: price, the period with the space's time zone, and that payment is made directly to the owner.
 
 The local stack sends mail to Mailpit (`SMTP_HOST=mailpit` in `docker-compose.yml`), so nothing reaches
 a real inbox. Check `SMTP_HOST` in `.env` before you assume that.
 
-The email links to `/bookings`, which is built in T013. Until then, that link leads to a 404 page.
-
 ## Log events
 
-The booking code logs these events with the pino logger. The fields are ids and one reason code.
-None carries an email address, a name, a subject or a body.
+The booking code logs these events with the pino logger. The fields are ids only. None carries an
+email address, a name, a subject or a body.
 
-| Event                             | Level | Fields                | Meaning                                                                                         |
-| --------------------------------- | ----- | --------------------- | ----------------------------------------------------------------------------------------------- |
-| `booking.created`                 | info  | `bookingId`, `seatId` | The booking row committed. Logged before the email is queued.                                   |
-| `booking.confirmation_queued`     | info  | `bookingId`, `jobId`  | The email job was added to the mail queue within 2 s.                                           |
-| `booking.confirmation_not_queued` | error | `bookingId`, `reason` | Queueing failed or timed out. `reason` is `rejected` or `timeout`. The booking still succeeded. |
+| Event                                   | Level | Fields                           | Meaning                                                                                                        |
+| --------------------------------------- | ----- | -------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `booking.created`                       | info  | `bookingId`, `seatId`, `spaceId` | The booking row committed. Logged before the emails are queued.                                                |
+| `booking.confirmation_not_queued`       | error | `bookingId`, `recipient`         | The renter's email could not be queued, or the enqueue did not settle within 2 s. The booking still succeeded. |
+| `booking.owner_notification_not_queued` | error | `bookingId`, `recipient`         | The owner's email could not be queued, or the enqueue did not settle within 2 s. The booking still succeeded.  |
 
-`jobId` is `booking-confirmed-<bookingId>`. While BullMQ still holds that id, a second enqueue for the
-same booking is ignored, so there is one job, not two.
+The API does not log a successful enqueue, and it does not log why an enqueue failed. Both failures
+log the same way. Logs from before T069 use the old name `booking.email_enqueue_failed`.
+
+Each email has its own job id, so a retried enqueue for the same booking is ignored while BullMQ still
+holds the job:
+
+- renter: `booking-confirmed-<bookingId>`
+- owner: `booking-owner-notified-<bookingId>`
+
+When Redis is not ready, the enqueue fails at once and both `*_not_queued` lines appear without waiting
+for the 2 s bound. The booking still returns 201.
 
 The mail worker logs `mail sent` (fields `jobId` and `subject`) after SMTP accepts a message. Subjects
 contain the space name, seat label and date, but never the body. BullMQ makes up to 5 attempts at each
@@ -43,7 +51,9 @@ Find the events for a time window:
 docker compose logs --since 1h api | grep 'booking\.'
 ```
 
-## When `booking.confirmation_not_queued` appears
+Mail worker lines are in the same log: `docker compose logs --since 1h api | grep 'mail sent'`.
+
+## When a `*_not_queued` line appears
 
 The booking stands. Do **not** ask the user to book again. A second request for the same seat and
 window returns 409 `seat-unavailable`, not a second email.
@@ -67,7 +77,7 @@ Then check the email:
 
 If Redis is down **and** the API process restarts before Redis returns, the pending job is lost.
 Nothing else stores it, so the email is never sent. ADR-0008 section 5 accepts this for this slice.
-The `booking.confirmation_not_queued` line is the only trace, so keep those lines. Alerting on that
+The `*_not_queued` lines are the only trace, so keep those lines. Alerting on that
 event is recommended; no alert is configured in this repository yet.
 
 A transactional outbox (a table written in the booking transaction and relayed to the queue) removes
