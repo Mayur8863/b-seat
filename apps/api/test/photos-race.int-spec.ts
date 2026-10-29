@@ -1,4 +1,5 @@
 import type { NestExpressApplication } from '@nestjs/platform-express';
+import { HeadObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { eq } from 'drizzle-orm';
 import { PinoLogger } from 'nestjs-pino';
 import pg from 'pg';
@@ -6,9 +7,33 @@ import sharp from 'sharp';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { photoObjectPurge, spacePhoto } from '../src/db/schema/index.js';
+import { photoKeys } from '../src/photos/photo-keys.js';
+import { PhotoPurgeService } from '../src/photos/photo-purge.service.js';
 import { Semaphore } from '../src/photos/upload-limits.js';
 import { createListing, testDb } from './fixtures.js';
 import { createTestApp, resetDb, signedInAgent } from './helpers.js';
+
+const s3 = new S3Client({
+  endpoint: process.env.S3_ENDPOINT,
+  region: 'us-east-1',
+  forcePathStyle: true,
+  credentials: {
+    accessKeyId: process.env.S3_ACCESS_KEY_ID ?? '',
+    secretAccessKey: process.env.S3_SECRET_ACCESS_KEY ?? '',
+  },
+});
+const objectExists = (key: string) =>
+  s3
+    .send(
+      new HeadObjectCommand({
+        Bucket: process.env.S3_BUCKET_PHOTOS ?? 'bseat-photos-test',
+        Key: key,
+      }),
+    )
+    .then(
+      () => true,
+      () => false,
+    );
 
 const pw = 'correct-horse-battery';
 
@@ -68,6 +93,16 @@ describe('10-photo limit under concurrency (SC-006)', () => {
       for (const p of purges) expect(p.dueAt.getTime()).toBeLessThanOrEqual(Date.now());
       const kept = new Set(rows.map((r) => r.id));
       for (const p of purges) expect(kept.has(p.photoId)).toBe(false);
+
+      // T024: one sweep leaves the losers no objects, and the winners keep theirs.
+      await app.get(PhotoPurgeService).sweep();
+      expect(await db().select().from(photoObjectPurge)).toHaveLength(0);
+      for (const p of purges) {
+        const keys = photoKeys(p.spaceId, p.photoId);
+        expect(await objectExists(keys.card)).toBe(false);
+        expect(await objectExists(keys.display)).toBe(false);
+      }
+      for (const r of rows) expect(await objectExists(photoKeys(spaceId, r.id).card)).toBe(true);
     },
     60_000,
   );
