@@ -44,7 +44,7 @@ only a human merges.
 | T007 | Production image loads sharp; AWS storage runbook                | devops            | T006                         | S    | review | `chore/003-photo-runtime`              |
 | T008 | Upload API: validate, process, store, insert                     | backend-dev       | T002, T004, T005, T006       | M    | review | `feat/003-photo-upload-api`            |
 | T009 | Owner photo list and describe API                                | backend-dev       | T008                         | S    | review | `feat/003-photo-list-api`              |
-| T010 | `uploadSpacePhoto` XHR helper in the api-client                  | frontend-dev      | T008                         | S    | todo   | `feat/003-upload-helper`               |
+| T010 | `uploadSpacePhoto` XHR helper in the api-client                  | frontend-dev      | T008                         | S    | review | `feat/003-upload-helper`               |
 | T011 | UI spec: owner Photos section                                    | ui-ux-designer    | T001                         | M    | review | `docs/003-ui-owner-photos`             |
 | T012 | UI spec: cover, placeholder, gallery and large view              | ui-ux-designer    | T001                         | S    | review | `docs/003-ui-renter-photos`            |
 | T013 | Upload-queue model (pure reducer, TDD)                           | frontend-dev      | T011                         | S    | todo   | `feat/003-upload-queue-model`          |
@@ -205,7 +205,7 @@ first (T002, T003). After T001: T002, T003, T005, T006, T011 and T012 can start 
     - Given another owner's space or photo, Then 404 (FR-011); Given any response, Then no original file name appears (FR-015).
 
 - [ ] T010 [P] [US1] Add `packages/api-client/src/upload.ts` (`uploadSpacePhoto`) with `upload.test.ts` and an MSW handler; export it from `src/index.ts`
-  - **Owner**: frontend-dev · **Branch**: `feat/003-upload-helper` · **Size**: S · **Depends on**: T008 · **Status**: todo
+  - **Owner**: frontend-dev · **Branch**: `feat/003-upload-helper` · **Size**: S · **Depends on**: T008 · **Status**: review
   - **Scope**: contracts/photos.md "Upload helper"; research R-2. `XMLHttpRequest`, `withCredentials`, progress, abort. Errors parse into the existing `ApiError` / `ProblemDetails`.
   - **Acceptance criteria**:
     - Given a successful upload, When progress events fire, Then `onProgress` receives increasing fractions ending at 1, and the promise resolves with the typed `OwnerSpacePhoto` (AC 1.3).

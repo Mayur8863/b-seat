@@ -8,3 +8,4 @@ export {
   type OccupancyConflict,
   type ProblemDetails,
 } from './fetcher';
+export { uploadSpacePhoto, type UploadSpacePhotoOptions } from './upload';

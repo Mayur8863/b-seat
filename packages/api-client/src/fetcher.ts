@@ -33,6 +33,8 @@ export class ApiError extends Error {
   constructor(
     readonly status: number,
     readonly problem: ProblemDetails | undefined,
+    /** Seconds from a `Retry-After` header, when the response carried one. */
+    readonly retryAfter?: number,
   ) {
     super(problem?.detail ?? problem?.title ?? `Request failed with status ${status}`);
     this.name = 'ApiError';
@@ -54,7 +56,7 @@ const str = (value: unknown): string | undefined => (typeof value === 'string' ?
  * Requiring a string `type` is deliberately stricter than RFC 9457 (where it is optional):
  * every BSeat API error carries one, so its absence means the body did not come from the API.
  */
-function asProblem(data: unknown, status: number): ProblemDetails | undefined {
+export function asProblem(data: unknown, status: number): ProblemDetails | undefined {
   if (typeof data !== 'object' || data === null || !('type' in data)) return undefined;
   const raw = data as Record<string, unknown>;
   if (typeof raw.type !== 'string') return undefined;
