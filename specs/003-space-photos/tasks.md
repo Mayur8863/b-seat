@@ -41,7 +41,7 @@ only a human merges.
 | T004 | Storage module, S3 env and windowed URL signing (TDD)            | backend-dev       | T003                         | M    | review | `feat/003-object-storage`              |
 | T005 | Photo schema and migration, constraint tests first               | backend-dev       | T001                         | S    | review | `feat/003-photo-schema`                |
 | T006 | Image processing module with sharp (TDD)                         | backend-dev       | T001                         | M    | review | `feat/003-photo-processing`            |
-| T007 | Production image loads sharp; AWS storage runbook                | devops            | T006                         | S    | todo   | `chore/003-photo-runtime`              |
+| T007 | Production image loads sharp; AWS storage runbook                | devops            | T006                         | S    | review | `chore/003-photo-runtime`              |
 | T008 | Upload API: validate, process, store, insert                     | backend-dev       | T002, T004, T005, T006       | M    | todo   | `feat/003-photo-upload-api`            |
 | T009 | Owner photo list and describe API                                | backend-dev       | T008                         | S    | todo   | `feat/003-photo-list-api`              |
 | T010 | `uploadSpacePhoto` XHR helper in the api-client                  | frontend-dev      | T008                         | S    | todo   | `feat/003-upload-helper`               |
@@ -157,7 +157,7 @@ first (T002, T003). After T001: T002, T003, T005, T006, T011 and T012 can start 
     - **(T001)** Given the worst-case fixtures (a 50 MP 16-bit RGBA PNG with EXIF orientation 6, and a 50 MP progressive JPEG), When each is processed, Then it succeeds or is refused within the timeout, and the PR records each fixture's peak RSS (measured with `process.memoryUsage().rss` sampling or `/usr/bin/time -v` in the tools container) for T007's task sizing. Generate the fixtures at test time, and do not commit them.
 
 - [ ] T007 Check that the production API image (`docker/api.Dockerfile`) loads sharp on each architecture CI builds; write `docs/runbooks/photo-storage.md`: the AWS bucket settings and IAM from ADR-0011 section 1; the Fargate API memory, sized as baseline + 16 × 10 MiB + 2 × T006's measured peak + 30% (at least 1 GB); the staging checks from ADR-0011 section 5 (backdated windowed URLs with task-role credentials, and the fallback); and a purge operations placeholder for T027
-  - **Owner**: devops · **Branch**: `chore/003-photo-runtime` · **Size**: S · **Depends on**: T006 · **Status**: todo
+  - **Owner**: devops · **Branch**: `chore/003-photo-runtime` · **Size**: S · **Depends on**: T006 · **Status**: review
   - **Acceptance criteria**:
     - Given the built API image, When `node -e "import('sharp').then(s => console.log(s.default.versions))"` runs in it, Then it prints the libvips version and exits 0 (R-3).
     - Given the runbook, Then it lists every bucket setting and IAM action from ADR-0011 section 1, states the memory figure and how it was derived, and states that no cloud resource is created without human approval (plan OQ-1).
