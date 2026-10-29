@@ -21,6 +21,7 @@ import { LayoutModule } from './owner-operations/layout.module.js';
 import { OccupancyModule } from './owner-operations/occupancy.module.js';
 import { OwnerBookingsModule } from './owner-operations/owner-bookings.module.js';
 import { ListingsModule } from './listings/listings.module.js';
+import { queuePrefix } from './config/queue-prefix.js';
 import { MailModule } from './mail/mail.module.js';
 import { MeModule } from './me/me.module.js';
 import { OwnerSpacesModule } from './owner-spaces/owner-spaces.module.js';
@@ -55,7 +56,10 @@ import { REDIS, RedisModule } from './redis/redis.module.js';
       // Per-environment prefix so test jobs never reach the dev worker.
       useFactory: (redis: Redis, config: ConfigService<Env, true>) => ({
         connection: redis,
-        prefix: `bseat:${config.get('NODE_ENV', { infer: true })}`,
+        prefix: queuePrefix(
+          config.get('NODE_ENV', { infer: true }),
+          config.get('DATABASE_URL', { infer: true }),
+        ),
       }),
     }),
     TerminusModule,
