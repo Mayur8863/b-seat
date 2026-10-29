@@ -153,6 +153,8 @@ jobs:
         run: |
           docker build -f docker/api.Dockerfile -t bseat-api:ci .
           docker build -f docker/web.Dockerfile -t bseat-web:ci .
+      - name: sharp loads in the production API image
+        run: docker run --rm --entrypoint node bseat-api:ci -e "import('sharp').then(s => console.log(s.default.versions))"
       - name: Trivy image scan
         run: |
           for image in bseat-api:ci bseat-web:ci; do
