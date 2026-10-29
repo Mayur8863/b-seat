@@ -52,7 +52,7 @@ only a human merges.
 | T015 | Describe photos and guard leaving with unfinished uploads        | frontend-dev      | T014                         | S    | todo   | `feat/003-photo-describe-leave-guard`  |
 | T016 | QA US1: owner upload e2e, axe, SC-002, SC-005                    | qa-engineer       | T014, T015                   | M    | todo   | `test/003-us1-add-photos`              |
 | T017 | Docs US1                                                         | docs-writer       | T016                         | S    | todo   | `docs/003-us1-add-photos`              |
-| T018 | Listing API: cover on search results, photos on the detail       | backend-dev       | T009                         | M    | todo   | `feat/003-listing-photos-api`          |
+| T018 | Listing API: cover on search results, photos on the detail       | backend-dev       | T009                         | M    | review | `feat/003-listing-photos-api`          |
 | T019 | Space photo component, placeholder and cover on `/find` cards    | frontend-dev      | T012, T018                   | S    | todo   | `feat/003-find-card-cover`             |
 | T020 | Listing gallery and large view (keyboard, pointer, touch)        | frontend-dev      | T012, T018, T019             | M    | todo   | `feat/003-listing-gallery`             |
 | T021 | QA US2: renter e2e, axe incl. large view, SC-003, SC-004, FR-019 | qa-engineer       | T019, T020                   | M    | todo   | `test/003-us2-renter-photos`           |
@@ -282,7 +282,7 @@ first (T002, T003). After T001: T002, T003, T005, T006, T011 and T012 can start 
 **Independent test**: spec US2 (one published space with 4 photos, one with none).
 
 - [ ] T018 [US2] Add `cover` and `photoUrlsExpireAt` to `ListingSummary` / `ListingSearchResults`, and `photos` and `photoUrlsExpireAt` to `Listing`, in `apps/api/src/listings/` (schemas, service: the cover `LEFT JOIN`, the photo read); regenerate `openapi.json`; write `apps/api/test/listings-photos.int-spec.ts` first
-  - **Owner**: backend-dev · **Branch**: `feat/003-listing-photos-api` · **Size**: M · **Depends on**: T009 · **Status**: todo
+  - **Owner**: backend-dev · **Branch**: `feat/003-listing-photos-api` · **Size**: M · **Depends on**: T009 · **Status**: review (2026-10-29)
   - **Scope**: contracts/photos.md "Renter additions"; research R-4, R-5. Additive fields only. Search stays one query per page.
   - **Acceptance criteria**:
     - Given a published space with 4 photos and one with none, When a renter searches, Then the first item's `cover` has the position-1 `altText` and a `card` URL only (no `display` URL anywhere in the search response), and the second's `cover` is `null` (AC 2.1, AC 2.2, AC 2.7, FR-016, FR-018).

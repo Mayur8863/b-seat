@@ -4938,11 +4938,19 @@
           "nextCursor": {
             "nullable": true,
             "type": "string"
+          },
+          "photoUrlsExpireAt": {
+            "nullable": true,
+            "description": "When the signed photo URLs expire; null when there are none",
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
           }
         },
         "required": [
           "items",
-          "nextCursor"
+          "nextCursor",
+          "photoUrlsExpireAt"
         ],
         "additionalProperties": false
       },
@@ -5026,6 +5034,15 @@
           },
           "hasLayout": {
             "type": "boolean"
+          },
+          "cover": {
+            "nullable": true,
+            "description": "The first photo; null shows a placeholder",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ListingCover"
+              }
+            ]
           }
         },
         "required": [
@@ -5038,7 +5055,52 @@
           "customUtilities",
           "currency",
           "lowestPrices",
-          "hasLayout"
+          "hasLayout",
+          "cover"
+        ],
+        "additionalProperties": false
+      },
+      "ListingCover": {
+        "type": "object",
+        "properties": {
+          "altText": {
+            "type": "string"
+          },
+          "card": {
+            "$ref": "#/components/schemas/PhotoImage"
+          }
+        },
+        "required": [
+          "altText",
+          "card"
+        ],
+        "additionalProperties": false
+      },
+      "PhotoImage": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Signed, short-lived address of the image"
+          },
+          "width": {
+            "type": "integer",
+            "minimum": 0,
+            "exclusiveMinimum": true,
+            "maximum": 9007199254740991
+          },
+          "height": {
+            "type": "integer",
+            "minimum": 0,
+            "exclusiveMinimum": true,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "url",
+          "width",
+          "height"
         ],
         "additionalProperties": false
       },
@@ -5360,6 +5422,20 @@
           },
           "isOwnSpace": {
             "type": "boolean"
+          },
+          "photos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ListingPhoto"
+            },
+            "description": "In position order; empty means no photos"
+          },
+          "photoUrlsExpireAt": {
+            "nullable": true,
+            "description": "When the signed photo URLs expire; null when there are none",
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
           }
         },
         "required": [
@@ -5378,7 +5454,57 @@
           "openingHours",
           "offers",
           "fullDaySavings",
-          "isOwnSpace"
+          "isOwnSpace",
+          "photos",
+          "photoUrlsExpireAt"
+        ],
+        "additionalProperties": false
+      },
+      "ListingPhoto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "position": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10
+          },
+          "description": {
+            "nullable": true,
+            "description": "Shown as a caption when not null",
+            "type": "string"
+          },
+          "altText": {
+            "type": "string"
+          },
+          "card": {
+            "description": "Gallery thumbnail",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PhotoImage"
+              }
+            ]
+          },
+          "display": {
+            "description": "Main image and large view",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PhotoImage"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "position",
+          "description",
+          "altText",
+          "card",
+          "display"
         ],
         "additionalProperties": false
       },
@@ -6855,34 +6981,6 @@
           "card",
           "display",
           "createdAt"
-        ],
-        "additionalProperties": false
-      },
-      "PhotoImage": {
-        "type": "object",
-        "properties": {
-          "url": {
-            "type": "string",
-            "format": "uri",
-            "description": "Signed, short-lived address of the image"
-          },
-          "width": {
-            "type": "integer",
-            "minimum": 0,
-            "exclusiveMinimum": true,
-            "maximum": 9007199254740991
-          },
-          "height": {
-            "type": "integer",
-            "minimum": 0,
-            "exclusiveMinimum": true,
-            "maximum": 9007199254740991
-          }
-        },
-        "required": [
-          "url",
-          "width",
-          "height"
         ],
         "additionalProperties": false
       },
