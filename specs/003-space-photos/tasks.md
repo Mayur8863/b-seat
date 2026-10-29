@@ -57,8 +57,8 @@ only a human merges.
 | T020 | Listing gallery and large view (keyboard, pointer, touch)        | frontend-dev      | T012, T018, T019             | M    | todo   | `feat/003-listing-gallery`             |
 | T021 | QA US2: renter e2e, axe incl. large view, SC-003, SC-004, FR-019 | qa-engineer       | T019, T020                   | M    | todo   | `test/003-us2-renter-photos`           |
 | T022 | Docs US2                                                         | docs-writer       | T021                         | S    | todo   | `docs/003-us2-renter-photos`           |
-| T023 | Reorder and delete API                                           | backend-dev       | T009                         | M    | todo   | `feat/003-photo-reorder-delete-api`    |
-| T024 | Purge sweep (scheduler, lease claim) and overdue alert log       | backend-dev       | T023                         | M    | todo   | `feat/003-photo-purge`                 |
+| T023 | Reorder and delete API                                           | backend-dev       | T009                         | M    | review | `feat/003-photo-reorder-delete-api`    |
+| T024 | Purge sweep (scheduler, lease claim) and overdue alert log       | backend-dev       | T023                         | M    | review | `feat/003-photo-purge`                 |
 | T025 | Reorder controls and delete dialog                               | frontend-dev      | T011, T014, T023             | M    | todo   | `feat/003-photo-reorder-delete-ui`     |
 | T026 | QA US3: keyboard reorder, permanent delete, purge                | qa-engineer       | T024, T025                   | M    | todo   | `test/003-us3-arrange-photos`          |
 | T027 | Docs US3: photo-storage runbook (purge operations)               | docs-writer       | T026                         | S    | todo   | `docs/003-us3-arrange-photos`          |
@@ -334,7 +334,7 @@ first (T002, T003). After T001: T002, T003, T005, T006, T011 and T012 can start 
 **Independent test**: spec US3 (5 photos; keyboard move 4th to first; delete the 2nd).
 
 - [ ] T023 [US3] Add `PUT /api/owner/spaces/{spaceId}/photos/order` and `DELETE /api/owner/spaces/{spaceId}/photos/{photoId}` (`reorder`, `remove`: renumber, purge row; no enqueue, see T024); regenerate `openapi.json`; write `apps/api/test/photos-arrange.int-spec.ts` first
-  - **Owner**: backend-dev · **Branch**: `feat/003-photo-reorder-delete-api` · **Size**: M · **Depends on**: T009 · **Status**: todo
+  - **Owner**: backend-dev · **Branch**: `feat/003-photo-reorder-delete-api` · **Size**: M · **Depends on**: T009 · **Status**: review (2026-10-29; stacked on feat/003-listing-photos-api)
   - **Scope**: contracts/photos.md; ADR-0011 sections 7 to 9; research R-6, R-7. Lock order per ADR-0009 9.3 rows (data-model.md). **(T001)** Reorder and the renumber are each one `UPDATE` statement, with no `SET CONSTRAINTS`. Delete inserts the purge row and enqueues nothing; the sweep is T024.
   - **Acceptance criteria**:
     - Given 5 photos, When the order puts the 4th first, Then positions are 1..5 in the new order, and the new first is the cover in the owner list and the listing (AC 3.1, AC 3.2, FR-009).

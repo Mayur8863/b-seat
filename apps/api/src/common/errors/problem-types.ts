@@ -35,6 +35,7 @@ export const PROBLEM_TYPES = {
   photoDimensionsOutOfRange: 'urn:bseat:problem:photo:dimensions-out-of-range',
   photoUnreadable: 'urn:bseat:problem:photo:unreadable',
   photoBusy: 'urn:bseat:problem:photo:busy',
+  photoOrderStale: 'urn:bseat:problem:photo:order-stale',
 } as const;
 
 /* Response-only schemas for the three problems that carry extra members (AQ-3, ADR-0009
@@ -244,5 +245,15 @@ export function photoBusy(retryAfterSeconds = 5): ProblemException {
     'We are busy right now. Try again in a moment.',
     undefined,
     { 'Retry-After': String(retryAfterSeconds) },
+  );
+}
+
+/** 409 the reorder body is not exactly the space's current photos. */
+export function photoOrderStale(): ProblemException {
+  return new ProblemException(
+    409,
+    PROBLEM_TYPES.photoOrderStale,
+    'Photos changed',
+    'The photos changed after you opened them. Reload them and try again.',
   );
 }

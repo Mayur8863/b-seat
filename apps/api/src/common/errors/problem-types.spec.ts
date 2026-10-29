@@ -10,6 +10,7 @@ import {
   photoBusy,
   photoDimensionsOutOfRange,
   photoLimitReached,
+  photoOrderStale,
   photoTooLarge,
   photoUnreadable,
   photoUnsupportedFormat,
@@ -52,6 +53,7 @@ describe('PROBLEM_TYPES', () => {
       photoDimensionsOutOfRange: 'urn:bseat:problem:photo:dimensions-out-of-range',
       photoUnreadable: 'urn:bseat:problem:photo:unreadable',
       photoBusy: 'urn:bseat:problem:photo:busy',
+      photoOrderStale: 'urn:bseat:problem:photo:order-stale',
     });
   });
 });
@@ -266,6 +268,13 @@ describe('photo problem factories', () => {
       422,
       'Photo unreadable',
       "This file couldn't be read as an image.",
+      undefined,
+    ],
+    [
+      photoOrderStale(),
+      409,
+      'Photos changed',
+      'The photos changed after you opened them. Reload them and try again.',
       undefined,
     ],
     [photoBusy(), 503, 'Busy', 'We are busy right now. Try again in a moment.', undefined],

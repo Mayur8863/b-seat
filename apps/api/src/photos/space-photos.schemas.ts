@@ -44,3 +44,14 @@ export const DescribeSpacePhotoInputSchema = z
   })
   .meta({ id: 'DescribeSpacePhotoInput' });
 export type DescribeSpacePhotoInput = z.infer<typeof DescribeSpacePhotoInputSchema>;
+
+export const ReorderSpacePhotosInputSchema = z
+  .strictObject({
+    photoIds: z
+      .array(z.uuid())
+      .min(1)
+      .max(PHOTO_LIMIT)
+      .describe('Every photo id of the space in the new order, cover first'),
+  })
+  .meta({ id: 'ReorderSpacePhotosInput' });
+export type ReorderSpacePhotosInput = z.infer<typeof ReorderSpacePhotosInputSchema>;
