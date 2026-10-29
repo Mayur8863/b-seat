@@ -47,7 +47,7 @@ only a human merges.
 | T010 | `uploadSpacePhoto` XHR helper in the api-client                  | frontend-dev      | T008                         | S    | review | `feat/003-upload-helper`               |
 | T011 | UI spec: owner Photos section                                    | ui-ux-designer    | T001                         | M    | review | `docs/003-ui-owner-photos`             |
 | T012 | UI spec: cover, placeholder, gallery and large view              | ui-ux-designer    | T001                         | S    | review | `docs/003-ui-renter-photos`            |
-| T013 | Upload-queue model (pure reducer, TDD)                           | frontend-dev      | T011                         | S    | todo   | `feat/003-upload-queue-model`          |
+| T013 | Upload-queue model (pure reducer, TDD)                           | frontend-dev      | T011                         | S    | review | `feat/003-upload-queue-model`          |
 | T014 | Owner Photos page: nav, list, empty state, count, upload queue   | frontend-dev      | T009, T010, T011, T013       | M    | review | `feat/003-owner-photos-page`           |
 | T015 | Describe photos and guard leaving with unfinished uploads        | frontend-dev      | T014                         | S    | review | `feat/003-photo-describe-leave-guard`  |
 | T016 | QA US1: owner upload e2e, axe, SC-002, SC-005                    | qa-engineer       | T014, T015                   | M    | todo   | `test/003-us1-add-photos`              |
@@ -563,3 +563,7 @@ Waves (a task starts when everything it depends on is merged; tasks in one wave 
   task needs it.
 - **OQ-2** (plan): confirmed by the human. `dev/003-integration` is cut from `dev/002-integration`.
 - Architect questions AQ-1 to AQ-10 were answered in T001 (plan.md "Architect verdict").
+
+## Merge note
+
+- **2026-10-29:** on the human's request, `dev/003-integration` was merged into `main` before QA and the security review. The QA tasks (T016, T021, T026, T029, T033, T036), the security review (T035) and the docs tasks (T017, T022, T027, T030, T034, T037) are still queued and run when the human says go. Dev tasks stay at `review` until then.
