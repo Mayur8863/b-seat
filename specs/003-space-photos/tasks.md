@@ -65,7 +65,7 @@ only a human merges.
 | T028 | 10-photo limit under concurrency (race test first)               | backend-dev       | T008                         | S    | todo   | `feat/003-photo-limit-race`            |
 | T029 | QA US4: limit e2e and the SC-006 race                            | qa-engineer       | T014, T028                   | S    | todo   | `test/003-us4-photo-limit`             |
 | T030 | Docs US4                                                         | docs-writer       | T029                         | S    | todo   | `docs/003-us4-photo-limit`             |
-| T031 | Seed photo assets: download, resize, credits                     | backend-dev       | T006                         | S    | todo   | `feat/003-seed-photo-assets`           |
+| T031 | Seed photo assets: download, resize, credits                     | backend-dev       | T006                         | S    | review | `feat/003-seed-photo-assets`           |
 | T032 | Seed wiring: attach photos to London HQ and Pune Hub             | backend-dev       | T003, T008, T031             | S    | todo   | `feat/003-seed-photos`                 |
 | T033 | QA US5: offline seed, idempotency, credits                       | qa-engineer       | T032                         | S    | todo   | `test/003-us5-seed-photos`             |
 | T034 | Docs US5                                                         | docs-writer       | T033                         | S    | todo   | `docs/003-us5-seed-photos`             |
@@ -411,7 +411,7 @@ first (T002, T003). After T001: T002, T003, T005, T006, T011 and T012 can start 
 **Independent test**: spec US5 (fresh environment, no internet, seed twice).
 
 - [ ] T031 [P] [US5] Download 9 office and coworking photos (5 for London HQ, 4 for Pune Hub) from Wikimedia Commons (CC0, public domain or CC BY; through the MediaWiki API), resize to 1600 px on the long edge, re-encode as JPEG q82 with metadata stripped, and commit them with `CREDITS.md` and `photos.ts` (file → space, position, description) under `apps/api/src/db/seed-photos/`
-  - **Owner**: backend-dev · **Branch**: `feat/003-seed-photo-assets` · **Size**: S · **Depends on**: T006 · **Status**: todo
+  - **Owner**: backend-dev · **Branch**: `feat/003-seed-photo-assets` · **Size**: S · **Depends on**: T006 · **Status**: review
   - **Scope**: research R-11. Unsplash and Pexels block scripted access, so the photos come from Wikimedia Commons through its official API with an honest User-Agent. Choose photos without identifiable faces or readable private information. The one-off resize runs in the tools container with sharp; the commands are recorded in `CREDITS.md`, and no download script runs at seed time. Binary files do not count toward the line budget.
   - **Acceptance criteria**:
     - Given the folder, Then it has 9 JPEGs, each 1600 px on the long edge (± 0), without EXIF, XMP or IPTC metadata, and ≤ 500 kB (FR-023).
