@@ -12,6 +12,6 @@ New ADR: copy `template.md` to `NNNN-short-title.md` (next number) and add it be
 | [0006](0006-quality-gates-and-tooling.md)             | Quality gates and code-quality tooling             | Accepted                                    |
 | [0007](0007-aws-deployment-target.md)                 | AWS deployment target                              | Proposed (object storage added by 0011)     |
 | [0008](0008-booking-time-and-conflict-model.md)       | Booking time model, conflicts, API conventions     | Accepted (sections 1 and 2 amended by 0009) |
-| [0009](0009-pass-bookings-seat-holds-and-slots.md)    | Pass bookings, seat holds and the slot time model  | Accepted (section 9.3 amended by 0011)      |
+| [0009](0009-pass-bookings-seat-holds-and-slots.md)    | Pass bookings, seat holds and the slot time model  | Accepted (amended 2026-10-27 and 2026-10-28: sections 3 and 9; section 9.3 amended by 0011) |
 | [0010](0010-account-roles-and-owner-authorization.md) | Account roles and owner authorization              | Accepted                                    |
 | [0011](0011-space-photo-storage.md)                   | Space photo storage, processing and delivery       | Accepted                                    |

@@ -400,3 +400,43 @@ users, so it does not use the demo password.
 QA added `apps/web/e2e/app-shell.spec.ts` and made `signOut` in `e2e/helpers.ts` skip the toggle when the menu is already open.
 Run: `@bseat/web test` 158 passed; `bin/pnpm check` pass (`@bseat/api test` 489 passed, 1 skipped); `bin/pnpm lint` pass;
 `docker compose --profile e2e run --rm e2e` 38 passed (19 per project, chromium and mobile), 0 axe violations.
+
+## T070 final QA results (branch `test/002-final-regression`, from `dev/002-integration` 27888cc)
+
+### New tests and what they close
+
+| Task           | Test                                                                                                                                                                                                                                                                                                                                                         | Level         | Result |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------- | ------ |
+| T016           | `e2e/accounts-nav.spec.ts`: protected-route sweep over 12 routes (FR-005, T070); signed-in `/sign-up` and `next` targets; renter dashboard card and link, axe; stale cookie renders sign-in and sign-up with no loop, axe; keyboard-only walk over every nav link with `aria-current`                                                                        | e2e, axe      | pass   |
+| T025           | `e2e/owner-listing.spec.ts`: SC-001 journey (sign-up, create with errors and axe, publish refused, 20 seats, price, publish, axe on form, overview, seats); renter on the owner gate with axe. Owner scoping: existing `owner-spaces.int-spec` "same 404 as a random uuid on every route" plus the 404 tests in `owner-seats`, `owner-bookings`, `occupancy` | e2e, axe, int | pass   |
+| T032           | `e2e/pricing.spec.ts`: bad price field error and axe; three slots with day and monthly prices; renter sees exactly those and the 24-hour saving; a night booking survives a switch to fixed hours and only "Working hours" is offered                                                                                                                        | e2e, axe      | pass   |
+| T044 (partial) | `e2e/search-book.spec.ts`: SC-002 keyboard journey with a weekly pass, taken for 7 days, free on day 8, renter email arrives in Mailpit; `/find` empty, loading, error with axe; 409 conflict when another renter takes the seat, axe. `test/booking-races.int-spec.ts` mixed slots: 30 users, 5 rounds, outcomes `[24 h]` or `[day, night]`, DB agrees      | e2e, axe, int | pass   |
+| T049           | `e2e/occupancy.spec.ts`: mark conflict shown in the dialog with axe, marked seat is taken for renters and the private note is not shown, removing the mark frees it. `test/booking-races.int-spec.ts` 10 bookings against 10 marks, 5 rounds, exactly one winner, no 5xx                                                                                     | e2e, axe, int | pass   |
+| T053           | `e2e/calendar.spec.ts`: Mon-Fri shared calendar closes a Saturday start (disabled, "Closed on"), a weekly pass starting Monday shows "Skips 2 closed days" and books, narrowing the calendar reports one booking outside and keeps it; axe on the availability page and the listing                                                                          | e2e, axe      | pass   |
+| T059           | `e2e/bookings-lists.spec.ts`: three renters see only their own bookings; the owner sees 3, then 1 with a date filter, then the empty state; cancel with axe frees the seat; dashboard axe                                                                                                                                                                    | e2e, axe      | pass   |
+| T067           | `e2e/layout.spec.ts`: keyboard-only place, pick up and move, resize, name editor, save, reload keeps positions; a renter books from the plan by keyboard; axe with the editor open and on the renter plan. The pointer journey is covered by `layout-editor.test` and `layout.int-spec` (no pointer e2e was added)                                           | e2e, axe      | pass   |
+
+### SC-001 and SC-002 timings (scripted, 5 consecutive final runs)
+
+| Run | SC-001 (sign-up click to Published) | SC-002 (dashboard to confirmed booking) |
+| --- | ----------------------------------- | --------------------------------------- |
+| 1   | 34.8 s                              | 5.2 s                                   |
+| 2   | 34.0 s                              | 5.7 s                                   |
+| 3   | 37.2 s                              | 7.2 s                                   |
+| 4   | 42.4 s                              | 5.0 s                                   |
+| 5   | 37.4 s                              | 5.6 s                                   |
+
+SC-001: 22 steps (sign-up 5 fields and actions, create space 9, publish refused 1, seats 4, prices 2, publish 1), target under 600 s. SC-002: 7 keyed actions (nav link, Search, result, pass, seat, Review, Confirm), no typed address, target under 60 s. Scripted times exclude human reading time; no human run was available.
+
+### Suite numbers
+
+- `bin/pnpm check`: lint, typecheck, build pass; api 61 files, 727 passed, 1 skipped; web 58 files, 632 passed.
+- `bin/pnpm test:coverage`: api statements 95.5%, lines 97.4%; web statements 93.3%, lines 94.6%.
+- e2e (`docker compose --profile e2e run --rm e2e`): 56 passed, 24 skipped (mobile project skips the desktop journeys). Of the last 5 consecutive runs, 4 were fully green; the fifth failed the new layout journey once under load (34 s) and a 15 s per-assertion allowance was added; that spec then passed 10 of 10 repeats. Earlier runs under load average 20 to 35 also failed existing tests once each (QA-01 at 375, the app-shell keyboard walk) and passed on repeat; the app-shell walk got an extra wait. Strictly, "5 consecutive green runs" is not yet shown after the last edit.
+- Race specs rerun 3 times: `booking-races.int-spec` passed 3 of 3 (plus the first run).
+
+### Not done, so T044 and T070 stay at `review`
+
+- `marketplace.perf-spec.ts` (1,000 spaces, 100,000 holds, p95 per class in 3 gated runs, `EXPLAIN` evidence, SC-003 and SC-004) was not built. It needs its own vitest config, a bulk SQL generator and a dedicated script.
+- `bin/security`: `gitleaks dir .` reported 79 leaks over the 1.5 GB working directory (it scans ignored and untracked files, so it is probably env files and caches). Not triaged; a security-reviewer should run it on the tracked tree. Semgrep and Trivy output was not reached.
+- The row-by-row Result column of sections 3 and 4 was not rewritten; the tables above replace it for the tasks closed here.

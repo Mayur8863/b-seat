@@ -9,33 +9,97 @@ with humans approving every merge.
 
 ## Features
 
-- **Find a free seat.** Pick a space, a date and a 15-minute window, and see each seat as free or taken on the Book a seat page (`/book`).
-- **Book a seat.** `POST /api/bookings` books one seat for a window in the space's local time zone.
-  Windows are 15 minutes to 10 hours, start and end on a quarter hour within 07:00–20:00 local time,
-  start in the future and at most 30 days ahead. Overlapping bookings are refused for the same seat
-  and for the same person.
-- **Confirmation email.** Each booking queues a confirmation email. Locally it is caught by Mailpit at
-  `http://localhost:8025`. See [booking confirmations](docs/runbooks/booking-confirmations.md).
-- **Demo data.** `docker compose up` seeds London HQ (12 seats, Europe/London) and Pune Hub (8 seats,
-  Asia/Kolkata).
+Everyone signs up with one role: **I own a space** (owner) or **I need a space** (renter). The role
+decides the dashboard and the pages in the menu. Prices are shown in the app and paid **offline,
+directly to the owner**; there is no online payment.
 
-### API overview
+**For owners**
 
-Full schemas are in Swagger UI at http://localhost:3001/docs. These resource routes are under `/api`
-and need a signed-in session cookie (sign-in is Better Auth under `/api/auth`).
+- **List a space.** Name, description, country, city, area, street address, time zone, currency,
+  opening hours and utilities. A draft can be published only with at least one seat and one priced
+  pass; otherwise publishing says what is missing.
+- **Seats and cubicles.** Add one seat or many with a label pattern (`A-1` to `A-20`), rename, group
+  seats into cubicles, and remove them. A removal is refused while the seat has future bookings.
+- **Passes and prices.** Choose the slots the space offers (day, night, 24 hours, or working hours)
+  and set day, weekly and monthly prices. Empty means the pass is not offered.
+- **Layout.** Draw a floor plan of seats, cubicles and areas on a grid with the pointer, the keyboard
+  or a form. Saves are versioned.
+- **Availability.** A shared calendar for the space, with an optional own calendar for any seat.
+- **Occupancy.** Mark seats occupied for a period, with an optional note, and end the mark. A mark that
+  clashes with existing bookings is refused.
+- **Bookings.** See upcoming bookings at the space, filter them by date and page through them.
 
-| Method | Path                                 | Purpose                                         |
-| ------ | ------------------------------------ | ----------------------------------------------- |
-| GET    | `/api/spaces`                        | List spaces with their time zone and seat count |
-| GET    | `/api/spaces/{spaceId}/availability` | Free and taken seats for a local window         |
-| POST   | `/api/bookings`                      | Book one seat for a local window                |
+**For renters**
 
-Two things are not obvious from the schemas. Requests give the window in the space's local wall-clock
-time and never a zone, and responses add UTC `startsAt`/`endsAt`. Errors are problem details
-(`application/problem+json`). A rule breach is a 422 whose `type` names the rule
-(`urn:bseat:problem:booking-rule:<rule>`), and a clash is a 409 (`booking:seat-unavailable` or
-`booking:user-overlap`). The full list of `type` values is in
-[contracts/README.md](specs/001-seat-booking/contracts/README.md).
+- **Find a space** (`/find`). Search by country, city, area, start date, pass, slot and utilities. The
+  filters are in the URL, so results can be shared. Each result shows the lowest price per pass.
+- **Space page** (`/spaces/{id}`). Details, offered slots and prices, and each seat as free, taken or
+  closed for the pass and start date you pick. A space with a floor plan can show it instead of a list.
+- **Book a pass.** Pick one seat for a day, week or month pass. A weekly or monthly pass keeps the same
+  seat for the whole period. Days when the seat is unavailable are skipped at the same price, so the
+  end date does not move. The confirmation shows the price and the offline-payment note.
+- **My bookings** (`/bookings`). Upcoming bookings, with cancel for any booking that has not started.
+  The dashboard shows your next booking.
+- **Preferences.** Optional default country, city and area for searches.
+
+Each booking emails the renter a confirmation and the owner a notification. Locally, mail is caught by
+Mailpit at `http://localhost:8025`. See [booking confirmations](docs/runbooks/booking-confirmations.md).
+
+**Demo data.** `docker compose up` seeds two accounts, `owner@bseat.local` (owner) and
+`renter@bseat.local` (renter). The owner's password comes from `SEED_DEMO_PASSWORD`; compose has a
+dev-only default, and [.env.example](.env.example) shows how to override it. The seed creates two
+published spaces: London HQ (Europe/London, open 24 hours, 12 seats in two cubicles, with a sample
+floor plan) and Pune Hub (Asia/Kolkata, 8 seats, working hours).
+
+### Routes and API
+
+Pages: `/dashboard`, `/find`, `/spaces/{id}`, `/bookings` for renters; `/owner/spaces/new` and
+`/owner/spaces/{id}` (with its Details, Seats, Passes and prices, Layout, Availability and Bookings
+pages) for owners. `/book` redirects to `/find`.
+
+Full schemas are in Swagger UI at http://localhost:3001/docs. Routes are under `/api`. Resource routes
+need a signed-in session cookie; sign-in is Better Auth under `/api/auth`.
+
+| Method  | Path                               | Purpose                                                                        |
+| ------- | ---------------------------------- | ------------------------------------------------------------------------------ |
+| GET     | `/api/listings`                    | Search published spaces (`country` required, plus filters)                     |
+| GET     | `/api/listings/locations`          | City and area suggestions for the search box                                   |
+| GET     | `/api/listings/{spaceId}`          | A published space with its offered passes and prices                           |
+| GET     | `/api/listings/{spaceId}/seats`    | Free, taken or closed seats for a pass, slot and start date                    |
+| POST    | `/api/listings/{spaceId}/bookings` | Book one seat for a day, week or month pass                                    |
+| GET     | `/api/bookings`                    | My upcoming bookings                                                           |
+| POST    | `/api/bookings/{bookingId}/cancel` | Cancel my booking that has not started                                         |
+| various | `/api/owner/spaces/...`            | Owner spaces, seats, cubicles, pricing, layout, calendars, occupancy, bookings |
+
+The 001 routes `GET /api/spaces` and `GET /api/spaces/{spaceId}/availability` were removed in favour of
+`/api/listings`. Hourly booking is gone; passes replace it.
+
+Notes that the schemas do not show:
+
+- **Listing search can return a cursor on a short or empty page.** Each request looks at no more than 200
+  candidate spaces when a start date is given. `nextCursor` can be set on a page with few or no results.
+  Keep requesting with the cursor while it is set.
+- **My bookings returns at most 50** (`limit` defaults to 50 and has a maximum of 50). There is no cursor.
+- **Errors are problem details** (`application/problem+json`). A breached booking rule is a 422 whose
+  `type` is `urn:bseat:problem:booking-rule:<rule>`. A clash is a 409, `booking:seat-unavailable` or
+  `booking:user-overlap`. The full list and its copy are in
+  [002 contracts](specs/002-space-marketplace/contracts/README.md).
+- **Cross-site writes are refused.** An unsafe request (POST, PUT, PATCH, DELETE) from another site gets 403. Set `TRUSTED_ORIGINS` for deployed environments; see [origins and CSRF](docs/runbooks/origins-and-csrf.md).
+
+### Known limitations
+
+These are open follow-ups from the 002 reviews, listed in
+[tasks.md, Review follow-ups](specs/002-space-marketplace/tasks.md#review-follow-ups).
+
+- **My bookings shows at most 50 upcoming bookings**, with no paging.
+- **`GET /api/listings` has no rate limit yet.**
+- **Malformed space ids return HTTP 200 with the 404 page.** `/spaces/not-a-uuid` and
+  `/owner/spaces/not-a-uuid` render "not found" but send status 200, because the page streams before the
+  not-found decision. Monitors and crawlers that read status codes will see 200.
+- **Holds of cancelled bookings are guarded in code, not in the database.** The cancel transaction and its
+  tests keep them inactive. A database trigger for the cancelled-to-active transition is not in place (security review n5).
+- **CSRF hardening is minimal.** The cross-site check is the only protection for cookie-authenticated
+  writes. Requests with neither `Origin` nor `Sec-Fetch-Site` pass, and there are no CSRF tokens.
 
 ## Quick start
 
@@ -164,3 +228,5 @@ Schemathesis API fuzzing, gitleaks, Semgrep and Trivy (lockfile and images).
 - [docs/runbooks/github-setup.md](docs/runbooks/github-setup.md): first push, branch protection, tokens
 - [docs/runbooks/database-migrations.md](docs/runbooks/database-migrations.md)
 - [docs/runbooks/booking-confirmations.md](docs/runbooks/booking-confirmations.md): confirmation emails, Mailpit and lost-email handling
+- [docs/runbooks/origins-and-csrf.md](docs/runbooks/origins-and-csrf.md): `TRUSTED_ORIGINS` and 403s on writes
+- [specs/002-space-marketplace](specs/002-space-marketplace/spec.md): the space marketplace spec, plan and contracts
