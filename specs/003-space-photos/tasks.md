@@ -62,7 +62,7 @@ only a human merges.
 | T025 | Reorder controls and delete dialog                               | frontend-dev      | T011, T014, T023             | M    | todo   | `feat/003-photo-reorder-delete-ui`     |
 | T026 | QA US3: keyboard reorder, permanent delete, purge                | qa-engineer       | T024, T025                   | M    | todo   | `test/003-us3-arrange-photos`          |
 | T027 | Docs US3: photo-storage runbook (purge operations)               | docs-writer       | T026                         | S    | todo   | `docs/003-us3-arrange-photos`          |
-| T028 | 10-photo limit under concurrency (race test first)               | backend-dev       | T008                         | S    | todo   | `feat/003-photo-limit-race`            |
+| T028 | 10-photo limit under concurrency (race test first)               | backend-dev       | T008                         | S    | review | `feat/003-photo-limit-race`            |
 | T029 | QA US4: limit e2e and the SC-006 race                            | qa-engineer       | T014, T028                   | S    | todo   | `test/003-us4-photo-limit`             |
 | T030 | Docs US4                                                         | docs-writer       | T029                         | S    | todo   | `docs/003-us4-photo-limit`             |
 | T031 | Seed photo assets: download, resize, credits                     | backend-dev       | T006                         | S    | review | `feat/003-seed-photo-assets`           |
@@ -385,7 +385,7 @@ first (T002, T003). After T001: T002, T003, T005, T006, T011 and T012 can start 
 **Independent test**: spec US4 (8 photos, choose 4 → 2 added, 2 not added).
 
 - [ ] T028 [US4] Write `apps/api/test/photos-race.int-spec.ts` first (15 concurrent uploads to an empty space), then harden `space-photos.service.ts`: **(T001)** map `23514` on `space_photo_position_range` to 409 `photo:limit-reached`, treat `23505` on `space_photo_position_unique` as a 500 logged at `error` (a service bug, ADR-0011 section 7), log `photo.lock_timeout` on `55P03`, and confirm the semaphore's 503 path
-  - **Owner**: backend-dev · **Branch**: `feat/003-photo-limit-race` · **Size**: S · **Depends on**: T008 · **Status**: todo
+  - **Owner**: backend-dev · **Branch**: `feat/003-photo-limit-race` · **Size**: S · **Depends on**: T008 · **Status**: review
   - **Acceptance criteria**:
     - Given 15 concurrent valid uploads to a space with 0 photos, When all finish, Then exactly 10 × 201 and 5 × 409 `photo:limit-reached`, positions are 1..10, no 5xx (admission 16 admits all 15), and the 5 losers left no objects after one sweep run (SC-006, AC 4.4, FR-002). Repeat 10 times.
     - Given the processing semaphore is saturated beyond 20 s, Then the request gets 503 `photo:busy` with `Retry-After` (R-3).
