@@ -5,6 +5,13 @@
   "compilerOptions": {
     "builder": "swc",
     "tsConfigPath": "tsconfig.build.json",
-    "deleteOutDir": true
+    "deleteOutDir": true,
+    "assets": [
+      {
+        "include": "db/seed-photos/*.jpg",
+        "outDir": "dist",
+        "watchAssets": true
+      }
+    ]
   }
 }
