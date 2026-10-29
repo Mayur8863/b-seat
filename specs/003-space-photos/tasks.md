@@ -59,7 +59,7 @@ only a human merges.
 | T022 | Docs US2                                                         | docs-writer       | T021                         | S    | todo   | `docs/003-us2-renter-photos`           |
 | T023 | Reorder and delete API                                           | backend-dev       | T009                         | M    | review | `feat/003-photo-reorder-delete-api`    |
 | T024 | Purge sweep (scheduler, lease claim) and overdue alert log       | backend-dev       | T023                         | M    | review | `feat/003-photo-purge`                 |
-| T025 | Reorder controls and delete dialog                               | frontend-dev      | T011, T014, T023             | M    | todo   | `feat/003-photo-reorder-delete-ui`     |
+| T025 | Reorder controls and delete dialog                               | frontend-dev      | T011, T014, T023             | M    | review | `feat/003-photo-reorder-delete-ui`     |
 | T026 | QA US3: keyboard reorder, permanent delete, purge                | qa-engineer       | T024, T025                   | M    | todo   | `test/003-us3-arrange-photos`          |
 | T027 | Docs US3: photo-storage runbook (purge operations)               | docs-writer       | T026                         | S    | todo   | `docs/003-us3-arrange-photos`          |
 | T028 | 10-photo limit under concurrency (race test first)               | backend-dev       | T008                         | S    | review | `feat/003-photo-limit-race`            |
@@ -358,7 +358,7 @@ first (T002, T003). After T001: T002, T003, T005, T006, T011 and T012 can start 
     - Given the API boots twice (two tasks), Then exactly one job scheduler exists for the sweep.
 
 - [ ] T025 [US3] Add `photo-reorder-controls.tsx` (drag with pointer events plus "Move earlier", "Move later", "Make cover"; live announcements) and `delete-photo-dialog.tsx` to the Photos section, with tests; handle 409 `photo:order-stale` by refetching with the ui spec message
-  - **Owner**: frontend-dev · **Branch**: `feat/003-photo-reorder-delete-ui` · **Size**: M · **Depends on**: T011, T014, T023 · **Status**: todo
+  - **Owner**: frontend-dev · **Branch**: `feat/003-photo-reorder-delete-ui` · **Size**: M · **Depends on**: T011, T014, T023 · **Status**: review (pointer drag skipped, optional per ui 5.3)
   - **Acceptance criteria**:
     - Given 5 photos, When the owner uses only the keyboard to press "Make cover" on the 4th, Then it moves first, focus stays on the moved photo's control, and the live region announces the new position (AC 3.1, AC 3.2, FR-009).
     - Given a drag from position 3 to 1, Then the same order is saved; Given a single photo, Then no reorder controls are offered (edge).

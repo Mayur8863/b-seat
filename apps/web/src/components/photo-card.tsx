@@ -5,6 +5,7 @@ import { Badge } from '@bseat/ui/components/badge';
 import { Card } from '@bseat/ui/components/card';
 
 import { PhotoDescriptionForm } from '@/components/photo-description-form';
+import { type PhotoAction, PhotoReorderControls } from '@/components/photo-reorder-controls';
 import type { ProblemCopy } from '@/lib/problem-copy';
 
 interface Props {
@@ -16,6 +17,8 @@ interface Props {
   onImageError: () => void;
   onSaved: (position: number) => void;
   onPageProblem: (copy: ProblemCopy) => void;
+  busy: boolean;
+  onAction: (photoId: string, index: number, action: PhotoAction) => void;
 }
 
 /** One photo in "Your photos" (ui/01 5.1). */
@@ -28,6 +31,8 @@ export function PhotoCard({
   onImageError,
   onSaved,
   onPageProblem,
+  busy,
+  onAction,
 }: Props) {
   return (
     <Card className="p-3">
@@ -63,6 +68,15 @@ export function PhotoCard({
             onSaved(index + 1);
           }}
           onPageProblem={onPageProblem}
+        />
+        <PhotoReorderControls
+          photoId={photo.id}
+          index={index}
+          total={total}
+          busy={busy}
+          onAction={(action) => {
+            onAction(photo.id, index, action);
+          }}
         />
       </article>
     </Card>

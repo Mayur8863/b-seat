@@ -17,10 +17,12 @@ import type { Route } from 'next';
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { DeletePhotoDialog } from '@/components/delete-photo-dialog';
 import { LeaveDialog } from '@/components/leave-dialog';
 import { PhotoCard } from '@/components/photo-card';
 import { PhotoUploadQueue } from '@/components/photo-upload-queue';
 import { useLeaveGuard } from '@/components/use-leave-guard';
+import { usePhotoArrange } from '@/components/use-photo-arrange';
 import type { ProblemCopy } from '@/lib/problem-copy';
 import { uploadProblem } from '@/lib/photo-upload/problem';
 import {
@@ -173,6 +175,13 @@ export function SpacePhotoManager({ spaceId }: { spaceId: string }) {
   const unfinished = state.items.filter((i) =>
     ['waiting', 'uploading', 'processing'].includes(i.status.kind),
   ).length;
+  const arrange = usePhotoArrange({
+    spaceId,
+    items: photos?.items,
+    say,
+    onPageProblem: setPageAlert,
+    focusAdd: () => addButton.current?.focus(),
+  });
   const guard = useLeaveGuard(hasUnfinishedUploads(state));
 
   const free = room(state, count);
@@ -381,6 +390,8 @@ export function SpacePhotoManager({ spaceId }: { spaceId: string }) {
                         say(`Description saved for photo ${position}.`);
                       }}
                       onPageProblem={setPageAlert}
+                      busy={arrange.busy}
+                      onAction={arrange.onAction}
                     />
                   </li>
                 ))}
@@ -389,6 +400,13 @@ export function SpacePhotoManager({ spaceId }: { spaceId: string }) {
           )
         )}
       </section>
+
+      <DeletePhotoDialog
+        target={arrange.target}
+        pending={arrange.deleting}
+        onConfirm={arrange.confirmDelete}
+        onDismiss={arrange.dismissDelete}
+      />
 
       <LeaveDialog
         open={guard.pending}
