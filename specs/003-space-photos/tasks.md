@@ -43,7 +43,7 @@ only a human merges.
 | T006 | Image processing module with sharp (TDD)                         | backend-dev       | T001                         | M    | review | `feat/003-photo-processing`            |
 | T007 | Production image loads sharp; AWS storage runbook                | devops            | T006                         | S    | review | `chore/003-photo-runtime`              |
 | T008 | Upload API: validate, process, store, insert                     | backend-dev       | T002, T004, T005, T006       | M    | review | `feat/003-photo-upload-api`            |
-| T009 | Owner photo list and describe API                                | backend-dev       | T008                         | S    | todo   | `feat/003-photo-list-api`              |
+| T009 | Owner photo list and describe API                                | backend-dev       | T008                         | S    | review | `feat/003-photo-list-api`              |
 | T010 | `uploadSpacePhoto` XHR helper in the api-client                  | frontend-dev      | T008                         | S    | todo   | `feat/003-upload-helper`               |
 | T011 | UI spec: owner Photos section                                    | ui-ux-designer    | T001                         | M    | review | `docs/003-ui-owner-photos`             |
 | T012 | UI spec: cover, placeholder, gallery and large view              | ui-ux-designer    | T001                         | S    | review | `docs/003-ui-renter-photos`            |
@@ -194,7 +194,7 @@ first (T002, T003). After T001: T002, T003, T005, T006, T011 and T012 can start 
     - Given a draft space, Then upload succeeds (photos are allowed in any status, FR-001); Given a space with no photos, When it is published, Then publish still succeeds (FR-012).
 
 - [ ] T009 [US1] Add `GET /api/owner/spaces/{spaceId}/photos` and `PATCH /api/owner/spaces/{spaceId}/photos/{photoId}` (`space-photos.service.ts` `list`, `describe`); regenerate `openapi.json`; extend `photos.int-spec.ts`
-  - **Owner**: backend-dev · **Branch**: `feat/003-photo-list-api` · **Size**: S · **Depends on**: T008 · **Status**: todo
+  - **Owner**: backend-dev · **Branch**: `feat/003-photo-list-api` · **Size**: S · **Depends on**: T008 · **Status**: review (2026-10-29)
   - **Scope**: contracts/photos.md; research R-4, R-8. `altText` computed on read. `photoUrlsExpireAt` from the signing window.
   - **Acceptance criteria**:
     - Given a space with 3 photos, When the owner lists them, Then `items` are in position order with signed `card` and `display` URLs, `limit: 10` and `photoUrlsExpireAt` (FR-004 count, FR-020, AC 4.1).

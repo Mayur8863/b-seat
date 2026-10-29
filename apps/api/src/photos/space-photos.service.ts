@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, sql } from 'drizzle-orm';
 import { DrizzleQueryError } from 'drizzle-orm/errors';
 import { PinoLogger } from 'nestjs-pino';
 import pg from 'pg';
@@ -21,7 +21,12 @@ import { photoObjectPurge, space, spacePhoto } from '../db/schema/index.js';
 import { StorageService } from '../storage/storage.service.js';
 import { photoKeys } from './photo-keys.js';
 import { processPhoto, type PhotoRejection } from './photo-processing.js';
-import { PHOTO_LIMIT, type OwnerSpacePhoto } from './space-photos.schemas.js';
+import {
+  PHOTO_LIMIT,
+  type DescribeSpacePhotoInput,
+  type OwnerSpacePhoto,
+  type OwnerSpacePhotos,
+} from './space-photos.schemas.js';
 import { PROCESSING_WAIT_MS, Semaphore } from './upload-limits.js';
 
 const CARD = { width: 640, height: 480 } as const;
@@ -119,6 +124,76 @@ export class SpacePhotosService {
       );
       throw err;
     }
+  }
+
+  async list(ownerId: string, spaceId: string): Promise<OwnerSpacePhotos> {
+    const [owned] = await this.db
+      .select({ name: space.name })
+      .from(space)
+      .where(and(eq(space.id, spaceId), eq(space.ownerId, ownerId)));
+    if (!owned) throw new NotFoundException();
+    const rows = await this.db
+      .select()
+      .from(spacePhoto)
+      .where(eq(spacePhoto.spaceId, spaceId))
+      .orderBy(asc(spacePhoto.position));
+    return this.present(owned.name, rows);
+  }
+
+  async describe(
+    ownerId: string,
+    spaceId: string,
+    photoId: string,
+    input: DescribeSpacePhotoInput,
+  ): Promise<OwnerSpacePhoto> {
+    const description =
+      input.description === null || input.description === '' ? null : input.description;
+    const { name, row } = await this.db.transaction(async (tx) => {
+      const [locked] = await withLockTimeout(tx, this.logger, { spaceId }, () =>
+        tx
+          .select({ name: space.name })
+          .from(space)
+          .where(and(eq(space.id, spaceId), eq(space.ownerId, ownerId)))
+          .for('update', { of: space }),
+      );
+      if (!locked) throw new NotFoundException();
+      const [updated] = await tx
+        .update(spacePhoto)
+        .set({ description, updatedAt: sql`now()` })
+        .where(and(eq(spacePhoto.id, photoId), eq(spacePhoto.spaceId, spaceId)))
+        .returning();
+      if (!updated) throw new NotFoundException();
+      return { name: locked.name, row: updated };
+    });
+    this.logger.info({ spaceId, photoId }, 'photo.described');
+    const [item] = (await this.present(name, [row])).items;
+    if (!item) throw new NotFoundException();
+    return item;
+  }
+
+  /** One `now` and one signing call per response, so every URL shares a window. */
+  private async present(
+    spaceName: string,
+    rows: (typeof spacePhoto.$inferSelect)[],
+  ): Promise<OwnerSpacePhotos> {
+    const keys = rows.flatMap((r) => {
+      const k = photoKeys(r.spaceId, r.id);
+      return [k.card, k.display];
+    });
+    const { urls, expiresAt } = await this.storage.signGetUrls(keys, this.clock.now());
+    return {
+      items: rows.map((r, i) => ({
+        id: r.id,
+        position: r.position,
+        description: r.description,
+        altText: r.description ?? `${spaceName} photo ${r.position}`,
+        card: { url: urls[i * 2] ?? '', ...CARD },
+        display: { url: urls[i * 2 + 1] ?? '', width: r.displayWidth, height: r.displayHeight },
+        createdAt: r.createdAt.toISOString(),
+      })),
+      limit: PHOTO_LIMIT,
+      photoUrlsExpireAt: rows.length > 0 ? expiresAt.toISOString() : null,
+    };
   }
 
   private async process(spaceId: string, bytes: Buffer) {

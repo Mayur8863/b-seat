@@ -7,6 +7,7 @@ import {
 import type { PinoLogger } from 'nestjs-pino';
 import { describe, expect, it, vi } from 'vitest';
 
+import { photoBusy } from './problem-types.js';
 import { type ProblemExtensions, ProblemException } from './problem.exception.js';
 import { ProblemFilter } from './problem.filter.js';
 import { RequestValidationException, validationPipe } from './validation.js';
@@ -14,7 +15,7 @@ import { RequestValidationException, validationPipe } from './validation.js';
 const widen = (value: object) => value as unknown as ProblemExtensions;
 
 function run(exception: unknown, reqId: unknown = 'req-1') {
-  const logger = { setContext: vi.fn(), error: vi.fn() } as unknown as PinoLogger;
+  const logger = { setContext: vi.fn(), error: vi.fn(), warn: vi.fn() } as unknown as PinoLogger;
   const res = { status: vi.fn(), type: vi.fn(), json: vi.fn(), set: vi.fn() };
   res.status.mockReturnValue(res);
   res.type.mockReturnValue(res);
@@ -94,6 +95,12 @@ describe('ProblemFilter', () => {
     );
     expect(body).toMatchObject({ status: 503, type: 'urn:bseat:problem:test-unavailable' });
     expect(logger.error).toHaveBeenCalled();
+  });
+
+  it('logs photo:busy at warn, not error', () => {
+    const { logger } = run(photoBusy());
+    expect(logger.warn).toHaveBeenCalled();
+    expect(logger.error).not.toHaveBeenCalled();
   });
 
   it('hides internals of unexpected errors and logs them', () => {

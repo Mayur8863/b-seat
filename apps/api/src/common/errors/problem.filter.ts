@@ -11,6 +11,7 @@ import { PinoLogger } from 'nestjs-pino';
 import type { Problem } from './problem.js';
 import { ProblemSchema } from './problem.js';
 import { ProblemException } from './problem.exception.js';
+import { PROBLEM_TYPES } from './problem-types.js';
 import { RequestValidationException } from './validation.js';
 
 const RESERVED_KEYS: ReadonlySet<string> = new Set(Object.keys(ProblemSchema.shape));
@@ -35,7 +36,10 @@ export class ProblemFilter implements ExceptionFilter {
     const res = ctx.getResponse<Response>();
     const problem = this.toProblem(exception, req);
 
-    if (problem.status >= 500) {
+    if (exception instanceof ProblemException && exception.type === PROBLEM_TYPES.photoBusy) {
+      // Expected backpressure (admission full, storage blip), not a fault.
+      this.logger.warn({ type: exception.type }, 'photo busy');
+    } else if (problem.status >= 500) {
       this.logger.error({ err: exception }, 'unhandled error');
     }
 

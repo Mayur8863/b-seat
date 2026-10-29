@@ -1,4 +1,14 @@
-import { Controller, Param, Post, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiBadRequestResponse,
@@ -8,6 +18,7 @@ import {
   ApiConsumes,
   ApiCookieAuth,
   ApiCreatedResponse,
+  ApiOkResponse,
   ApiForbiddenResponse,
   ApiNotFoundResponse,
   ApiResponse,
@@ -29,7 +40,14 @@ import {
 } from '../common/errors/problem-types.js';
 import { RequestValidationException } from '../common/errors/validation.js';
 import { PhotoUploadErrorInterceptor } from './photo-upload.interceptor.js';
-import { type OwnerSpacePhoto, OwnerSpacePhotoSchema } from './space-photos.schemas.js';
+import {
+  type DescribeSpacePhotoInput,
+  DescribeSpacePhotoInputSchema,
+  type OwnerSpacePhoto,
+  OwnerSpacePhotoSchema,
+  type OwnerSpacePhotos,
+  OwnerSpacePhotosSchema,
+} from './space-photos.schemas.js';
 import { SpacePhotosService } from './space-photos.service.js';
 import { UploadAdmissionGuard } from './upload-admission.guard.js';
 import { uploadStorage } from './upload-storage.js';
@@ -64,6 +82,30 @@ const MAX_FILE_BYTES = 10 * 1024 * 1024;
 })
 export class SpacePhotosController {
   constructor(private readonly photos: SpacePhotosService) {}
+
+  @Get()
+  @ApiOkResponse({ standardSchema: OwnerSpacePhotosSchema })
+  @ApiBadRequestResponse({ standardSchema: ProblemSchema })
+  @ApiNotFoundResponse({ standardSchema: ProblemSchema })
+  list(
+    @CurrentSession() session: AuthSession,
+    @Param('spaceId', { schema: SpaceId }) spaceId: string,
+  ): Promise<OwnerSpacePhotos> {
+    return this.photos.list(session.user.id, spaceId);
+  }
+
+  @Patch(':photoId')
+  @ApiOkResponse({ standardSchema: OwnerSpacePhotoSchema })
+  @ApiBadRequestResponse({ standardSchema: ProblemSchema })
+  @ApiNotFoundResponse({ standardSchema: ProblemSchema })
+  describe(
+    @CurrentSession() session: AuthSession,
+    @Param('spaceId', { schema: SpaceId }) spaceId: string,
+    @Param('photoId', { schema: SpaceId }) photoId: string,
+    @Body({ schema: DescribeSpacePhotoInputSchema }) input: DescribeSpacePhotoInput,
+  ): Promise<OwnerSpacePhoto> {
+    return this.photos.describe(session.user.id, spaceId, photoId, input);
+  }
 
   @Post()
   // Guards run before interceptors, so admission is decided before multer reads the body. The

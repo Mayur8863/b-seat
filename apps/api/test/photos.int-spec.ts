@@ -265,4 +265,79 @@ describe('space photo upload API', () => {
   it('sets the 120 s request timeout (ADR-0011 section 2)', () => {
     expect(app.getHttpServer().requestTimeout).toBe(120_000);
   });
+
+  describe('list and describe', () => {
+    const seed = async (n: number, sid = spaceId) => {
+      for (let i = 0; i < n; i += 1) {
+        await db()
+          .insert(spacePhoto)
+          .values({ spaceId: sid, position: i + 1, displayWidth: 1200, displayHeight: 900 });
+      }
+    };
+
+    it('lists photos in position order with signed URLs, limit and expiry (any status)', async () => {
+      await seed(3);
+      const res = await owner.get(url());
+      expect(res.status).toBe(200);
+      expect(res.body.limit).toBe(10);
+      const items = res.body.items as { position: number; card: { url: string } }[];
+      expect(items.map((p) => p.position)).toEqual([1, 2, 3]);
+      expect(items[0]?.card.url).toContain('X-Amz-Signature');
+      expect(res.body.items[0].display).toMatchObject({ width: 1200, height: 900 });
+      expect(Date.parse(String(res.body.photoUrlsExpireAt))).toBeGreaterThan(Date.now());
+    });
+
+    it('lists an empty space with a null expiry', async () => {
+      const res = await owner.get(url());
+      expect(res.body).toEqual({ items: [], limit: 10, photoUrlsExpireAt: null });
+    });
+
+    it('computes altText on read and follows a rename', async () => {
+      await seed(2);
+      let res = await owner.get(url());
+      expect(res.body.items[1].altText).toBe('London HQ photo 2');
+      await owner.patch(`/api/owner/spaces/${spaceId}`).send({ name: 'City HQ' }).expect(200);
+      res = await owner.get(url());
+      expect(res.body.items[1].altText).toBe('City HQ photo 2');
+    });
+
+    it('describes with trimming, clears with "" or null, rejects bad text', async () => {
+      await seed(1);
+      const id = (await photos())[0]?.id ?? '';
+      const patch = (b: unknown) => owner.patch(`${url()}/${id}`).send(b as object);
+      const set = await patch({ description: '  Quiet zone  ' });
+      expect(set.status).toBe(200);
+      expect(set.body).toMatchObject({ description: 'Quiet zone', altText: 'Quiet zone' });
+      expect((await patch({ description: '' })).body.description).toBeNull();
+      await patch({ description: 'x' });
+      expect((await patch({ description: null })).body.description).toBeNull();
+      expect((await patch({ description: 'a'.repeat(151) })).status).toBe(400);
+      expect((await patch({ description: 'a\u202Eb' })).status).toBe(400);
+      expect((await patch({})).status).toBe(400);
+      expect((await patch({ description: 'x', extra: 1 })).status).toBe(400);
+    });
+
+    it('stores markup as plain text', async () => {
+      await seed(1);
+      const id = (await photos())[0]?.id ?? '';
+      const res = await owner.patch(`${url()}/${id}`).send({ description: '<script>x</script>' });
+      expect(res.body.description).toBe('<script>x</script>');
+    });
+
+    it('404s another owner, a foreign photo and unknown ids; 403s a renter', async () => {
+      await seed(1);
+      const id = (await photos())[0]?.id ?? '';
+      expect((await other.get(url())).status).toBe(404);
+      expect((await other.patch(`${url()}/${id}`).send({ description: 'x' })).status).toBe(404);
+      const otherSpace = (await createListing(db(), ownerId)).id;
+      expect(
+        (await owner.patch(`${url(otherSpace)}/${id}`).send({ description: 'x' })).status,
+      ).toBe(404);
+      expect(
+        (await owner.patch(`${url()}/${randomUUID()}`).send({ description: 'x' })).status,
+      ).toBe(404);
+      expect((await renter.get(url())).status).toBe(403);
+      expect((await owner.get(url(randomUUID()))).status).toBe(404);
+    });
+  });
 });

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { Instant } from '../common/schemas/field-formats.js';
+import { Instant, PlainText } from '../common/schemas/field-formats.js';
 
 /** Photos per space (FR-002); the database CHECK is the backstop. */
 export const PHOTO_LIMIT = 10;
@@ -25,3 +25,22 @@ export const OwnerSpacePhotoSchema = z
   })
   .meta({ id: 'OwnerSpacePhoto' });
 export type OwnerSpacePhoto = z.infer<typeof OwnerSpacePhotoSchema>;
+
+export const OwnerSpacePhotosSchema = z
+  .object({
+    items: z.array(OwnerSpacePhotoSchema).describe('In position order, cover first'),
+    limit: z.literal(PHOTO_LIMIT),
+    photoUrlsExpireAt: Instant.nullable().describe(
+      'When the signed URLs expire; null with no photos',
+    ),
+  })
+  .meta({ id: 'OwnerSpacePhotos' });
+export type OwnerSpacePhotos = z.infer<typeof OwnerSpacePhotosSchema>;
+
+export const DescribeSpacePhotoInputSchema = z
+  .strictObject({
+    // Trimmed; an empty string means "no description" and the service stores null.
+    description: PlainText.trim().max(150).nullable(),
+  })
+  .meta({ id: 'DescribeSpacePhotoInput' });
+export type DescribeSpacePhotoInput = z.infer<typeof DescribeSpacePhotoInputSchema>;
