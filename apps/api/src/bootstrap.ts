@@ -30,6 +30,9 @@ export async function createApp(): Promise<NestExpressApplication> {
   const auth = app.get<Auth>(AUTH);
   app.getHttpAdapter().getInstance().all(`${AUTH_BASE_PATH}/*splat`, toNodeHandler(auth));
   app.useBodyParser('json', { limit: '100kb' });
+  // Every route but the photo upload takes at most 100 kB; this stops slow bodies from holding
+  // upload memory and admission slots for Node's default 300 s (ADR-0011 section 2).
+  app.getHttpServer().requestTimeout = 120_000;
 
   const config = app.get<ConfigService<Env, true>>(ConfigService);
   if (config.get('NODE_ENV', { infer: true }) !== 'production') {
