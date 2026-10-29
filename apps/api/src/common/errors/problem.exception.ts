@@ -21,6 +21,8 @@ export class ProblemException extends HttpException {
      * with the factories in `problem-types.ts`; the filter also drops reserved keys.
      */
     readonly extensions?: ProblemExtensions,
+    /** Response headers, e.g. `Retry-After` on a temporary 503. */
+    readonly headers?: Readonly<Record<string, string>>,
   ) {
     super(detail, status);
   }

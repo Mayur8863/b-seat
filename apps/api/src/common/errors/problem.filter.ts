@@ -39,6 +39,9 @@ export class ProblemFilter implements ExceptionFilter {
       this.logger.error({ err: exception }, 'unhandled error');
     }
 
+    if (exception instanceof ProblemException && exception.headers) {
+      res.set(exception.headers);
+    }
     res.status(problem.status).type('application/problem+json').json(problem);
   }
 

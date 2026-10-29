@@ -7,6 +7,12 @@ import {
   LabelTakenProblem,
   occupancyConflict,
   OccupancyConflictProblem,
+  photoBusy,
+  photoDimensionsOutOfRange,
+  photoLimitReached,
+  photoTooLarge,
+  photoUnreadable,
+  photoUnsupportedFormat,
   PROBLEM_TYPES,
   publishIncomplete,
   PublishIncompleteProblem,
@@ -40,6 +46,12 @@ describe('PROBLEM_TYPES', () => {
       occupancyAlreadyOccupied: 'urn:bseat:problem:occupancy:already-occupied',
       layoutStaleVersion: 'urn:bseat:problem:layout:stale-version',
       layoutOutOfBounds: 'urn:bseat:problem:layout:out-of-bounds',
+      photoLimitReached: 'urn:bseat:problem:photo:limit-reached',
+      photoTooLarge: 'urn:bseat:problem:photo:too-large',
+      photoUnsupportedFormat: 'urn:bseat:problem:photo:unsupported-format',
+      photoDimensionsOutOfRange: 'urn:bseat:problem:photo:dimensions-out-of-range',
+      photoUnreadable: 'urn:bseat:problem:photo:unreadable',
+      photoBusy: 'urn:bseat:problem:photo:busy',
     });
   });
 });
@@ -216,5 +228,55 @@ describe('problem factories', () => {
     expect(build).not.toThrow();
     // @ts-expect-error labels must be strings
     expect(() => labelTaken([1])).toThrow();
+  });
+});
+
+describe('photo problem factories', () => {
+  it.each([
+    [
+      photoLimitReached(),
+      409,
+      'Photo limit reached',
+      'This space already has 10 photos. Delete one to add another.',
+      { limit: 10 },
+    ],
+    [
+      photoTooLarge(),
+      413,
+      'Photo too large',
+      'Photos can be at most 10 MB.',
+      { maxBytes: 10_485_760 },
+    ],
+    [
+      photoUnsupportedFormat(),
+      415,
+      'Unsupported photo format',
+      'Use a JPEG, PNG or WebP photo that is not animated.',
+      { accepted: ['jpeg', 'png', 'webp'] },
+    ],
+    [
+      photoDimensionsOutOfRange(),
+      422,
+      'Photo size out of range',
+      'The longest side must be 800 to 12,000 pixels, up to 50 megapixels.',
+      { minLongEdge: 800, maxLongEdge: 12_000, maxPixels: 50_000_000 },
+    ],
+    [
+      photoUnreadable(),
+      422,
+      'Photo unreadable',
+      "This file couldn't be read as an image.",
+      undefined,
+    ],
+    [photoBusy(), 503, 'Busy', 'We are busy right now. Try again in a moment.', undefined],
+  ])('%#: status, exact copy and extensions', (e, status, title, detail, extensions) => {
+    expect(e.getStatus()).toBe(status);
+    expect(e.title).toBe(title);
+    expect(e.detail).toBe(detail);
+    expect(e.extensions).toEqual(extensions);
+  });
+
+  it('photoBusy carries Retry-After', () => {
+    expect(photoBusy(7).headers).toEqual({ 'Retry-After': '7' });
   });
 });

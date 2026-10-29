@@ -29,6 +29,12 @@ export const PROBLEM_TYPES = {
   occupancyAlreadyOccupied: 'urn:bseat:problem:occupancy:already-occupied',
   layoutStaleVersion: 'urn:bseat:problem:layout:stale-version',
   layoutOutOfBounds: 'urn:bseat:problem:layout:out-of-bounds',
+  photoLimitReached: 'urn:bseat:problem:photo:limit-reached',
+  photoTooLarge: 'urn:bseat:problem:photo:too-large',
+  photoUnsupportedFormat: 'urn:bseat:problem:photo:unsupported-format',
+  photoDimensionsOutOfRange: 'urn:bseat:problem:photo:dimensions-out-of-range',
+  photoUnreadable: 'urn:bseat:problem:photo:unreadable',
+  photoBusy: 'urn:bseat:problem:photo:busy',
 } as const;
 
 /* Response-only schemas for the three problems that carry extra members (AQ-3, ADR-0009
@@ -64,11 +70,33 @@ export const OccupancyConflictProblem = ProblemSchema.extend({
     .min(1),
 }).meta({ id: 'OccupancyConflictProblem' });
 
+export const PhotoLimitProblem = ProblemSchema.extend({
+  limit: z.literal(10).describe('Photos allowed per space'),
+}).meta({ id: 'PhotoLimitProblem' });
+
+export const PhotoTooLargeProblem = ProblemSchema.extend({
+  maxBytes: z.literal(10_485_760).describe('Largest accepted file, in bytes'),
+}).meta({ id: 'PhotoTooLargeProblem' });
+
+export const PhotoFormatProblem = ProblemSchema.extend({
+  accepted: z.array(z.enum(['jpeg', 'png', 'webp'])).describe('Accepted formats'),
+}).meta({ id: 'PhotoFormatProblem' });
+
+export const PhotoDimensionsProblem = ProblemSchema.extend({
+  minLongEdge: z.literal(800),
+  maxLongEdge: z.literal(12_000),
+  maxPixels: z.literal(50_000_000),
+}).meta({ id: 'PhotoDimensionsProblem' });
+
 /** The only extension shapes a `ProblemException` accepts. */
 export type ProblemExtensions =
   | Pick<z.infer<typeof PublishIncompleteProblem>, 'missing'>
   | Pick<z.infer<typeof LabelTakenProblem>, 'labels'>
-  | Pick<z.infer<typeof OccupancyConflictProblem>, 'conflicts'>;
+  | Pick<z.infer<typeof OccupancyConflictProblem>, 'conflicts'>
+  | Pick<z.infer<typeof PhotoLimitProblem>, 'limit'>
+  | Pick<z.infer<typeof PhotoTooLargeProblem>, 'maxBytes'>
+  | Pick<z.infer<typeof PhotoFormatProblem>, 'accepted'>
+  | Pick<z.infer<typeof PhotoDimensionsProblem>, 'minLongEdge' | 'maxLongEdge' | 'maxPixels'>;
 
 /** Non-empty list of `T`, so a factory cannot be asked for a problem with nothing to report. */
 type NonEmpty<T> = readonly [T, ...T[]];
@@ -150,5 +178,71 @@ export function seatHasFutureBookings(): ProblemException {
     PROBLEM_TYPES.seatHasFutureBookings,
     'Upcoming bookings',
     'Upcoming bookings prevent this removal. Wait until they end or are cancelled.',
+  );
+}
+
+/** 409 the space already has 10 photos. */
+export function photoLimitReached(): ProblemException {
+  return new ProblemException(
+    409,
+    PROBLEM_TYPES.photoLimitReached,
+    'Photo limit reached',
+    'This space already has 10 photos. Delete one to add another.',
+    { limit: 10 },
+  );
+}
+
+/** 413 file over 10 MiB. */
+export function photoTooLarge(): ProblemException {
+  return new ProblemException(
+    413,
+    PROBLEM_TYPES.photoTooLarge,
+    'Photo too large',
+    'Photos can be at most 10 MB.',
+    { maxBytes: 10_485_760 },
+  );
+}
+
+/** 415 not a still JPEG, PNG or WebP by content. */
+export function photoUnsupportedFormat(): ProblemException {
+  return new ProblemException(
+    415,
+    PROBLEM_TYPES.photoUnsupportedFormat,
+    'Unsupported photo format',
+    'Use a JPEG, PNG or WebP photo that is not animated.',
+    { accepted: ['jpeg', 'png', 'webp'] },
+  );
+}
+
+/** 422 long edge or pixel count out of range. */
+export function photoDimensionsOutOfRange(): ProblemException {
+  return new ProblemException(
+    422,
+    PROBLEM_TYPES.photoDimensionsOutOfRange,
+    'Photo size out of range',
+    'The longest side must be 800 to 12,000 pixels, up to 50 megapixels.',
+    { minLongEdge: 800, maxLongEdge: 12_000, maxPixels: 50_000_000 },
+  );
+}
+
+/** 422 the bytes do not decode as an image. */
+export function photoUnreadable(): ProblemException {
+  return new ProblemException(
+    422,
+    PROBLEM_TYPES.photoUnreadable,
+    'Photo unreadable',
+    "This file couldn't be read as an image.",
+  );
+}
+
+/** 503 temporary: admission full, processing wait over, or storage unavailable. Always retryable. */
+export function photoBusy(retryAfterSeconds = 5): ProblemException {
+  return new ProblemException(
+    503,
+    PROBLEM_TYPES.photoBusy,
+    'Busy',
+    'We are busy right now. Try again in a moment.',
+    undefined,
+    { 'Retry-After': String(retryAfterSeconds) },
   );
 }
