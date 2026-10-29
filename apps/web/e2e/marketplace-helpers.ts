@@ -72,3 +72,17 @@ export async function publishSpaceViaApi(
   await send('post', `/api/owner/spaces/${id}/publish`, {});
   return id;
 }
+
+/** Books `seat` with the day pass from `offset` days ahead as the signed-in renter, through the UI. */
+export async function bookDayPass(page: Page, spaceId: string, seat: string, offset: number) {
+  await page.goto(`/spaces/${spaceId}`);
+  await page
+    .getByRole('radio', { name: /Day pass/ })
+    .first()
+    .check();
+  await page.getByLabel('Start date').fill(dayFromNow(offset));
+  await page.getByRole('radio', { name: new RegExp(`${seat}, Free`) }).check();
+  await page.getByRole('button', { name: 'Review booking' }).click();
+  await page.getByRole('button', { name: 'Confirm booking' }).click();
+  await expect(page.getByText('Booking confirmed')).toBeVisible();
+}
