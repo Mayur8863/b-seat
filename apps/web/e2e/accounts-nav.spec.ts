@@ -72,6 +72,8 @@ test('a stale cookie renders sign-in and sign-up without a redirect loop', async
 test('a keyboard-only user reaches every main nav page from the dashboard', async ({ page }) => {
   await signUp(page, 'owner');
   const nav = page.getByRole('navigation', { name: 'Main' });
+  // The owner links appear once the session has loaded, so wait for one before counting.
+  await expect(nav.getByRole('link', { name: 'List a space' })).toBeVisible();
   const links = await nav.getByRole('link').all();
   expect(links.length).toBeGreaterThanOrEqual(3);
   const names = await Promise.all(links.map((l) => l.innerText()));
