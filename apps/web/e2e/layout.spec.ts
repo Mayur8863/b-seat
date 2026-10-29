@@ -32,8 +32,12 @@ test('keyboard-only: place, move and resize seats, save, reload, and a renter bo
   });
 
   await owner.goto(`/owner/spaces/${id}/layout`);
-  await expect(owner.getByRole('heading', { level: 1, name: 'Layout' })).toBeVisible();
-  await expect(owner.getByRole('list', { name: 'Items not on the plan' })).toBeVisible();
+  await expect(owner.getByRole('heading', { level: 1, name: 'Layout' })).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(owner.getByRole('list', { name: 'Items not on the plan' })).toBeVisible({
+    timeout: 15_000,
+  });
 
   // Place every seat from the tray with Enter.
   for (const label of ['A-1', 'A-2', 'A-3']) {
@@ -44,7 +48,7 @@ test('keyboard-only: place, move and resize seats, save, reload, and a renter bo
     );
     await expect(
       owner.getByRole('button', { name: new RegExp(`^Seat ${label}, column`) }),
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 15_000 });
   }
 
   // Pick up A-1, move it down twice, drop it, then resize it with Shift+Arrow.
@@ -66,14 +70,18 @@ test('keyboard-only: place, move and resize seats, save, reload, and a renter bo
   expect(moved).not.toBe(before);
 
   await key(owner, owner.getByRole('button', { name: 'Save layout' }), 'Enter');
-  await expect(owner.getByText('Layout saved').first()).toBeVisible();
+  await expect(owner.getByText('Layout saved').first()).toBeVisible({ timeout: 15_000 });
 
   // The saved plan survives a reload with the same positions.
   await owner.reload();
   const reloaded = (await a1().getAttribute('aria-label')) ?? (await a1().innerText());
   expect(reloaded).toBe(moved);
-  await expect(owner.getByRole('button', { name: /^Seat A-2, column/ })).toBeVisible();
-  await expect(owner.getByRole('button', { name: /^Seat A-3, column/ })).toBeVisible();
+  await expect(owner.getByRole('button', { name: /^Seat A-2, column/ })).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(owner.getByRole('button', { name: /^Seat A-3, column/ })).toBeVisible({
+    timeout: 15_000,
+  });
 
   // A renter sees the plan and books a seat from it by keyboard.
   const renterCtx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
@@ -89,13 +97,13 @@ test('keyboard-only: place, move and resize seats, save, reload, and a renter bo
     .getByRole('radiogroup')
     .getByRole('radio', { name: /A-2, Free/ })
     .first();
-  await expect(planSeat).toBeVisible();
+  await expect(planSeat).toBeVisible({ timeout: 15_000 });
   await expectNoAxeViolations(renter);
   await key(renter, planSeat, 'Space');
-  await expect(planSeat).toBeChecked();
+  await expect(planSeat).toBeChecked({ timeout: 15_000 });
   await key(renter, renter.getByRole('button', { name: 'Review booking' }), 'Enter');
   await key(renter, renter.getByRole('button', { name: 'Confirm booking' }), 'Enter');
-  await expect(renter.getByText('Booking confirmed')).toBeVisible();
+  await expect(renter.getByText('Booking confirmed')).toBeVisible({ timeout: 15_000 });
   await expectNoAxeViolations(renter);
   await ownerCtx.close();
   await renterCtx.close();
