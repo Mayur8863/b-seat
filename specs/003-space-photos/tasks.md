@@ -66,7 +66,7 @@ only a human merges.
 | T029 | QA US4: limit e2e and the SC-006 race                            | qa-engineer       | T014, T028                   | S    | todo   | `test/003-us4-photo-limit`             |
 | T030 | Docs US4                                                         | docs-writer       | T029                         | S    | todo   | `docs/003-us4-photo-limit`             |
 | T031 | Seed photo assets: download, resize, credits                     | backend-dev       | T006                         | S    | review | `feat/003-seed-photo-assets`           |
-| T032 | Seed wiring: attach photos to London HQ and Pune Hub             | backend-dev       | T003, T008, T031             | S    | todo   | `feat/003-seed-photos`                 |
+| T032 | Seed wiring: attach photos to London HQ and Pune Hub             | backend-dev       | T003, T008, T031             | S    | review | `feat/003-seed-photos`                 |
 | T033 | QA US5: offline seed, idempotency, credits                       | qa-engineer       | T032                         | S    | todo   | `test/003-us5-seed-photos`             |
 | T034 | Docs US5                                                         | docs-writer       | T033                         | S    | todo   | `docs/003-us5-seed-photos`             |
 | T035 | Security review of the photo feature                             | security-reviewer | T016, T021, T026, T029, T033 | S    | todo   | none (read-only; findings in tasks.md) |
@@ -419,7 +419,7 @@ first (T002, T003). After T001: T002, T003, T005, T006, T011 and T012 can start 
     - Given `photos.ts`, Then every photo has a description of at most 150 characters, and each space's position 1 is a suitable cover (AC 5.1).
 
 - [ ] T032 [US5] Seed the photos in `apps/api/src/db/seed.ts` / `demo-spaces.ts` through the processing and storage code (a space with zero photos gets its set, others are left alone), and extend `apps/api/test/seed.int-spec.ts`
-  - **Owner**: backend-dev · **Branch**: `feat/003-seed-photos` · **Size**: S · **Depends on**: T003, T008, T031 · **Status**: todo
+  - **Owner**: backend-dev · **Branch**: `feat/003-seed-photos` · **Size**: S · **Depends on**: T003, T008, T031 · **Status**: review
   - **Acceptance criteria**:
     - Given a fresh database and bucket, When the seed runs, Then London HQ has 5 and Pune Hub 4 photos in `photos.ts` order with descriptions, and their objects exist (AC 5.1, FR-024).
     - Given the seed runs twice, Then the counts stay 5 and 4 and no extra objects are written (AC 5.2).
