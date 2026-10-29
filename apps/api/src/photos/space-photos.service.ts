@@ -6,7 +6,7 @@ import { DrizzleQueryError } from 'drizzle-orm/errors';
 import { PinoLogger } from 'nestjs-pino';
 import pg from 'pg';
 
-import { withLockTimeout } from '../bookings/seat-lock.js';
+import { LOCK_TIMEOUT } from '../bookings/seat-lock.js';
 import {
   photoBusy,
   photoDimensionsOutOfRange,
@@ -146,13 +146,12 @@ export class SpacePhotosService {
     try {
       return await this.db.transaction(async (tx) => {
         // Authorization and serialisation in one statement: a foreign space is a 404 (ADR-0011 section 8).
-        const [locked] = await withLockTimeout(tx, this.logger, { spaceId }, () =>
-          tx
-            .select({ name: space.name })
-            .from(space)
-            .where(and(eq(space.id, spaceId), eq(space.ownerId, ownerId)))
-            .for('update', { of: space }),
-        );
+        await tx.execute(sql`select set_config('lock_timeout', ${LOCK_TIMEOUT}, true)`);
+        const [locked] = await tx
+          .select({ name: space.name })
+          .from(space)
+          .where(and(eq(space.id, spaceId), eq(space.ownerId, ownerId)))
+          .for('update', { of: space });
         if (!locked) throw new NotFoundException();
 
         const [counted] = await tx
@@ -194,6 +193,10 @@ export class SpacePhotosService {
         throw photoBusy();
       }
       const code = pgError(err);
+      if (code?.code === '55P03') {
+        // ADR-0009 section 9.4: ids only; the request fails with a 500.
+        this.logger.warn({ spaceId }, 'photo.lock_timeout');
+      }
       if (code?.code === '23514' && code.constraint === 'space_photo_position_range') {
         throw photoLimitReached();
       }
