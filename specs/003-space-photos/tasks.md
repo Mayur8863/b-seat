@@ -410,12 +410,12 @@ first (T002, T003). After T001: T002, T003, T005, T006, T011 and T012 can start 
 
 **Independent test**: spec US5 (fresh environment, no internet, seed twice).
 
-- [ ] T031 [P] [US5] Download 9 office and coworking photos (5 for London HQ, 4 for Pune Hub) from Unsplash or Pexels, resize to 1600 px on the long edge, re-encode as JPEG q82 with metadata stripped, and commit them with `CREDITS.md` and `photos.ts` (file → space, position, description) under `apps/api/src/db/seed-photos/`
+- [ ] T031 [P] [US5] Download 9 office and coworking photos (5 for London HQ, 4 for Pune Hub) from Wikimedia Commons (CC0, public domain or CC BY; through the MediaWiki API), resize to 1600 px on the long edge, re-encode as JPEG q82 with metadata stripped, and commit them with `CREDITS.md` and `photos.ts` (file → space, position, description) under `apps/api/src/db/seed-photos/`
   - **Owner**: backend-dev · **Branch**: `feat/003-seed-photo-assets` · **Size**: S · **Depends on**: T006 · **Status**: todo
-  - **Scope**: research R-11. The machine has internet access (`images.unsplash.com`, `images.pexels.com`). Choose photos without identifiable faces or readable private information. The one-off resize runs in the tools container with sharp; the commands are recorded in `CREDITS.md`, and no download script runs at seed time. Binary files do not count toward the line budget.
+  - **Scope**: research R-11. Unsplash and Pexels block scripted access, so the photos come from Wikimedia Commons through its official API with an honest User-Agent. Choose photos without identifiable faces or readable private information. The one-off resize runs in the tools container with sharp; the commands are recorded in `CREDITS.md`, and no download script runs at seed time. Binary files do not count toward the line budget.
   - **Acceptance criteria**:
     - Given the folder, Then it has 9 JPEGs, each 1600 px on the long edge (± 0), without EXIF, XMP or IPTC metadata, and ≤ 500 kB (FR-023).
-    - Given `CREDITS.md`, Then every file lists the photographer, profile URL, source page URL, license (Unsplash License or Pexels License, with a link) and retrieval date 2026-10-28 or later (AC 5.4, FR-023).
+    - Given `CREDITS.md`, Then every file lists the photographer, profile URL, source page URL, license (CC0, public domain or CC BY, with a link) and retrieval date 2026-10-28 or later (AC 5.4, FR-023).
     - Given `photos.ts`, Then every photo has a description of at most 150 characters, and each space's position 1 is a suitable cover (AC 5.1).
 
 - [ ] T032 [US5] Seed the photos in `apps/api/src/db/seed.ts` / `demo-spaces.ts` through the processing and storage code (a space with zero photos gets its set, others are left alone), and extend `apps/api/test/seed.int-spec.ts`
