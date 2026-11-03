@@ -3,7 +3,7 @@
 #   docker build -f docker/api.Dockerfile -t bseat-api .
 # Run migrations as a one-off:  docker run --rm -e DATABASE_URL=... bseat-api node dist/db/migrate.js
 
-FROM node:22-bookworm-slim AS base
+FROM node:26-bookworm-slim AS base
 ENV PNPM_HOME=/pnpm COREPACK_ENABLE_DOWNLOAD_PROMPT=0 TURBO_TELEMETRY_DISABLED=1
 # No git in the image: skip lefthook's git-hook installation during pnpm install.
 ENV LEFTHOOK=0
@@ -20,7 +20,7 @@ RUN pnpm exec turbo run build --filter=@bseat/api
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
     pnpm --filter=@bseat/api deploy --prod /out
 
-FROM node:22-bookworm-slim AS runtime
+FROM node:26-bookworm-slim AS runtime
 # The runtime never runs a package manager: removing the bundled npm/corepack/yarn
 # drops their transitive CVEs and attack surface.
 RUN rm -rf /usr/local/lib/node_modules /usr/local/bin/npm /usr/local/bin/npx \
