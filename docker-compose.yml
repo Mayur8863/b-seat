@@ -95,7 +95,7 @@ services:
   # the ADR conformance list (see docs/runbooks/local-development.md). Credentials come from the
   # AWS_* variables; there is no anonymous access, so every unsigned request gets 403.
   storage:
-    image: chrislusf/seaweedfs:4.51@sha256:3a522c379599e163433a636e75022630848b63a74f08ea37bf06f8d776e9a707
+    image: chrislusf/seaweedfs:4.51@sha256:f7a49e3f3972ebed5be2ed4befa4a0c68eb7bdddba6e692d42729ceb545134b8
     command:
       - server
       - -dir=/data
