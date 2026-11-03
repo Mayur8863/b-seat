@@ -3,7 +3,7 @@
 #   docker build -f docker/web.Dockerfile -t bseat-web .
 # NEXT_PUBLIC_* values are inlined at build time; pass them as --build-arg.
 
-FROM node:22-bookworm-slim AS base
+FROM node:26-bookworm-slim AS base
 ENV PNPM_HOME=/pnpm COREPACK_ENABLE_DOWNLOAD_PROMPT=0 \
     NEXT_TELEMETRY_DISABLED=1 TURBO_TELEMETRY_DISABLED=1
 # No git in the image: skip lefthook's git-hook installation during pnpm install.
@@ -20,7 +20,7 @@ RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
     pnpm install --frozen-lockfile
 RUN pnpm exec turbo run build --filter=@bseat/web
 
-FROM node:22-bookworm-slim AS runtime
+FROM node:26-bookworm-slim AS runtime
 # The runtime never runs a package manager: removing the bundled npm/corepack/yarn
 # drops their transitive CVEs and attack surface.
 RUN rm -rf /usr/local/lib/node_modules /usr/local/bin/npm /usr/local/bin/npx \

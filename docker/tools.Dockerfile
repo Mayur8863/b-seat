@@ -1,7 +1,7 @@
 # Dev toolbox: Node 22 LTS + pnpm (via corepack) + git.
 # Used for every host-side command (install, lint, test, codegen) so the host
 # only needs Docker. Runs as the image's `node` user (uid 1000).
-FROM node:22-bookworm-slim
+FROM node:26-bookworm-slim
 
 RUN apt-get update \
   # procps provides `ps`, which nest/tree-kill need to stop the old dev server on reload
