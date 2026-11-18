@@ -21,6 +21,8 @@ const config: NextConfig = {
   redirects: () =>
     Promise.resolve([{ source: '/book/:path*', destination: '/find', permanent: true }]),
   rewrites: () => Promise.resolve([{ source: '/api/:path*', destination: `${apiUrl}/api/:path*` }]),
+  // Records that `next upgrade --agent` should track security releases for this app.
+  experimental: { agentUpgrade: 'security' },
 };
 
 export default config;
