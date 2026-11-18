@@ -209,7 +209,7 @@ services:
   # ---- browser tests: docker compose --profile e2e run --rm e2e -------------
   # Shares web's network namespace, so the browser sees http://localhost:3000.
   e2e:
-    image: mcr.microsoft.com/playwright:v1.64.1-noble
+    image: mcr.microsoft.com/playwright:v1.65.0-noble
     profiles: [e2e]
     network_mode: service:web
     user: '1000:1000'
