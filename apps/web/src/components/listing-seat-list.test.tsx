@@ -7,7 +7,7 @@ import type { ListingSeatAvailability } from '@bseat/api-client';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { server } from '@/test/msw';
 import { renderWithQuery } from '@/test/render';
@@ -28,6 +28,17 @@ const seat = (over: Partial<SeatItem>): SeatItem => ({
   ...over,
 });
 const data = (seats: SeatItem[]) => getListingsSeatsResponseMock({ seats });
+
+// The fixtures book a slot starting 2026-11-02. Pin the clock before it so the
+// component does not mark every seat "Already started" once that date passes.
+// Only Date is faked, so userEvent and findBy* timers still run.
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date('2026-11-01T00:00:00Z'));
+});
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 function setup(onSelect = vi.fn(), selectedSeatId: string | null = null) {
   renderWithQuery(
