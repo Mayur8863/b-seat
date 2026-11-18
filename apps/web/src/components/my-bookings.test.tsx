@@ -125,7 +125,7 @@ describe('MyBookings', () => {
       ),
       getBookingsCancelMockHandler((info) => {
         cancelled = true;
-        cancelledIds.push(String(info.params.bookingId));
+        cancelledIds.push(info.params.bookingId);
         return booking('b1', 'Alpha Hub', { status: 'cancelled' });
       }),
     );
